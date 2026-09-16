@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2, Send, Sparkles, Wrench, ShieldCheck, ShieldAlert,
-  Radar, CheckCircle2, AlertTriangle, Coins,
+  Radar, CheckCircle2, AlertTriangle, Coins, History, MessageSquarePlus, Trash2, X,
 } from "lucide-react";
-import { apiGetJson, apiPostJson, ApiHttpError } from "@/lib/api";
+import { apiGetJson, apiPostJson, apiDeleteJson, ApiHttpError } from "@/lib/api";
 import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type ToolTrace = { name: string; arguments: string; result: string; durationMs?: number; write?: boolean };
@@ -32,6 +33,7 @@ type ChatMsg = {
   /** 建议后续操作（点击即发送对应问题） */
   suggestedFollowUps?: string[];
 };
+type SessionMeta = { id: string; title: string; updatedAt: string; msgCount: number };
 
 const QUICK_PROMPTS = [
   "当前集群有哪些异常 Pod？逐个说明原因",
@@ -39,6 +41,16 @@ const QUICK_PROMPTS = [
   "最近 1 小时集群里有哪些 Warning 事件？",
   "帮我判断 default 命名空间里服务的健康状态",
 ];
+
+const timeAgo = (iso: string) => {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const diff = Date.now() - t;
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  return `${Math.floor(diff / 86_400_000)} 天前`;
+};
 
 const AiAssistant: React.FC = () => {
   const [mode, setMode] = useState<"readonly" | "operate">("readonly");
@@ -51,9 +63,16 @@ const AiAssistant: React.FC = () => {
   const [discoverError, setDiscoverError] = useState("");
   const [showDiscover, setShowDiscover] = useState(false);
   const [appliedFiles, setAppliedFiles] = useState<Record<number, string>>({});
+  const [showSessions, setShowSessions] = useState(false);
+  /** 二次确认删除的会话 id；再次点击同一条才真正删除 */
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
   /** 待确认的历史（问题+上下文），确认后重发 */
   const pendingRef = useRef<{ question: string; history: { role: string; content: string }[] } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** messages 的实时镜像：自动保存时避免闭包拿到过期消息列表 */
+  const messagesRef = useRef<ChatMsg[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const qc = useQueryClient();
 
   const cfgQ = useQuery({
     queryKey: ["ops-ai-config"],
@@ -66,6 +85,11 @@ const AiAssistant: React.FC = () => {
       today: { totals: { calls: number; totalTokens: number } };
     }>("/api/ops/ai-usage"),
     refetchInterval: 30_000,
+  });
+
+  const sessionsQ = useQuery({
+    queryKey: ["ai-assistant-sessions"],
+    queryFn: () => apiGetJson<{ sessions: SessionMeta[] }>("/api/ops/ai-assistant/sessions"),
   });
 
   const runDiscover = async () => {
@@ -175,13 +199,68 @@ const AiAssistant: React.FC = () => {
   /** 自动保存当前对话到后端（PlatformKV 持久化） */
   const saveSession = async () => {
     try {
+      const id = sessionId || `sess-${Date.now()}`;
       await apiPostJson("/api/ops/ai-assistant/sessions", {
-        id: sessionId || `sess-${Date.now()}`,
-        title: messages.find((m) => m.role === "user")?.content?.slice(0, 40) || "AI 对话",
-        messages: messages.filter((m) => m.content).map((m) => ({ role: m.role, content: m.content })),
+        id,
+        title: messagesRef.current.find((m) => m.role === "user")?.content?.slice(0, 40) || "AI 对话",
+        messages: messagesRef.current.filter((m) => m.content).map((m) => ({ role: m.role, content: m.content })),
       });
+      if (!sessionId) setSessionId(id);
+      void qc.invalidateQueries({ queryKey: ["ai-assistant-sessions"] });
     } catch { /* 后台保存，失败不影响前端 */ }
   };
+
+  /** 拉取并载入一个历史会话 */
+  const loadSession = async (id: string, silent = false) => {
+    try {
+      const sess = await apiGetJson<{ id: string; messages?: { role: string; content: string }[] }>(
+        `/api/ops/ai-assistant/sessions/${id}`,
+      );
+      if (sess.messages?.length) {
+        setSessionId(sess.id);
+        setMessages(sess.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
+        requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }));
+      }
+    } catch (e) {
+      if (!silent) toast.error(e instanceof ApiHttpError ? e.serverMessage : "会话加载失败");
+    } finally {
+      setShowSessions(false);
+    }
+  };
+
+  /** 开启新对话（当前内容已在上一轮发送后自动保存） */
+  const newConversation = () => {
+    if (busy) return;
+    setSessionId("");
+    setMessages([]);
+    pendingRef.current = null;
+    setConfirmDeleteId("");
+    setShowSessions(false);
+  };
+
+  /** 删除历史会话（二次确认） */
+  const deleteSession = async (id: string) => {
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId("");
+    try {
+      await apiDeleteJson(`/api/ops/ai-assistant/sessions/${id}`);
+      if (id === sessionId) { setSessionId(""); setMessages([]); pendingRef.current = null; }
+      toast.success("会话已删除");
+      void qc.invalidateQueries({ queryKey: ["ai-assistant-sessions"] });
+    } catch (e) {
+      toast.error(e instanceof ApiHttpError ? e.serverMessage : "删除失败");
+    }
+  };
+
+  // 首次进入恢复最近一个会话（仅一次）
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !sessionsQ.isSuccess) return;
+    restoredRef.current = true;
+    const latest = sessionsQ.data?.sessions?.[0];
+    if (latest) void loadSession(latest.id, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionsQ.isSuccess, sessionsQ.data]);
 
   /** 用户点击确认后，以 confirm=true 重发同一问题 */
   const resendConfirmed = () => {
@@ -193,30 +272,8 @@ const AiAssistant: React.FC = () => {
     scrollBottom();
     streamChat(p.question, history, true, messages.length + 1)
       .catch((e) => patchMsg(messages.length, (m) => ({ ...m, error: e instanceof Error ? e.message : String(e) })))
-      .finally(() => { setBusy(false); scrollBottom(); });
+      .finally(() => { setBusy(false); scrollBottom(); void saveSession(); });
   };
-
-  // 页面加载时恢复最近的会话
-  React.useEffect(() => {
-    fetch("/api/ops/ai-assistant/sessions")
-      .then((r) => r.json())
-      .then((d) => {
-        const sessions = d?.sessions ?? [];
-        if (sessions.length === 0) return;
-        const latest = sessions[0];
-        return fetch(`/api/ops/ai-assistant/sessions/${latest.id}`)
-          .then((r) => r.json())
-          .then((sess) => {
-            if (sess.messages?.length) {
-              setSessionId(sess.id);
-              setMessages(sess.messages.map((m: { role: string; content: string }) => ({
-                role: m.role as "user" | "assistant", content: m.content,
-              })));
-            }
-          });
-      })
-      .catch(() => {});
-  }, []);
 
   const judgeReady = cfgQ.data?.ai?.judgeModel?.enabled;
   const today = usageQ.data?.today?.totals;
@@ -237,6 +294,16 @@ const AiAssistant: React.FC = () => {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs"
+            onClick={newConversation} disabled={busy}>
+            <MessageSquarePlus className="h-3 w-3" />
+            新对话
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs"
+            onClick={() => { setConfirmDeleteId(""); setShowSessions(true); }}>
+            <History className="h-3 w-3" />
+            历史会话
+          </Button>
           <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs"
             onClick={() => { void runDiscover(); setShowDiscover(true); }}
             disabled={discovering || judgeReady === false}>
@@ -291,6 +358,63 @@ const AiAssistant: React.FC = () => {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {/* 历史会话抽屉 */}
+      {showSessions ? (
+        <>
+          <div className="absolute inset-0 z-10 bg-slate-900/20" onClick={() => setShowSessions(false)} />
+          <aside className="absolute bottom-0 left-0 top-0 z-20 flex w-72 flex-col border-r border-slate-200 bg-white shadow-xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-2.5">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                <History className="h-3.5 w-3.5 text-slate-500" /> 历史会话
+              </p>
+              <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowSessions(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+              {(sessionsQ.data?.sessions ?? []).map((s) => (
+                <li key={s.id} className="group flex items-center gap-1">
+                  <button
+                    type="button"
+                    className={cn(
+                      "min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left",
+                      s.id === sessionId ? "bg-sky-50" : "hover:bg-slate-50",
+                    )}
+                    onClick={() => void loadSession(s.id)}
+                  >
+                    <span className="block truncate text-[13px] text-slate-900">{s.title}</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400">
+                      {s.msgCount} 条{s.updatedAt ? ` · ${timeAgo(s.updatedAt)}` : ""}
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100",
+                      confirmDeleteId === s.id ? "text-red-600 opacity-100" : "text-slate-400",
+                    )}
+                    title={confirmDeleteId === s.id ? "再次点击确认删除" : "删除会话"}
+                    onClick={() => void deleteSession(s.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              ))}
+              {(sessionsQ.data?.sessions ?? []).length === 0 ? (
+                <li className="px-2.5 py-6 text-center text-xs text-slate-400">暂无历史会话</li>
+              ) : null}
+            </ul>
+            <div className="shrink-0 border-t border-slate-100 p-2">
+              <Button type="button" variant="secondary" className="h-8 w-full text-xs" onClick={newConversation} disabled={busy}>
+                <MessageSquarePlus className="mr-1 h-3.5 w-3.5" /> 开启新对话
+              </Button>
+            </div>
+          </aside>
+        </>
       ) : null}
 
       {/* 对话区域——唯一滚动区域 */}

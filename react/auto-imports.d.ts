@@ -125,6 +125,7 @@ declare global {
   const Maximize2: typeof import('lucide-react').Maximize2
   const MemoryStick: typeof import('lucide-react').MemoryStick
   const MessageSquare: typeof import('lucide-react').MessageSquare
+  const MessageSquarePlus: typeof import('lucide-react').MessageSquarePlus
   const Minimize2: typeof import('lucide-react').Minimize2
   const MinusIcon: typeof import('lucide-react').MinusIcon
   const Monitor: typeof import('lucide-react').Monitor

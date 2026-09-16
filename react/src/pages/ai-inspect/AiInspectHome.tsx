@@ -86,6 +86,8 @@ type AiConfigGet = {
       extraPrompt: string;
     };
     playbooksEnabled?: boolean;
+    /** 判读模型每日 token 预算；0=不限 */
+    dailyTokenLimit?: number;
   };
   judgeApiKeySet?: boolean;
 };
@@ -414,6 +416,18 @@ const AiInspectHome: React.FC = () => {
                 value={draft.ai.judgeModel?.maxTokens ?? 8192}
                 onChange={(e) => patchJudge({ maxTokens: parseInt(e.target.value, 10) || 8192 })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>每日 token 预算（0 = 不限）</Label>
+              <Input
+                type="number"
+                min={0}
+                value={draft.ai.dailyTokenLimit ?? 0}
+                onChange={(e) =>
+                  setDraft((d) => (d ? { ...d, ai: { ...d.ai, dailyTokenLimit: parseInt(e.target.value, 10) || 0 } } : d))
+                }
+              />
+              <p className="text-[11px] text-slate-500">当日判读模型累计 token 首次越过预算时，写入告警中心「最近通知」。</p>
             </div>
           </div>
           <div className="space-y-2">

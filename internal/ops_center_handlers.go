@@ -369,6 +369,8 @@ func handleOpsAlertsGet(app *ServerApp) gin.HandlerFunc {
 				"wecomAgentId":       ch.WeComAgentID,
 				"wecomCorpSecretSet": strings.TrimSpace(ch.WeComCorpSecretEnc) != "",
 				"wecomToUser":        ch.WeComToUser,
+				"dingtalkWebhook":    ch.DingTalkWebhook,
+				"feishuWebhook":      ch.FeishuWebhook,
 			})
 		}
 		out := gin.H{
@@ -403,6 +405,8 @@ type opsAlertChannelIn struct {
 	WeComAgentID    int    `json:"wecomAgentId"`
 	WeComCorpSecret string `json:"wecomCorpSecret"`
 	WeComToUser     string `json:"wecomToUser"`
+	DingTalkWebhook string `json:"dingtalkWebhook"`
+	FeishuWebhook   string `json:"feishuWebhook"`
 }
 
 func handleOpsAlertsPut(app *ServerApp) gin.HandlerFunc {
@@ -442,9 +446,11 @@ func handleOpsAlertsPut(app *ServerApp) gin.HandlerFunc {
 				ID: in.ID, Type: in.Type, SMTPHost: in.SMTPHost, SMTPPort: in.SMTPPort,
 				SMTPUser: in.SMTPUser, FromAddr: in.FromAddr, ToAddrs: in.ToAddrs,
 				UseTLS: in.UseTLS, WeComWebhook: in.WeComWebhook,
-				WeComCorpID:  strings.TrimSpace(in.WeComCorpID),
-				WeComAgentID: in.WeComAgentID,
-				WeComToUser:  strings.TrimSpace(in.WeComToUser),
+				WeComCorpID:     strings.TrimSpace(in.WeComCorpID),
+				WeComAgentID:    in.WeComAgentID,
+				WeComToUser:     strings.TrimSpace(in.WeComToUser),
+				DingTalkWebhook: strings.TrimSpace(in.DingTalkWebhook),
+				FeishuWebhook:   strings.TrimSpace(in.FeishuWebhook),
 			}
 			if strings.TrimSpace(in.SMTPPassword) != "" {
 				enc, err := encryptSecret(key, strings.TrimSpace(in.SMTPPassword))
@@ -543,6 +549,16 @@ func handleOpsAlertsTestChannel(app *ServerApp) gin.HandlerFunc {
 		case "wecom_app":
 			sec, _ := decryptSecret(key, ch.WeComCorpSecretEnc)
 			if err := sendWeComAppMessage(ch.WeComCorpID, sec, ch.WeComAgentID, ch.WeComToUser, subj, msg); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+		case "dingtalk", "dingding":
+			if err := PostDingTalkWebhook(c.Request.Context(), ch.DingTalkWebhook, subj+"\n"+msg); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+		case "feishu", "lark":
+			if err := PostFeishuWebhook(c.Request.Context(), ch.FeishuWebhook, subj+"\n"+msg); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}

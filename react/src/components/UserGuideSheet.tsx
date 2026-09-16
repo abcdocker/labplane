@@ -641,11 +641,14 @@ function DocBody() {
           <strong>AI 巡检（管理员）</strong>：可选择<strong>手动填写</strong> OpenAI 兼容 <Code>Base URL</Code>，或选用<strong>应用中心已登记的 OpenClaw</strong>（集群内地址 + 网关 Token，无需在表单重复填 Key）。配置模型与提示词；勾选巡检对象（Kubernetes、vCenter、Prometheus 探活、Redis 实例表、SSH 存储、云主机表等）。可「立即执行」或按所设<strong>每日时刻</strong>自动生成报告；若启用大模型，会将巡检 JSON 送入对话接口生成摘要（需 <Code>KUBEBT_ENCRYPTION_KEY</Code> 以保存 API Key）。
         </Li>
         <Li>
+          <strong className="text-slate-800">AI 运维助手</strong>（<Code>/cluster/ai-inspect/assistant</Code>，管理员）：复用巡检配置中的<strong>判读模型</strong>直连对话，可搭配平台内置运维工具（查 Pod/事件/日志、执行剧本等）。默认<strong>只读模式</strong>；切换右上角开关进入<strong>运维模式</strong>后，模型提出的写操作会先展示调用详情并<strong>暂缓</strong>，需点击「确认执行」才真正下发。每轮对话的<strong>工具调用过程</strong>可在消息内展开查看；「服务发现」可让 AI 汇总集群内服务并给出<strong>巡检剧本建议</strong>（可一键采纳为 YAML）。会话<strong>自动保存</strong>（最近 50 个），顶栏「历史会话」支持切换 / 删除，右上角显示当日调用次数与 token 用量；可在巡检配置中设置<strong>每日 token 预算</strong>，当日累计首次越线时写入告警中心「最近通知」。
+        </Li>
+        <Li>
           <strong>监控中心</strong>：填写 Grafana 根地址后「保存」并「同步看板」——服务端仅此时访问 Grafana API（<Code>/api/search</Code>、<Code>/api/dashboards/uid/…</Code>），将看板 JSON 落盘到 <Code>ops_grafana/&lt;uid&gt;.json</Code>。若 Grafana 已接 SSO 无法使用账号密码，请将认证方式选为 <strong>API Token</strong>，在 Grafana 中创建 Service Account 或 API Token 后填入密码框（Bearer）。展示时在页面选择全局 <strong>Prometheus 数据源</strong>（Kubernetes 或 vCenter）；各面板可查看 Grafana 中配置的<strong>数据源标识</strong>，系统会尝试<strong>推断</strong>属于 K8s 或 vCenter，也可对单面板<strong>强制指定</strong>查询后端。实际查询走本平台{" "}
           <Code>POST /api/prometheus/query_range</Code>，默认<strong>不经过 Grafana</strong>。<strong>内置预设图</strong>（不经 Grafana）中，如「容器内存 working set」等对字节类指标可在页面上以 <strong>GiB（纵轴 G）</strong>展示，PromQL 仍为原始字节，便于与告警阈值对齐；说明文字见卡片内提示。
         </Li>
         <Li>
-          <strong>告警中心（管理员）</strong>：为每条规则配置 <Code>scope</Code>、PromQL、比较符与阈值、<Code>for</Code>；通知通道支持 <strong>SMTP</strong>、<strong>企业微信群机器人 Webhook</strong>，以及<strong>企业微信自建应用</strong>（<Code>wecom_app</Code>，填写企业 ID、AgentId、应用 Secret，走官方 <Code>gettoken</Code> + <Code>message/send</Code> API）。服务端约每分钟评估一次；支持按标签<strong>抑制</strong>。测试发送使用「发送测试」。
+          <strong>告警中心（管理员）</strong>：为每条规则配置 <Code>scope</Code>、PromQL、比较符与阈值、<Code>for</Code>；通知通道支持 <strong>SMTP</strong>、<strong>企业微信群机器人 Webhook</strong>、<strong>企业微信自建应用</strong>（<Code>wecom_app</Code>，填写企业 ID、AgentId、应用 Secret，走官方 <Code>gettoken</Code> + <Code>message/send</Code> API），以及<strong>钉钉群机器人</strong>与<strong>飞书群机器人</strong>（两者均为 Webhook 通道：钉钉安全设置选「自定义关键词」，暂不支持加签；飞书自定义机器人可关闭签名校验）。服务端约每分钟评估一次；支持按标签<strong>抑制</strong>。测试发送使用「发送测试」。
         </Li>
         <Li>
           权限：可在平台用户 <Code>permissions_json.menu.aiInspect</Code> 中关闭顶栏与工作台入口；配置类接口多为管理员专用。

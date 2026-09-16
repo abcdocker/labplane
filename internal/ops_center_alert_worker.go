@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -254,6 +255,10 @@ func opsNotifyChannels(app *ServerApp, cfg Config, center OpsAlertCenterBundle, 
 		case "wecom_app":
 			sec, _ := decryptSecret(enc, ch.WeComCorpSecretEnc)
 			_ = sendWeComAppMessage(ch.WeComCorpID, sec, ch.WeComAgentID, ch.WeComToUser, subject, body)
+		case "dingtalk", "dingding":
+			_ = PostDingTalkWebhook(context.Background(), ch.DingTalkWebhook, subject+"\n"+body)
+		case "feishu", "lark":
+			_ = PostFeishuWebhook(context.Background(), ch.FeishuWebhook, subject+"\n"+body)
 		}
 	}
 }

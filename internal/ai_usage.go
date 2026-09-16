@@ -111,6 +111,7 @@ func aiUsageRecordCall(kv PlatformKV, feature, model string, promptTokens, compl
 		OK:               ok,
 	})
 	saveAIUsageStats(kv, s)
+	checkAIUsageBudget(kv, date, agg.TotalTokens, agg.TotalTokens-promptTokens-completionTokens)
 }
 
 // handleOpsAIUsageGet 返回模型用量统计（今日 / 近 7 天 / 近 30 天 / 按模型 / 按功能 / 最近调用）。
@@ -189,34 +190,26 @@ func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
 	})
 }
 
-// AIUsageBudgetConfig Token 预算配置。
-type AIUsageBudgetConfig struct {
-	DailyTokenLimit int64 `json:"dailyTokenLimit"` // 日 token 上限，0=不限
-	// BudgetAlertThreshold 超过百分比时告警（如 80 表示 80%）
-	BudgetAlertThreshold int64 `json:"budgetAlertThreshold"`
-}
-
-// checkAIUsageBudget 检查今日 token 用量是否超预算，超限时推送告警。
-func checkAIUsageBudget(app *ServerApp, usage judgeLLMUsage) {
-	ai := loadOpsAIInspectBundle(app.PlatformKV()).AI
-	budget := ai.DailyTokenLimit
-	if budget <= 0 {
+// checkAIUsageBudget 今日 token 用量首次越过日预算时写入告警中心「最近通知」。
+// 用「本次调用前后累计值跨线」判断，天然每自然日至多告警一次，无需额外状态。
+func checkAIUsageBudget(kv PlatformKV, date string, todayTokens, prevTokens int64) {
+	if kv == nil {
 		return
 	}
-	today := time.Now().Format("2006-01-02")
-	s := loadAIUsageStats(app.PlatformKV())
-	var todayTokens int64
-	for _, feats := range s.Daily[today] {
-		for _, agg := range feats {
-			todayTokens += agg.TotalTokens
-		}
-	}
-	if todayTokens < budget {
+	bundle, err := loadOpsAIInspectBundle(kv)
+	if err != nil {
 		return
 	}
-	// 已超预算，推送告警（走已有的告警通道）
-	msg := fmt.Sprintf("AI 判读模型今日 token 用量已达 %d / %d（%.0f%%），请关注成本。", todayTokens, budget, float64(todayTokens)/float64(budget)*100)
-	AppendAuditRecord(app, AuditRecord{Action: "ai_budget_alert", Detail: msg})
+	budget := bundle.AI.DailyTokenLimit
+	if budget <= 0 || todayTokens < budget || prevTokens >= budget {
+		return
+	}
+	msg := fmt.Sprintf("AI 判读模型 %s token 用量已达 %d / %d（%.0f%%），请关注成本。", date, todayTokens, budget, float64(todayTokens)/float64(budget)*100)
+	appendAlertLog(kv, alertLogEntry{
+		Ts:      time.Now().UTC().Format(time.RFC3339),
+		Rule:    "ai_token_budget",
+		Status:  "firing",
+		Message: msg,
+		Source:  "ai_usage",
+	}, 100)
 }
-
-var _ = fmt.Sprintf
