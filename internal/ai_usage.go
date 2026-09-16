@@ -160,9 +160,9 @@ func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
 			}
 		}
 		return gin.H{
-			"days":     days,
-			"totals":   tot,
-			"byModel":  byModel,
+			"days":      days,
+			"totals":    tot,
+			"byModel":   byModel,
 			"byFeature": byFeature,
 		}
 	}
@@ -187,6 +187,36 @@ func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
 		"features":      features,
 		"recent":        recent,
 	})
+}
+
+// AIUsageBudgetConfig Token 预算配置。
+type AIUsageBudgetConfig struct {
+	DailyTokenLimit int64 `json:"dailyTokenLimit"` // 日 token 上限，0=不限
+	// BudgetAlertThreshold 超过百分比时告警（如 80 表示 80%）
+	BudgetAlertThreshold int64 `json:"budgetAlertThreshold"`
+}
+
+// checkAIUsageBudget 检查今日 token 用量是否超预算，超限时推送告警。
+func checkAIUsageBudget(app *ServerApp, usage judgeLLMUsage) {
+	ai := loadOpsAIInspectBundle(app.PlatformKV()).AI
+	budget := ai.DailyTokenLimit
+	if budget <= 0 {
+		return
+	}
+	today := time.Now().Format("2006-01-02")
+	s := loadAIUsageStats(app.PlatformKV())
+	var todayTokens int64
+	for _, feats := range s.Daily[today] {
+		for _, agg := range feats {
+			todayTokens += agg.TotalTokens
+		}
+	}
+	if todayTokens < budget {
+		return
+	}
+	// 已超预算，推送告警（走已有的告警通道）
+	msg := fmt.Sprintf("AI 判读模型今日 token 用量已达 %d / %d（%.0f%%），请关注成本。", todayTokens, budget, float64(todayTokens)/float64(budget)*100)
+	AppendAuditRecord(app, AuditRecord{Action: "ai_budget_alert", Detail: msg})
 }
 
 var _ = fmt.Sprintf
