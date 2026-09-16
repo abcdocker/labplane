@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "pretooluse-a3d6b48c0c82e49364dd8cf0220998ed",
+  "runId": null,
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "PreToolUse"
+  },
+  "revision": null,
+  "diffHash": null,
+  "rulesVersion": null,
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": null,
+  "events": [
+    {
+      "eventId": "hook-4ffa4943f517e7f78d93f5a9116d4020",
+      "findingId": "mimosa-bec9dad6fe0d2101459be30e",
+      "type": "finding_blocked",
+      "at": "2026-09-15T14:28:04.823Z",
+      "identity": {
+        "projectRelativeFile": "components/AiChatMarkdown.tsx",
+        "ruleId": "security",
+        "codeEvidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 13,
+      "endLine": 13,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379"
+      },
+      "sequence": 0
+    }
+  ],
+  "observedFindingIds": [],
+  "verifiedFiles": [],
+  "recordedAt": "2026-09-15T14:28:05.073Z"
+}

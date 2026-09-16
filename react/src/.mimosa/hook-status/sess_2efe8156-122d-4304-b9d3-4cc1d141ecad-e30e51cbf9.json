@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-16T13:35:35.741Z",
+  "sessionId": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "pages/tencent-cloud/TencentCloudCDN.tsx",
+  "outcome": "clear",
+  "coverage": "complete",
+  "findingCount": 0,
+  "durationMs": 3,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}

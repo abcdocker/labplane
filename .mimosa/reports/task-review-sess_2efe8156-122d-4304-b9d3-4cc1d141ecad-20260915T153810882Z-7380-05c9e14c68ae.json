@@ -1,0 +1,204 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260915T153810882Z-7380-05c9e14c68ae",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 655,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 2
+    },
+    "change_tracking": {
+      "touched_observed": 2,
+      "touched_retained": 2,
+      "truncated": false,
+      "bash_mutation": false,
+      "bash_discovered": 0,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 2,
+      "selected_files": 2,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 2,
+      "scanned_files": 2,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-15T15:38:10.882Z",
+  "session_id": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "rules_version": "unavailable",
+  "diff_hash": "dc05feece49cfd4b52249344539238a45235989fb85a5ddba16b22d3e4642167",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 2,
+    "changed_files": [
+      {
+        "file": "react/src/pages/ai-inspect/AiAssistant.tsx",
+        "ranges": [
+          {
+            "start": 4,
+            "end": 4
+          },
+          {
+            "start": 26,
+            "end": 29
+          },
+          {
+            "start": 56,
+            "end": 56
+          },
+          {
+            "start": 59,
+            "end": 69
+          },
+          {
+            "start": 76,
+            "end": 76
+          },
+          {
+            "start": 79,
+            "end": 80
+          },
+          {
+            "start": 82,
+            "end": 85
+          },
+          {
+            "start": 87,
+            "end": 150
+          },
+          {
+            "start": 152,
+            "end": 157
+          },
+          {
+            "start": 160,
+            "end": 160
+          },
+          {
+            "start": 232,
+            "end": 232
+          },
+          {
+            "start": 234,
+            "end": 234
+          },
+          {
+            "start": 237,
+            "end": 242
+          },
+          {
+            "start": 244,
+            "end": 244
+          },
+          {
+            "start": 256,
+            "end": 256
+          },
+          {
+            "start": 278,
+            "end": 278
+          },
+          {
+            "start": 281,
+            "end": 281
+          }
+        ],
+        "before_hash": "9b3d66c82bf8138a70c6bd1f042e747a08d61d720235b17d8c3f7c8a5d5da829",
+        "after_hash": "86adebdac654e5f2140a336f70966d44ac9129ef1b0f1cb425200b46cd1fec1b"
+      },
+      {
+        "file": "react/src/pages/ai-inspect/AiInspectHome.tsx",
+        "ranges": [
+          {
+            "start": 39,
+            "end": 39
+          },
+          {
+            "start": 55,
+            "end": 61
+          }
+        ],
+        "before_hash": "53be8a9359b5c5eaa8f20bf0e42ed0f9244edf3529a071b0fe0616e016eedec5",
+        "after_hash": "560b843920b62e66bc017be371e6eea6d359bcec4056f855acb16fb354a60acf"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-15T15:38:10.318Z",
+    "completed_at": "2026-09-15T15:38:10.882Z",
+    "duration_ms": 564,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 564,
+    "peakMemoryBytes": 222445568,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 2,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260915T153810882Z-7380-05c9e14c68ae.json",
+    "latest_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad.json",
+    "history_summary": ".mimosa/history/run-20260915T153810882Z-7380-05c9e14c68ae.json"
+  }
+}

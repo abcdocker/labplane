@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260915T150202655Z-98268-51848a9c2c8c",
+  "runId": "20260915T150202655Z-98268-51848a9c2c8c",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "7a251389195cab6ef35bcfd750f1ea16555548f31471fe1b791ccb75eac6b274",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260915T150202655Z-98268-51848a9c2c8c.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/components/HeaderNotificationsSheet.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/ai-inspect/AiAssistant.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/ai-inspect/AiInspectHome.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/App.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/AppCenterDashboard.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/HomeHub.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/cluster/ClusterPodDetail.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/lib/site-path-descriptions.ts",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/AppCenterSubNav.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/Header.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/MarkdownWithCopyToolbar.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/Sidebar.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-15T15:02:02.911Z"
+}

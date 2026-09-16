@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-16T02:42:14.789Z",
+  "sessionId": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "/Users/macmini/Desktop/桌面 - Macmini的Mac mini/kube-bt-sync/internal/tencent_cloud_api.go",
+  "outcome": "inconclusive",
+  "coverage": "partial",
+  "findingCount": 0,
+  "durationMs": 16,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}

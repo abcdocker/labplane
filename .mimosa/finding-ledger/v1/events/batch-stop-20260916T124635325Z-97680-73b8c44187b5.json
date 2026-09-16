@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T124635325Z-97680-73b8c44187b5",
+  "runId": "20260916T124635325Z-97680-73b8c44187b5",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "baseline_snapshot_unreadable",
+        "stage": "baseline-read",
+        "target": "internal/ai_assistant_session.go",
+        "detail": "file is missing from task baseline",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline-read",
+        "target": "internal/ai_assistant_session.go",
+        "detail": "baseline_snapshot_unreadable: file is missing from task baseline",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "095760626fb5c520f9698ead6c4e21676660bb14aa4c44ab25e118f35447e320",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T124635325Z-97680-73b8c44187b5.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/ai_assistant.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/auto-imports.d.ts",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/ai-inspect/AiAssistant.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_assistant_session.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ops_center_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-16T12:46:35.564Z"
+}

@@ -1,0 +1,301 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260916T031411610Z-63108-635b7b64d1b1",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 659,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 9
+    },
+    "change_tracking": {
+      "touched_observed": 6,
+      "touched_retained": 6,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 9,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 9,
+      "selected_files": 9,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 9,
+      "scanned_files": 9,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-16T03:14:11.610Z",
+  "session_id": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "rules_version": "unavailable",
+  "diff_hash": "916e2e2bf4f12ee565bf1d06c6be84d0f8e5aaf28c1aa99203a46b19c15ce4f4",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 9,
+    "changed_files": [
+      {
+        "file": "internal/qiniu_cloud_api.go",
+        "ranges": [
+          {
+            "start": 257,
+            "end": 334
+          }
+        ],
+        "before_hash": "35bb2cef8527a8186164b5527db404248b22afb792b9967e8e15a0c2839d08d8",
+        "after_hash": "6dca0ef9d34cefb093fe9c944243903ed1713dc82f8d966f3a03ff0ffc490138"
+      },
+      {
+        "file": "internal/qiniu_cloud_handlers.go",
+        "ranges": [
+          {
+            "start": 7,
+            "end": 7
+          },
+          {
+            "start": 32,
+            "end": 36
+          },
+          {
+            "start": 265,
+            "end": 326
+          }
+        ],
+        "before_hash": "8904cf0845b3b1c4f279f522b1c04a3a53edaec520cc358bc9a2ecb0aa05fbca",
+        "after_hash": "16a0a585057365e975a9f66854e1ea3ab81a2ea97bf1b6e1bbe1ec0162151a3c"
+      },
+      {
+        "file": "internal/tencent_cloud_api.go",
+        "ranges": [
+          {
+            "start": 623,
+            "end": 765
+          }
+        ],
+        "before_hash": "59c846658b81f7d7cdbcd7dea91d24967e6a96aef9f6ee4c9360a08da19607ee",
+        "after_hash": "dc8f8a30cdbaac741e25141fba4f7a2dbf1eed5b8c60bd5f1b4c79d9b2c9d4fc"
+      },
+      {
+        "file": "internal/tencent_cloud_handlers.go",
+        "ranges": [
+          {
+            "start": 7,
+            "end": 7
+          },
+          {
+            "start": 26,
+            "end": 26
+          },
+          {
+            "start": 34,
+            "end": 42
+          },
+          {
+            "start": 343,
+            "end": 516
+          }
+        ],
+        "before_hash": "12b95f3c4d3231a2ecd169fa4f9b830d5ab644b8e79bf2f592840a0e641c7ebc",
+        "after_hash": "4485cffcf4edd76ff5e1954232e0b85ed66a39701911076d1327cd0899a397e3"
+      },
+      {
+        "file": "react/src/App.tsx",
+        "ranges": [
+          {
+            "start": 89,
+            "end": 89
+          },
+          {
+            "start": 496,
+            "end": 498
+          }
+        ],
+        "before_hash": "9dcdff54df561736453981cd333ef54db9623a185b36d0a2ed7f2e68524693d6",
+        "after_hash": "e69ae8c8257d5bf43112ed5bcf0b2469573556fb39b6b7453485f9d71076d34f"
+      },
+      {
+        "file": "react/src/pages/tencent-cloud/TencentCloudCVM.tsx",
+        "ranges": [
+          {
+            "start": 2,
+            "end": 4
+          },
+          {
+            "start": 8,
+            "end": 9
+          },
+          {
+            "start": 34,
+            "end": 34
+          },
+          {
+            "start": 36,
+            "end": 36
+          },
+          {
+            "start": 50,
+            "end": 50
+          },
+          {
+            "start": 58,
+            "end": 58
+          },
+          {
+            "start": 72,
+            "end": 72
+          },
+          {
+            "start": 78,
+            "end": 100
+          },
+          {
+            "start": 164,
+            "end": 164
+          },
+          {
+            "start": 183,
+            "end": 205
+          }
+        ],
+        "before_hash": "a69fc729edb6bca497b12bce8b71f8612ba1db54c1a0ca2f233e196abee9730d",
+        "after_hash": "489a6052cc7939a7f86f04410386e11b8666cff56d79fb20ef0c075469753f61"
+      },
+      {
+        "file": "react/src/pages/tencent-cloud/TencentCloudLayout.tsx",
+        "ranges": [
+          {
+            "start": 3,
+            "end": 3
+          },
+          {
+            "start": 13,
+            "end": 13
+          }
+        ],
+        "before_hash": "dfd3c06b6a808b1e507da61947fc9381be39e04a9373ec43a6507a8441c49e7e",
+        "after_hash": "9385735b5761cf10e970626eff1866363d9ca9a79b070e6bf14ab6bccdbeab4a"
+      },
+      {
+        "file": "react/src/pages/tencent-cloud/TencentCloudLighthouse.tsx",
+        "ranges": [
+          {
+            "start": 2,
+            "end": 4
+          },
+          {
+            "start": 8,
+            "end": 9
+          },
+          {
+            "start": 37,
+            "end": 37
+          },
+          {
+            "start": 39,
+            "end": 39
+          },
+          {
+            "start": 64,
+            "end": 85
+          },
+          {
+            "start": 159,
+            "end": 159
+          },
+          {
+            "start": 180,
+            "end": 204
+          }
+        ],
+        "before_hash": "39dcece52dde9b5f15ca01ee5bb99e6d3869afa90b08c7b1850be6a41b4c696b",
+        "after_hash": "87d8946b2689d64a84d0639700fe8e5ce0dc15a46f8ce5eeaa8a625db22bca05"
+      },
+      {
+        "file": "react/src/pages/tencent-cloud/TencentCloudSSL.tsx",
+        "ranges": [
+          {
+            "start": 207,
+            "end": 207
+          }
+        ],
+        "before_hash": "b2155e706caf8afc9222bfed4894f0dbb43a2844aa43022b102e9d8d1f6cab0d",
+        "after_hash": "e71aea4e4c5207a2228f4712f27bd3a37350ca0f845dd3ab2d09026a538006ac"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-16T03:14:09.095Z",
+    "completed_at": "2026-09-16T03:14:11.610Z",
+    "duration_ms": 2515,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 2515,
+    "peakMemoryBytes": 231227392,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 9,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T031411610Z-63108-635b7b64d1b1.json",
+    "latest_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad.json",
+    "history_summary": ".mimosa/history/run-20260916T031411610Z-63108-635b7b64d1b1.json"
+  }
+}

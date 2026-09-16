@@ -1,0 +1,1658 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260916T062221795Z-7580-9a0da00e4ff7",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "candidate-select",
+      "target": ".tmp-hashpw/main.go",
+      "reason": "changed_file_unreadable: observed changed file no longer exists or cannot be read"
+    },
+    {
+      "stage": "candidate-select",
+      "target": ".tmp-setpw/main.go",
+      "reason": "changed_file_unreadable: observed changed file no longer exists or cannot be read"
+    },
+    {
+      "stage": "candidate-select",
+      "target": "react/src/pages/vcenter/VCenterVMDetail.tsx",
+      "reason": "candidate_limit_exceeded: 34 changed reviewable file(s) were not scanned because the limit is 20"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/AccountPlatformSettingsBody.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/BaotaSync.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/HomeHub.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/IngressList.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/NotFound.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/SettingsPrometheusSection.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/SettingsRuntimeSection.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/CloudHosts.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterHosts.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterList.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterSettings.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 663,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 54
+    },
+    "change_tracking": {
+      "touched_observed": 2,
+      "touched_retained": 2,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 54,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 54,
+      "selected_files": 20,
+      "limit": 20,
+      "truncated": true
+    },
+    "scanning": {
+      "required_files": 20,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 20,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "changed_file_unreadable": 2,
+      "candidate_limit_exceeded": 1,
+      "scanner_failed": 20,
+      "project_check_failed": 23
+    },
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": ".tmp-hashpw/main.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      },
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": ".tmp-setpw/main.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      },
+      {
+        "code": "candidate_limit_exceeded",
+        "stage": "candidate-select",
+        "target": "react/src/pages/vcenter/VCenterVMDetail.tsx",
+        "detail": "34 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/AccountPlatformSettingsBody.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/BaotaSync.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/IngressList.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/NotFound.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsPrometheusSection.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsRuntimeSection.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHosts.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHosts.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterList.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSettings.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": ".tmp-hashpw/main.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": ".tmp-setpw/main.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "react/src/pages/vcenter/VCenterVMDetail.tsx",
+        "detail": "candidate_limit_exceeded: 34 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/AccountPlatformSettingsBody.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/BaotaSync.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/IngressList.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/NotFound.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsPrometheusSection.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsRuntimeSection.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHosts.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHosts.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterList.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSettings.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-16T06:22:21.795Z",
+  "session_id": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "rules_version": "unavailable",
+  "diff_hash": "e6ecb459c4cb8bd8ba1046c1ccd0afcd1345a1f311c91df97e99bce7ec31adfb",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 20,
+    "changed_files": [
+      {
+        "file": "react/src/pages/AccountPlatformSettingsBody.tsx",
+        "ranges": [
+          {
+            "start": 30,
+            "end": 33
+          },
+          {
+            "start": 45,
+            "end": 45
+          },
+          {
+            "start": 56,
+            "end": 58
+          },
+          {
+            "start": 70,
+            "end": 70
+          },
+          {
+            "start": 78,
+            "end": 78
+          },
+          {
+            "start": 80,
+            "end": 82
+          },
+          {
+            "start": 88,
+            "end": 91
+          },
+          {
+            "start": 117,
+            "end": 120
+          },
+          {
+            "start": 133,
+            "end": 136
+          },
+          {
+            "start": 199,
+            "end": 202
+          },
+          {
+            "start": 275,
+            "end": 275
+          },
+          {
+            "start": 281,
+            "end": 284
+          },
+          {
+            "start": 289,
+            "end": 289
+          },
+          {
+            "start": 291,
+            "end": 292
+          },
+          {
+            "start": 321,
+            "end": 324
+          },
+          {
+            "start": 337,
+            "end": 340
+          },
+          {
+            "start": 389,
+            "end": 390
+          },
+          {
+            "start": 400,
+            "end": 403
+          }
+        ],
+        "before_hash": "70ee5414da4ab97b3c5cfe7d7934b185a889f6aa026d6d0064e75f7d598f2b2e",
+        "after_hash": "27787ae037ade66a3195fc7fd2ee17875a21de6eac4a871bf1c71668c2893154"
+      },
+      {
+        "file": "react/src/pages/BaotaSync.tsx",
+        "ranges": [
+          {
+            "start": 80,
+            "end": 83
+          },
+          {
+            "start": 125,
+            "end": 125
+          },
+          {
+            "start": 127,
+            "end": 127
+          },
+          {
+            "start": 130,
+            "end": 130
+          },
+          {
+            "start": 159,
+            "end": 159
+          },
+          {
+            "start": 161,
+            "end": 161
+          },
+          {
+            "start": 165,
+            "end": 165
+          },
+          {
+            "start": 168,
+            "end": 168
+          },
+          {
+            "start": 187,
+            "end": 187
+          },
+          {
+            "start": 192,
+            "end": 192
+          },
+          {
+            "start": 194,
+            "end": 194
+          },
+          {
+            "start": 205,
+            "end": 205
+          },
+          {
+            "start": 231,
+            "end": 231
+          },
+          {
+            "start": 233,
+            "end": 233
+          },
+          {
+            "start": 235,
+            "end": 235
+          },
+          {
+            "start": 241,
+            "end": 241
+          },
+          {
+            "start": 245,
+            "end": 246
+          },
+          {
+            "start": 263,
+            "end": 264
+          },
+          {
+            "start": 266,
+            "end": 267
+          }
+        ],
+        "before_hash": "4700623b0ec13b591cd99f9731db9113f0971a9b7a7d7ba745c60942d31b369b",
+        "after_hash": "3d829b673abec8cbc6c9b66b9deed4906f87a75d4e3d3b41e9094d5bfa833761"
+      },
+      {
+        "file": "react/src/pages/HomeHub.tsx",
+        "ranges": [
+          {
+            "start": 69,
+            "end": 70
+          },
+          {
+            "start": 319,
+            "end": 320
+          },
+          {
+            "start": 328,
+            "end": 328
+          },
+          {
+            "start": 336,
+            "end": 337
+          },
+          {
+            "start": 339,
+            "end": 339
+          },
+          {
+            "start": 356,
+            "end": 356
+          },
+          {
+            "start": 364,
+            "end": 365
+          },
+          {
+            "start": 368,
+            "end": 368
+          },
+          {
+            "start": 377,
+            "end": 377
+          },
+          {
+            "start": 384,
+            "end": 384
+          },
+          {
+            "start": 397,
+            "end": 398
+          },
+          {
+            "start": 414,
+            "end": 414
+          },
+          {
+            "start": 422,
+            "end": 423
+          },
+          {
+            "start": 425,
+            "end": 425
+          },
+          {
+            "start": 432,
+            "end": 432
+          },
+          {
+            "start": 447,
+            "end": 447
+          },
+          {
+            "start": 457,
+            "end": 459
+          },
+          {
+            "start": 463,
+            "end": 464
+          },
+          {
+            "start": 470,
+            "end": 471
+          },
+          {
+            "start": 477,
+            "end": 478
+          },
+          {
+            "start": 484,
+            "end": 485
+          },
+          {
+            "start": 491,
+            "end": 492
+          },
+          {
+            "start": 506,
+            "end": 506
+          },
+          {
+            "start": 523,
+            "end": 524
+          },
+          {
+            "start": 526,
+            "end": 526
+          },
+          {
+            "start": 531,
+            "end": 531
+          },
+          {
+            "start": 534,
+            "end": 534
+          },
+          {
+            "start": 549,
+            "end": 549
+          },
+          {
+            "start": 551,
+            "end": 551
+          },
+          {
+            "start": 560,
+            "end": 560
+          },
+          {
+            "start": 562,
+            "end": 562
+          },
+          {
+            "start": 571,
+            "end": 571
+          },
+          {
+            "start": 573,
+            "end": 573
+          },
+          {
+            "start": 582,
+            "end": 582
+          },
+          {
+            "start": 584,
+            "end": 584
+          },
+          {
+            "start": 600,
+            "end": 600
+          },
+          {
+            "start": 620,
+            "end": 621
+          },
+          {
+            "start": 624,
+            "end": 624
+          },
+          {
+            "start": 627,
+            "end": 627
+          },
+          {
+            "start": 631,
+            "end": 631
+          },
+          {
+            "start": 633,
+            "end": 633
+          },
+          {
+            "start": 641,
+            "end": 641
+          },
+          {
+            "start": 644,
+            "end": 645
+          },
+          {
+            "start": 648,
+            "end": 648
+          },
+          {
+            "start": 654,
+            "end": 654
+          },
+          {
+            "start": 657,
+            "end": 657
+          },
+          {
+            "start": 659,
+            "end": 659
+          },
+          {
+            "start": 663,
+            "end": 663
+          },
+          {
+            "start": 666,
+            "end": 666
+          },
+          {
+            "start": 668,
+            "end": 668
+          },
+          {
+            "start": 677,
+            "end": 677
+          },
+          {
+            "start": 681,
+            "end": 681
+          },
+          {
+            "start": 687,
+            "end": 687
+          },
+          {
+            "start": 696,
+            "end": 696
+          },
+          {
+            "start": 699,
+            "end": 700
+          }
+        ],
+        "before_hash": "9123be7270cfcadd402132c10db0a583dbcc5cc0f935a194410777ea2d9d041a",
+        "after_hash": "e95f9666b99134496c5a07babe6c7979699e2976e6eb77efc3b3021dfee9c0f3"
+      },
+      {
+        "file": "react/src/pages/IngressList.tsx",
+        "ranges": [
+          {
+            "start": 136,
+            "end": 137
+          },
+          {
+            "start": 155,
+            "end": 155
+          },
+          {
+            "start": 158,
+            "end": 158
+          },
+          {
+            "start": 164,
+            "end": 164
+          },
+          {
+            "start": 167,
+            "end": 167
+          },
+          {
+            "start": 172,
+            "end": 172
+          },
+          {
+            "start": 181,
+            "end": 181
+          },
+          {
+            "start": 183,
+            "end": 183
+          },
+          {
+            "start": 188,
+            "end": 188
+          },
+          {
+            "start": 192,
+            "end": 193
+          },
+          {
+            "start": 195,
+            "end": 195
+          },
+          {
+            "start": 202,
+            "end": 202
+          },
+          {
+            "start": 205,
+            "end": 205
+          },
+          {
+            "start": 211,
+            "end": 211
+          },
+          {
+            "start": 219,
+            "end": 220
+          },
+          {
+            "start": 231,
+            "end": 231
+          },
+          {
+            "start": 246,
+            "end": 246
+          },
+          {
+            "start": 250,
+            "end": 251
+          },
+          {
+            "start": 254,
+            "end": 254
+          },
+          {
+            "start": 257,
+            "end": 257
+          },
+          {
+            "start": 260,
+            "end": 260
+          },
+          {
+            "start": 263,
+            "end": 263
+          },
+          {
+            "start": 266,
+            "end": 266
+          },
+          {
+            "start": 269,
+            "end": 269
+          },
+          {
+            "start": 272,
+            "end": 272
+          },
+          {
+            "start": 277,
+            "end": 277
+          },
+          {
+            "start": 280,
+            "end": 280
+          },
+          {
+            "start": 286,
+            "end": 286
+          },
+          {
+            "start": 294,
+            "end": 294
+          },
+          {
+            "start": 296,
+            "end": 297
+          },
+          {
+            "start": 304,
+            "end": 304
+          },
+          {
+            "start": 312,
+            "end": 312
+          },
+          {
+            "start": 321,
+            "end": 321
+          },
+          {
+            "start": 327,
+            "end": 327
+          },
+          {
+            "start": 346,
+            "end": 346
+          },
+          {
+            "start": 390,
+            "end": 390
+          },
+          {
+            "start": 394,
+            "end": 394
+          },
+          {
+            "start": 402,
+            "end": 402
+          },
+          {
+            "start": 405,
+            "end": 405
+          },
+          {
+            "start": 436,
+            "end": 436
+          }
+        ],
+        "before_hash": "273a6272a6595ee0b433a918f9ae350780d0919f862db927fe57ae6aa0fdbe23",
+        "after_hash": "c7908f2a3274196f64092df49fed114115bece8992419e69d7b1c44322e92976"
+      },
+      {
+        "file": "react/src/pages/NotFound.tsx",
+        "ranges": [
+          {
+            "start": 5,
+            "end": 5
+          },
+          {
+            "start": 8,
+            "end": 8
+          }
+        ],
+        "before_hash": "0fca29d63de6b629be633b85daf05372f5fd1514a20ea481ed5ab69abc544559",
+        "after_hash": "f806c47ea572760a3fffdc85865a9db47726b0bf0c0ecf4bec8229e5a838cf97"
+      },
+      {
+        "file": "react/src/pages/SettingsPrometheusSection.tsx",
+        "ranges": [
+          {
+            "start": 241,
+            "end": 242
+          },
+          {
+            "start": 244,
+            "end": 244
+          },
+          {
+            "start": 254,
+            "end": 254
+          },
+          {
+            "start": 311,
+            "end": 311
+          },
+          {
+            "start": 317,
+            "end": 317
+          },
+          {
+            "start": 367,
+            "end": 367
+          },
+          {
+            "start": 389,
+            "end": 389
+          },
+          {
+            "start": 395,
+            "end": 395
+          }
+        ],
+        "before_hash": "03b78ec6b98de4701b52e815dc2f856aa893edd7604ebc362d84e7eb5f5fd71d",
+        "after_hash": "d6586ed8386b5a9b416bbdd3fa584801cb63891e906b79d848e3d9388379d307"
+      },
+      {
+        "file": "react/src/pages/SettingsRuntimeSection.tsx",
+        "ranges": [
+          {
+            "start": 169,
+            "end": 169
+          },
+          {
+            "start": 219,
+            "end": 222
+          },
+          {
+            "start": 234,
+            "end": 235
+          },
+          {
+            "start": 247,
+            "end": 247
+          },
+          {
+            "start": 342,
+            "end": 342
+          },
+          {
+            "start": 378,
+            "end": 378
+          },
+          {
+            "start": 432,
+            "end": 433
+          },
+          {
+            "start": 572,
+            "end": 572
+          },
+          {
+            "start": 574,
+            "end": 575
+          },
+          {
+            "start": 580,
+            "end": 580
+          },
+          {
+            "start": 587,
+            "end": 587
+          },
+          {
+            "start": 590,
+            "end": 591
+          },
+          {
+            "start": 597,
+            "end": 598
+          },
+          {
+            "start": 662,
+            "end": 664
+          },
+          {
+            "start": 669,
+            "end": 669
+          },
+          {
+            "start": 788,
+            "end": 789
+          },
+          {
+            "start": 836,
+            "end": 837
+          },
+          {
+            "start": 846,
+            "end": 847
+          },
+          {
+            "start": 892,
+            "end": 892
+          },
+          {
+            "start": 901,
+            "end": 901
+          },
+          {
+            "start": 991,
+            "end": 992
+          },
+          {
+            "start": 1008,
+            "end": 1009
+          },
+          {
+            "start": 1114,
+            "end": 1114
+          },
+          {
+            "start": 1116,
+            "end": 1116
+          },
+          {
+            "start": 1216,
+            "end": 1216
+          },
+          {
+            "start": 1218,
+            "end": 1219
+          },
+          {
+            "start": 1236,
+            "end": 1238
+          },
+          {
+            "start": 1240,
+            "end": 1241
+          },
+          {
+            "start": 1273,
+            "end": 1274
+          },
+          {
+            "start": 1284,
+            "end": 1286
+          },
+          {
+            "start": 1288,
+            "end": 1288
+          },
+          {
+            "start": 1313,
+            "end": 1313
+          },
+          {
+            "start": 1315,
+            "end": 1315
+          },
+          {
+            "start": 1346,
+            "end": 1351
+          },
+          {
+            "start": 1353,
+            "end": 1355
+          },
+          {
+            "start": 1399,
+            "end": 1400
+          },
+          {
+            "start": 1434,
+            "end": 1434
+          },
+          {
+            "start": 1443,
+            "end": 1444
+          },
+          {
+            "start": 1458,
+            "end": 1458
+          },
+          {
+            "start": 1468,
+            "end": 1469
+          },
+          {
+            "start": 1503,
+            "end": 1504
+          },
+          {
+            "start": 1534,
+            "end": 1534
+          }
+        ],
+        "before_hash": "eeefade884f3a79fe6221717fb428439676ea2d890a22d25fc9f5f54e1591c8c",
+        "after_hash": "09e616d8c585118732d8d7e4074ded12b29677265897325879cd30ab6e6ccd26"
+      },
+      {
+        "file": "react/src/pages/vcenter/CloudHosts.tsx",
+        "ranges": [
+          {
+            "start": 230,
+            "end": 230
+          },
+          {
+            "start": 234,
+            "end": 235
+          },
+          {
+            "start": 237,
+            "end": 237
+          },
+          {
+            "start": 239,
+            "end": 239
+          },
+          {
+            "start": 255,
+            "end": 255
+          },
+          {
+            "start": 259,
+            "end": 259
+          },
+          {
+            "start": 279,
+            "end": 279
+          },
+          {
+            "start": 405,
+            "end": 405
+          },
+          {
+            "start": 415,
+            "end": 415
+          },
+          {
+            "start": 426,
+            "end": 426
+          },
+          {
+            "start": 449,
+            "end": 449
+          },
+          {
+            "start": 531,
+            "end": 531
+          }
+        ],
+        "before_hash": "d166ecf2f85953be28192309c841863afc87183afd5bce36a196e02857df14b1",
+        "after_hash": "882baf23dcb6c98d9dfa8bf8461f5150f7b6822e3016e258c277db175f4e7886"
+      },
+      {
+        "file": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+        "ranges": [
+          {
+            "start": 148,
+            "end": 148
+          },
+          {
+            "start": 153,
+            "end": 153
+          },
+          {
+            "start": 167,
+            "end": 167
+          },
+          {
+            "start": 188,
+            "end": 188
+          },
+          {
+            "start": 217,
+            "end": 217
+          },
+          {
+            "start": 219,
+            "end": 219
+          },
+          {
+            "start": 222,
+            "end": 222
+          },
+          {
+            "start": 228,
+            "end": 228
+          },
+          {
+            "start": 241,
+            "end": 241
+          },
+          {
+            "start": 265,
+            "end": 266
+          }
+        ],
+        "before_hash": "ea4d4a845f9772c55a653763d5cf8a7a6e522cf68e63e14105f24e788f209373",
+        "after_hash": "9237d8f34cf6987990ffb9126970b10b65254c61f880ad0ad5f2681ab244b297"
+      },
+      {
+        "file": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+        "ranges": [
+          {
+            "start": 42,
+            "end": 42
+          },
+          {
+            "start": 48,
+            "end": 48
+          },
+          {
+            "start": 53,
+            "end": 53
+          },
+          {
+            "start": 108,
+            "end": 108
+          }
+        ],
+        "before_hash": "be369367c8397f5b7eebb0487fa2096836ae4b539f4d1cad21e94723fc576990",
+        "after_hash": "01348a321863aab69d9ad0ec5af695cf76dfc5dca555af7c1c8fda8052d47dad"
+      },
+      {
+        "file": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+        "ranges": [
+          {
+            "start": 179,
+            "end": 179
+          },
+          {
+            "start": 217,
+            "end": 217
+          },
+          {
+            "start": 222,
+            "end": 222
+          },
+          {
+            "start": 276,
+            "end": 277
+          }
+        ],
+        "before_hash": "3309bf4a67a130f76c47d69c5844d3ce1809afc457e605bda740f708d2baafd7",
+        "after_hash": "d8eb42e414667e3a92ad20977219c74d2c3dcb6d555997ff239255e3da5173be"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+        "ranges": [
+          {
+            "start": 112,
+            "end": 112
+          },
+          {
+            "start": 132,
+            "end": 133
+          },
+          {
+            "start": 164,
+            "end": 164
+          }
+        ],
+        "before_hash": "a278a77727569f52b1a0417df15875254d33ce2c59716546ff08064b8a4aa5a5",
+        "after_hash": "32d40f74437b1af6149fc628c51610a1c5637c7e5c2be867029d49266af61fab"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+        "ranges": [
+          {
+            "start": 283,
+            "end": 284
+          }
+        ],
+        "before_hash": "85b5037dd245f42d1383a4d3a4821571e63a0bb1de796569b6a1e2244e3ba8d0",
+        "after_hash": "886b304a91fdf1f9b077179192960eddf109ff7ff9fb71a5850fa89be7c075a6"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+        "ranges": [
+          {
+            "start": 281,
+            "end": 282
+          },
+          {
+            "start": 304,
+            "end": 305
+          }
+        ],
+        "before_hash": "c900667da2eca068d4dd814977204ff9837ba0d2ff7d41dd71e651b96dde6770",
+        "after_hash": "267a23d28ac24bd49b7f663623b9f1fe34499f32611272dd536baff0af4cfaa4"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterHosts.tsx",
+        "ranges": [
+          {
+            "start": 164,
+            "end": 164
+          },
+          {
+            "start": 171,
+            "end": 171
+          }
+        ],
+        "before_hash": "c91386e3e93d57773ee936ed41890f8dbf3deb03af8f138525427c7ae0dd3a89",
+        "after_hash": "3e17c9970e43bba47095e36f5efe927c1b6917d15517fca7166d79d0d3bb7308"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+        "ranges": [
+          {
+            "start": 65,
+            "end": 66
+          }
+        ],
+        "before_hash": "bd16ba06f7157aa3b05d6ff43c5f435b0c58851413901a4a7136362472e433f4",
+        "after_hash": "1d38dd8fba1464bb44f29ff91118b93218d49331f3b86a3c675b63ca0b0779c1"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterList.tsx",
+        "ranges": [
+          {
+            "start": 227,
+            "end": 227
+          },
+          {
+            "start": 234,
+            "end": 234
+          }
+        ],
+        "before_hash": "dc2bd6b780be890a0e1a3a71aaf1073b8452c610d1d6d8af02a6f16d0332b780",
+        "after_hash": "4398f3b88f2dda498bed6ec09b21bd6115d1c7dedc755e5018baea7819e31434"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+        "ranges": [
+          {
+            "start": 160,
+            "end": 161
+          },
+          {
+            "start": 168,
+            "end": 168
+          },
+          {
+            "start": 197,
+            "end": 197
+          },
+          {
+            "start": 213,
+            "end": 213
+          },
+          {
+            "start": 215,
+            "end": 215
+          },
+          {
+            "start": 218,
+            "end": 218
+          },
+          {
+            "start": 223,
+            "end": 223
+          },
+          {
+            "start": 227,
+            "end": 227
+          },
+          {
+            "start": 232,
+            "end": 232
+          },
+          {
+            "start": 417,
+            "end": 417
+          }
+        ],
+        "before_hash": "e33f0cf173c5b75cd62a2d0c4585c222361b1196d49f302a394041aebe713f37",
+        "after_hash": "d50c41793517c1172d664050cc96ada635298fbe0a52baaf8bea07f2b7e51b17"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterSettings.tsx",
+        "ranges": [
+          {
+            "start": 8,
+            "end": 10
+          }
+        ],
+        "before_hash": "07f6609bfdd8d63a6a71609acaf9cdbc973bf6b2bea96d383bb1695382ea177d",
+        "after_hash": "3bb61dae0d3b17f5c03bdf3aedf6d8d49a94149cbed8ab2c8d4fb52afd2720e6"
+      },
+      {
+        "file": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+        "ranges": [
+          {
+            "start": 256,
+            "end": 256
+          },
+          {
+            "start": 303,
+            "end": 303
+          },
+          {
+            "start": 308,
+            "end": 308
+          },
+          {
+            "start": 342,
+            "end": 342
+          }
+        ],
+        "before_hash": "e9e6cf55dd3a4ae3638c1f221d6d8abcb8eb36d65e515a2464775bc14ed5d10e",
+        "after_hash": "cbd848bd5861d1626683b142e43a8ee96eaa5aa6651411690482edde78f52f9a"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-16T06:22:18.970Z",
+    "completed_at": "2026-09-16T06:22:21.795Z",
+    "duration_ms": 2825,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 2825,
+    "peakMemoryBytes": 127565824,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T062221795Z-7580-9a0da00e4ff7.json",
+    "latest_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad.json",
+    "history_summary": ".mimosa/history/run-20260916T062221795Z-7580-9a0da00e4ff7.json"
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260915T124045122Z-58311-a31ab4b0e028",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "candidate-select",
+      "target": ".tmp-dbadmin/main.go",
+      "reason": "changed_file_unreadable: observed changed file no longer exists or cannot be read"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 690,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 0
+    },
+    "change_tracking": {
+      "touched_observed": 1,
+      "touched_retained": 1,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 0,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 0,
+      "selected_files": 0,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 0,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "changed_file_unreadable": 1,
+      "project_check_failed": 1
+    },
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": ".tmp-dbadmin/main.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": ".tmp-dbadmin/main.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-15T12:40:45.122Z",
+  "session_id": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "rules_version": "unavailable",
+  "diff_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 0,
+    "changed_files": []
+  },
+  "timing": {
+    "started_at": "2026-09-15T12:40:44.522Z",
+    "completed_at": "2026-09-15T12:40:45.122Z",
+    "duration_ms": 600,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 600,
+    "peakMemoryBytes": 126566400,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [
+    {
+      "finding_id": "mimosa-20a63f9c8519016fdbca8403",
+      "file": ".tmp-dbadmin/main.go",
+      "line": 19,
+      "rule_id": "security",
+      "severity": "high",
+      "category": "SQL 注入",
+      "status": "blocked",
+      "decision": "deny",
+      "at": "2026-09-15T12:36:12.067Z",
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "source": "semgrep",
+        "evidence_hash": "62231358458160147ff125ed2f1cdbed1079bec99b21bcd24cb7bf2499b15c0a",
+        "runtime_oracle": false
+      }
+    },
+    {
+      "finding_id": "mimosa-20a63f9c8519016fdbca8403",
+      "file": ".tmp-dbadmin/main.go",
+      "line": 19,
+      "rule_id": "security",
+      "severity": "high",
+      "category": "SQL 注入",
+      "status": "fixed_candidate",
+      "decision": "repair_observed",
+      "at": "2026-09-15T12:36:27.639Z",
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "source": "semgrep",
+        "evidence_hash": "62231358458160147ff125ed2f1cdbed1079bec99b21bcd24cb7bf2499b15c0a",
+        "candidate_before_evidence_hash": "62231358458160147ff125ed2f1cdbed1079bec99b21bcd24cb7bf2499b15c0a",
+        "post_change_evidence_hash_at_previous_location": "d10b36aa74a59bcf4a88185837f658afaf3646eff2bb16c3928d0e9335e945d2",
+        "runtime_oracle": false,
+        "verification": {
+          "method": "mimosa-posttool-static-rescan",
+          "finding_absent": true,
+          "runtime_oracle": false
+        }
+      }
+    },
+    {
+      "finding_id": "mimosa-20a63f9c8519016fdbca8403",
+      "file": ".tmp-dbadmin/main.go",
+      "line": 19,
+      "rule_id": "security",
+      "severity": "high",
+      "category": "SQL 注入",
+      "status": "static_verified",
+      "decision": "static_rescan_passed",
+      "at": "2026-09-15T12:36:27.639Z",
+      "evidence": {
+        "kind": "static_scan",
+        "boundary": "observed",
+        "producer": "deterministic",
+        "source": "semgrep",
+        "evidence_hash": "62231358458160147ff125ed2f1cdbed1079bec99b21bcd24cb7bf2499b15c0a",
+        "candidate_before_evidence_hash": "62231358458160147ff125ed2f1cdbed1079bec99b21bcd24cb7bf2499b15c0a",
+        "post_change_evidence_hash_at_previous_location": "d10b36aa74a59bcf4a88185837f658afaf3646eff2bb16c3928d0e9335e945d2",
+        "runtime_oracle": false,
+        "verification": {
+          "method": "mimosa-posttool-static-rescan",
+          "finding_absent": true,
+          "runtime_oracle": false
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260915T124045122Z-58311-a31ab4b0e028.json",
+    "latest_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad.json",
+    "history_summary": ".mimosa/history/run-20260915T124045122Z-58311-a31ab4b0e028.json"
+  }
+}

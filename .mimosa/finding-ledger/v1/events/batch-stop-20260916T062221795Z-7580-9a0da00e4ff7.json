@@ -1,0 +1,346 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T062221795Z-7580-9a0da00e4ff7",
+  "runId": "20260916T062221795Z-7580-9a0da00e4ff7",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": ".tmp-hashpw/main.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": ".tmp-setpw/main.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "candidate_limit_exceeded",
+        "stage": "candidate-select",
+        "target": "react/src/pages/vcenter/VCenterVMDetail.tsx",
+        "detail": "34 changed reviewable file(s) were not scanned because the limit is 20",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/AccountPlatformSettingsBody.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/BaotaSync.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/IngressList.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/NotFound.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsPrometheusSection.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsRuntimeSection.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHosts.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHosts.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterList.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSettings.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": ".tmp-hashpw/main.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": ".tmp-setpw/main.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "react/src/pages/vcenter/VCenterVMDetail.tsx",
+        "detail": "candidate_limit_exceeded: 34 changed reviewable file(s) were not scanned because the limit is 20",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/AccountPlatformSettingsBody.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/BaotaSync.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/IngressList.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/NotFound.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsPrometheusSection.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/SettingsRuntimeSection.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSftpPanel.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshPage.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHostSshTerminal.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/CloudHosts.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterConnectWizard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterEsxiPrometheusDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterGpuDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHosts.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterHubDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterList.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterPrometheusPanel.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSettings.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/vcenter/VCenterSshTerminal.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "e6ecb459c4cb8bd8ba1046c1ccd0afcd1345a1f311c91df97e99bce7ec31adfb",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T062221795Z-7580-9a0da00e4ff7.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [],
+  "recordedAt": "2026-09-16T06:22:22.501Z"
+}

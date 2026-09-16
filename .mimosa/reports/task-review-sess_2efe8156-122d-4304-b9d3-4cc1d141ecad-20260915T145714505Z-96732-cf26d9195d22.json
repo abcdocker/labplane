@@ -1,0 +1,496 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260915T145714505Z-96732-cf26d9195d22",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "candidate-select",
+      "target": "internal/ops_vmlog_analysis.go",
+      "reason": "candidate_limit_exceeded: 1 changed reviewable file(s) were not scanned because the limit is 20"
+    },
+    {
+      "stage": "baseline-read",
+      "target": "react/src/pages/ai-inspect/AiAssistant.tsx",
+      "reason": "baseline_snapshot_unreadable: file is missing from task baseline"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 690,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 20
+    },
+    "change_tracking": {
+      "touched_observed": 7,
+      "touched_retained": 7,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 21,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 21,
+      "selected_files": 20,
+      "limit": 20,
+      "truncated": true
+    },
+    "scanning": {
+      "required_files": 18,
+      "scanned_files": 18,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "candidate_limit_exceeded": 1,
+      "baseline_snapshot_unreadable": 1,
+      "project_check_failed": 2
+    },
+    "reasons": [
+      {
+        "code": "candidate_limit_exceeded",
+        "stage": "candidate-select",
+        "target": "internal/ops_vmlog_analysis.go",
+        "detail": "1 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "baseline_snapshot_unreadable",
+        "stage": "baseline-read",
+        "target": "react/src/pages/ai-inspect/AiAssistant.tsx",
+        "detail": "file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "internal/ops_vmlog_analysis.go",
+        "detail": "candidate_limit_exceeded: 1 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline-read",
+        "target": "react/src/pages/ai-inspect/AiAssistant.tsx",
+        "detail": "baseline_snapshot_unreadable: file is missing from task baseline",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-15T14:57:14.505Z",
+  "session_id": "sess_2efe8156-122d-4304-b9d3-4cc1d141ecad",
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "rules_version": "unavailable",
+  "diff_hash": "ef5edbbe2f7d4e76e81032249df12fdaa600260e05f8c26e497e59718c6a3456",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 18,
+    "changed_files": [
+      {
+        "file": "internal/ai_assistant.go",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 615
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "32d5aebfa2d66d66ca29f8251d16fa066019e0a7afc46ced4441edc3284e36b4"
+      },
+      {
+        "file": "internal/background_leader.go",
+        "ranges": [
+          {
+            "start": 47,
+            "end": 48
+          }
+        ],
+        "before_hash": "42d6f708b1095df83b4d12348dd744cfbad6b7ef96bca71a5a680ce5f07d9c26",
+        "after_hash": "ec77894b3f9bae6261d58456a9a47120018dcb8fd1f37b1c858887cf4fef3ae4"
+      },
+      {
+        "file": "internal/ops_center_alert_worker.go",
+        "ranges": [
+          {
+            "start": 65,
+            "end": 65
+          }
+        ],
+        "before_hash": "5ffb4cdef3053324d9fd3ea921ea5213b9357eb237f3ee97d7d17ddc9c2e51f4",
+        "after_hash": "044d318e07514c5bb855d9af898b9688dea8f7553e070144c18bd2e058e20e6c"
+      },
+      {
+        "file": "internal/ops_center_handlers.go",
+        "ranges": [
+          {
+            "start": 15,
+            "end": 16
+          },
+          {
+            "start": 54,
+            "end": 54
+          },
+          {
+            "start": 57,
+            "end": 57
+          },
+          {
+            "start": 59,
+            "end": 59
+          },
+          {
+            "start": 64,
+            "end": 64
+          },
+          {
+            "start": 67,
+            "end": 67
+          },
+          {
+            "start": 71,
+            "end": 72
+          },
+          {
+            "start": 77,
+            "end": 77
+          },
+          {
+            "start": 79,
+            "end": 79
+          },
+          {
+            "start": 84,
+            "end": 84
+          },
+          {
+            "start": 89,
+            "end": 89
+          },
+          {
+            "start": 107,
+            "end": 107
+          },
+          {
+            "start": 118,
+            "end": 118
+          },
+          {
+            "start": 125,
+            "end": 125
+          }
+        ],
+        "before_hash": "5a75936e094324cc6430c831561a5dff76bbee3157cedd4d858eecf6c17227ad",
+        "after_hash": "3076096da1c6a3538b01d21ee1f2e86dc023ca95da4d88898999ef93f26b1a44"
+      },
+      {
+        "file": "internal/ops_center_inspect.go",
+        "ranges": [
+          {
+            "start": 171,
+            "end": 171
+          }
+        ],
+        "before_hash": "6e030796be012799b07524efd49f8cf0d5b7877864b06c010ec6a3fbf02fc078",
+        "after_hash": "f0603634df52c4561f8532780736ac198c5bbc8318108561ea04c117fe08cff8"
+      },
+      {
+        "file": "internal/ops_center_store.go",
+        "ranges": [
+          {
+            "start": 11,
+            "end": 15
+          },
+          {
+            "start": 67,
+            "end": 70
+          },
+          {
+            "start": 213,
+            "end": 214
+          },
+          {
+            "start": 218,
+            "end": 218
+          },
+          {
+            "start": 229,
+            "end": 229
+          },
+          {
+            "start": 239,
+            "end": 239
+          }
+        ],
+        "before_hash": "63bdbb03d463eb72c6c07ea774f05799dba8d39f121c5bbffb7579ec708df57d",
+        "after_hash": "f755bcd605eaad5f3320d4f82e9ad0bdf101d008578cd8ef54c66df525749d21"
+      },
+      {
+        "file": "react/src/App.tsx",
+        "ranges": [
+          {
+            "start": 110,
+            "end": 110
+          },
+          {
+            "start": 580,
+            "end": 587
+          }
+        ],
+        "before_hash": "6bc76cbdc30b9bb0294eba3909ea2d16a286d0616dbf8ac10a209882886cd51d",
+        "after_hash": "9dcdff54df561736453981cd333ef54db9623a185b36d0a2ed7f2e68524693d6"
+      },
+      {
+        "file": "react/src/components/AppCenterSubNav.tsx",
+        "ranges": [
+          {
+            "start": 3,
+            "end": 3
+          }
+        ],
+        "before_hash": "9cd69719f5aa6dec19ef56c0454e9245f31707913a16978629bcb203e87c2ca8",
+        "after_hash": "66d98ec80225cd6007b9039c87031bcf26594f7cc0228c4e19bc27aae2211f95"
+      },
+      {
+        "file": "react/src/components/Header.tsx",
+        "ranges": [
+          {
+            "start": 270,
+            "end": 270
+          }
+        ],
+        "before_hash": "f4ee7627b22981caa1ac90fcac1b6176d5c8f562b4486c7e92bc114e7ca7c86d",
+        "after_hash": "8016b7441215140b37d4951bf026770c5727c55584a5027f5b91ee9db511c54f"
+      },
+      {
+        "file": "react/src/components/HeaderNotificationsSheet.tsx",
+        "ranges": [
+          {
+            "start": 132,
+            "end": 132
+          },
+          {
+            "start": 324,
+            "end": 324
+          }
+        ],
+        "before_hash": "289a0e48ea2dc141749ae36189c7be2f9050e8d15934280cb7abc616625f8a32",
+        "after_hash": "286f79ebb19dd3fbb77507c2b466388f0b3b7f708ab1a135209fffa7e79629ae"
+      },
+      {
+        "file": "react/src/components/MarkdownWithCopyToolbar.tsx",
+        "ranges": [
+          {
+            "start": 8,
+            "end": 8
+          }
+        ],
+        "before_hash": "4cdde5969127ed5532811df036295cabad91b43c1bd00f5a6d440f8b904fdeb4",
+        "after_hash": "9a76a6edde6147191119f1196585bcf3b6e7bb8a98877570ff3a8fe938d2cd74"
+      },
+      {
+        "file": "react/src/components/Sidebar.tsx",
+        "ranges": [
+          {
+            "start": 558,
+            "end": 558
+          },
+          {
+            "start": 1044,
+            "end": 1050
+          }
+        ],
+        "before_hash": "f86909a02de19280cc7cdc90e7fc1e12310dddb9c25ce1187f1ccb144b352076",
+        "after_hash": "63ba99059794fe39f89509ed96dd9262f875126c981d3c36310f59d2ff63a26d"
+      },
+      {
+        "file": "react/src/lib/site-path-descriptions.ts",
+        "ranges": [
+          {
+            "start": 25,
+            "end": 26
+          }
+        ],
+        "before_hash": "a153a8ad7815421309df2c078a006c84c47cd2b30074fdc980ebdb668e03aa4f",
+        "after_hash": "349ae8e91f160d806f0f224ea469ec6a45f2c3d2191fbc3de7fb42fd102d4a16"
+      },
+      {
+        "file": "react/src/pages/ai-inspect/AiAssistant.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 239
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "9b3d66c82bf8138a70c6bd1f042e747a08d61d720235b17d8c3f7c8a5d5da829"
+      },
+      {
+        "file": "react/src/pages/ai-inspect/AiInspectHome.tsx",
+        "ranges": [
+          {
+            "start": 57,
+            "end": 57
+          },
+          {
+            "start": 135,
+            "end": 136
+          },
+          {
+            "start": 158,
+            "end": 158
+          },
+          {
+            "start": 198,
+            "end": 198
+          },
+          {
+            "start": 201,
+            "end": 201
+          },
+          {
+            "start": 260,
+            "end": 260
+          },
+          {
+            "start": 274,
+            "end": 274
+          },
+          {
+            "start": 287,
+            "end": 288
+          },
+          {
+            "start": 454,
+            "end": 454
+          }
+        ],
+        "before_hash": "5f6c20d74d20f5c9b88ac45868bf040dc8850c70aa17050f798993348ea1a69c",
+        "after_hash": "53be8a9359b5c5eaa8f20bf0e42ed0f9244edf3529a071b0fe0616e016eedec5"
+      },
+      {
+        "file": "react/src/pages/AppCenterDashboard.tsx",
+        "ranges": [
+          {
+            "start": 94,
+            "end": 94
+          }
+        ],
+        "before_hash": "ac32e120e3d999971d41c34662c4bdd3fd61014adb96117def636a5320e5e2bb",
+        "after_hash": "ff87f5e372df6458ed9c06220ff1afd8dcfd8fd2b147324c1f0b67ed846a1330"
+      },
+      {
+        "file": "react/src/pages/cluster/ClusterPodDetail.tsx",
+        "ranges": [
+          {
+            "start": 30,
+            "end": 502
+          }
+        ],
+        "before_hash": "be743365e9ac36d03bc1723ce6bf6fc5cbd85fac79a30ba5adc8329ea92065b0",
+        "after_hash": "e5b017df70424ba864f5c063e1c8f61f8369a991f6993fb7e4e0d20cb64125ea"
+      },
+      {
+        "file": "react/src/pages/HomeHub.tsx",
+        "ranges": [
+          {
+            "start": 235,
+            "end": 235
+          },
+          {
+            "start": 247,
+            "end": 247
+          },
+          {
+            "start": 293,
+            "end": 293
+          },
+          {
+            "start": 458,
+            "end": 458
+          },
+          {
+            "start": 612,
+            "end": 612
+          },
+          {
+            "start": 614,
+            "end": 614
+          },
+          {
+            "start": 621,
+            "end": 621
+          }
+        ],
+        "before_hash": "45bbc66b8b8749d5e599ef07c4a5d6d43ba0baf23cf7b8f5c439098a4df95ad2",
+        "after_hash": "9123be7270cfcadd402132c10db0a583dbcc5cc0f935a194410777ea2d9d041a"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-15T14:57:13.109Z",
+    "completed_at": "2026-09-15T14:57:14.505Z",
+    "duration_ms": 1396,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 1396,
+    "peakMemoryBytes": 237944832,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 18,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260915T145714505Z-96732-cf26d9195d22.json",
+    "latest_report": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad.json",
+    "history_summary": ".mimosa/history/run-20260915T145714505Z-96732-cf26d9195d22.json"
+  }
+}

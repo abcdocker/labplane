@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260916T015918235Z-43653-a1672179debd",
+  "runStatus": "inconclusive",
+  "errors": [
+    "baseline-read:internal/k8s_restart_ai_handlers.go: baseline_snapshot_unreadable: file is missing from task baseline"
+  ],
+  "target": ".",
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "6445a2dff908f78dd2fddc89e73390aefde2435b1cf5400abde4649f74c91c4c",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-16T01:59:18.235Z",
+  "timing": {
+    "startedAt": "2026-09-16T01:59:15.697Z",
+    "completedAt": "2026-09-16T01:59:18.235Z",
+    "durationMs": 2538
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "baseline_snapshot_unreadable": 1,
+      "project_check_failed": 1
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T015918235Z-43653-a1672179debd.json"
+}

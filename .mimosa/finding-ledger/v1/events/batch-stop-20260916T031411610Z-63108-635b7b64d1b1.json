@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T031411610Z-63108-635b7b64d1b1",
+  "runId": "20260916T031411610Z-63108-635b7b64d1b1",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "916e2e2bf4f12ee565bf1d06c6be84d0f8e5aaf28c1aa99203a46b19c15ce4f4",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T031411610Z-63108-635b7b64d1b1.json",
+  "events": [],
+  "observedFindingIds": [
+    "mimosa-216695db74bee0d542b8f64a"
+  ],
+  "verifiedFiles": [
+    {
+      "file": "internal/tencent_cloud_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/qiniu_cloud_api.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/qiniu_cloud_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/tencent-cloud/TencentCloudCVM.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/tencent-cloud/TencentCloudLighthouse.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/tencent-cloud/TencentCloudSSL.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/App.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/tencent-cloud/TencentCloudLayout.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/tencent_cloud_api.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-16T03:14:12.329Z"
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T022429530Z-50069-114ba115f480",
+  "runId": "20260916T022429530Z-50069-114ba115f480",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "0e74de5a40fbbe5f37a0596d117c69d0d614870b917199ee2d0096290a228dae",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T022429530Z-50069-114ba115f480.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/k8s_control_plane_advisory.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/background_leader.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ops_center_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_assistant.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/ai-inspect/AiAssistant.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/ai-inspect/AiInspectDashboard.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-16T02:24:30.154Z"
+}

@@ -1,0 +1,192 @@
+package internal
+
+// AI 模型用量统计：记录每次判读模型调用的 token 用量（按日期 / 模型 / 功能聚合），
+// 持久化到 PlatformKV，供「AI 巡检配置」与「AI 助手」页展示。
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	kvKeyAIUsageStats  = "kubebt_ai_usage_stats_v1"
+	aiUsageMaxRecent   = 200
+	aiUsageMaxFeatures = 8
+)
+
+// AIUsageCall 一次模型调用的记录。
+type AIUsageCall struct {
+	TS               string `json:"ts"`
+	Feature          string `json:"feature"`
+	Model            string `json:"model"`
+	PromptTokens     int64  `json:"promptTokens"`
+	CompletionTokens int64  `json:"completionTokens"`
+	TotalTokens      int64  `json:"totalTokens"`
+	LatencyMs        int64  `json:"latencyMs"`
+	OK               bool   `json:"ok"`
+}
+
+// AIUsageStats KV 持久化结构：按日 / 模型 / 功能聚合 + 最近调用流水。
+type AIUsageStats struct {
+	Daily  map[string]map[string]map[string]*AIUsageDayAgg `json:"daily"` // date -> model -> feature
+	Recent []AIUsageCall                                   `json:"recent"`
+}
+
+// AIUsageDayAgg 单日单模型单功能聚合。
+type AIUsageDayAgg struct {
+	Calls            int64 `json:"calls"`
+	PromptTokens     int64 `json:"promptTokens"`
+	CompletionTokens int64 `json:"completionTokens"`
+	TotalTokens      int64 `json:"totalTokens"`
+	Errors           int64 `json:"errors"`
+}
+
+func loadAIUsageStats(kv PlatformKV) *AIUsageStats {
+	out := &AIUsageStats{Daily: map[string]map[string]map[string]*AIUsageDayAgg{}}
+	if kv == nil {
+		return out
+	}
+	raw, ok := kv.Get(kvKeyAIUsageStats)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return out
+	}
+	_ = json.Unmarshal([]byte(raw), &out)
+	if out.Daily == nil {
+		out.Daily = map[string]map[string]map[string]*AIUsageDayAgg{}
+	}
+	return out
+}
+
+func saveAIUsageStats(kv PlatformKV, s *AIUsageStats) {
+	if kv == nil || s == nil {
+		return
+	}
+	if len(s.Recent) > aiUsageMaxRecent {
+		s.Recent = s.Recent[len(s.Recent)-aiUsageMaxRecent:]
+	}
+	if js, err := json.Marshal(s); err == nil {
+		_ = kv.Set(kvKeyAIUsageStats, string(js))
+	}
+}
+
+// aiUsageRecordCall 记录一次模型调用（含 token 用量），写审计之外的专用统计。
+func aiUsageRecordCall(kv PlatformKV, feature, model string, promptTokens, completionTokens, latencyMs int64, ok bool) {
+	if kv == nil {
+		return
+	}
+	s := loadAIUsageStats(kv)
+	now := time.Now()
+	date := now.Format("2006-01-02")
+	if _, ok := s.Daily[date]; !ok {
+		s.Daily[date] = map[string]map[string]*AIUsageDayAgg{}
+	}
+	if _, ok := s.Daily[date][model]; !ok {
+		s.Daily[date][model] = map[string]*AIUsageDayAgg{}
+	}
+	if s.Daily[date][model][feature] == nil {
+		s.Daily[date][model][feature] = &AIUsageDayAgg{}
+	}
+	agg := s.Daily[date][model][feature]
+	agg.Calls++
+	agg.PromptTokens += promptTokens
+	agg.CompletionTokens += completionTokens
+	agg.TotalTokens += promptTokens + completionTokens
+	if !ok {
+		agg.Errors++
+	}
+	s.Recent = append(s.Recent, AIUsageCall{
+		TS:               now.UTC().Format(time.RFC3339Nano),
+		Feature:          feature,
+		Model:            model,
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+		TotalTokens:      promptTokens + completionTokens,
+		LatencyMs:        latencyMs,
+		OK:               ok,
+	})
+	saveAIUsageStats(kv, s)
+}
+
+// handleOpsAIUsageGet 返回模型用量统计（今日 / 近 7 天 / 近 30 天 / 按模型 / 按功能 / 最近调用）。
+func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
+	s := loadAIUsageStats(app.PlatformKV())
+	now := time.Now()
+	type aggOut struct {
+		Calls            int64 `json:"calls"`
+		PromptTokens     int64 `json:"promptTokens"`
+		CompletionTokens int64 `json:"completionTokens"`
+		TotalTokens      int64 `json:"totalTokens"`
+		Errors           int64 `json:"errors"`
+	}
+	sum := func(days int) map[string]any {
+		cutoff := now.AddDate(0, 0, -(days - 1)).Format("2006-01-02")
+		tot := aggOut{}
+		byModel := map[string]*aggOut{}
+		byFeature := map[string]*aggOut{}
+		for date, models := range s.Daily {
+			if date < cutoff {
+				continue
+			}
+			for model, feats := range models {
+				for feat, agg := range feats {
+					tot.Calls += agg.Calls
+					tot.PromptTokens += agg.PromptTokens
+					tot.CompletionTokens += agg.CompletionTokens
+					tot.TotalTokens += agg.TotalTokens
+					tot.Errors += agg.Errors
+					if byModel[model] == nil {
+						byModel[model] = &aggOut{}
+					}
+					byModel[model].Calls += agg.Calls
+					byModel[model].PromptTokens += agg.PromptTokens
+					byModel[model].CompletionTokens += agg.CompletionTokens
+					byModel[model].TotalTokens += agg.TotalTokens
+					byModel[model].Errors += agg.Errors
+					if byFeature[feat] == nil {
+						byFeature[feat] = &aggOut{}
+					}
+					byFeature[feat].Calls += agg.Calls
+					byFeature[feat].PromptTokens += agg.PromptTokens
+					byFeature[feat].CompletionTokens += agg.CompletionTokens
+					byFeature[feat].TotalTokens += agg.TotalTokens
+					byFeature[feat].Errors += agg.Errors
+				}
+			}
+		}
+		return gin.H{
+			"days":     days,
+			"totals":   tot,
+			"byModel":  byModel,
+			"byFeature": byFeature,
+		}
+	}
+	recent := s.Recent
+	if len(recent) > 50 {
+		recent = recent[len(recent)-50:]
+	}
+	sort.Slice(recent, func(i, j int) bool { return recent[i].TS > recent[j].TS })
+	features := make([]string, 0, aiUsageMaxFeatures)
+	if featAgg := sum(30)["byFeature"]; featAgg != nil {
+		if m, ok := featAgg.(map[string]*aggOut); ok {
+			for k := range m {
+				features = append(features, k)
+			}
+		}
+	}
+	sort.Strings(features)
+	c.JSON(http.StatusOK, gin.H{
+		"today":         sum(1),
+		"last7d":        sum(7),
+		"last30d":       sum(30),
+		"features":      features,
+		"recent":        recent,
+	})
+}
+
+var _ = fmt.Sprintf

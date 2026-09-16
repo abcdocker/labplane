@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T133321009Z-10171-9fa2a7aa4285",
+  "runId": "20260916T133321009Z-10171-9fa2a7aa4285",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "68425662ea4d6c27c5a426c7510c06b02c73c25eacb965f300212ad76e9851ab",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T133321009Z-10171-9fa2a7aa4285.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "react/src/pages/ai-inspect/AiAssistant.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_assistant.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/inspect_judge.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-16T13:33:21.248Z"
+}

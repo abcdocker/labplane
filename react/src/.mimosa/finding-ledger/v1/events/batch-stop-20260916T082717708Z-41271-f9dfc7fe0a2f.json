@@ -1,0 +1,339 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260916T082717708Z-41271-f9dfc7fe0a2f",
+  "runId": "20260916T082717708Z-41271-f9dfc7fe0a2f",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "baseline_partial",
+        "stage": "baseline",
+        "target": ".",
+        "detail": "baseline capture had enumeration or snapshot errors",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "App.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "components/Sidebar.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/cluster/ClusterPodDetail.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "components/AppCenterSubNav.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "components/Header.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "lib/site-path-descriptions.ts",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "components/MarkdownWithCopyToolbar.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "components/HeaderNotificationsSheet.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/HomeHub.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/cluster/ClusterOverviewPodsWorkloadPanel.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiInspectDashboard.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiInspectLogDetails.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudCVM.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudLighthouse.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudSSL.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudLayout.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudOverview.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiAssistant.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline",
+        "target": ".",
+        "detail": "baseline_partial: baseline capture had enumeration or snapshot errors",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "App.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "components/Sidebar.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/cluster/ClusterPodDetail.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "components/AppCenterSubNav.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "components/Header.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "lib/site-path-descriptions.ts",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "components/MarkdownWithCopyToolbar.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "components/HeaderNotificationsSheet.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/HomeHub.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/cluster/ClusterOverviewPodsWorkloadPanel.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiInspectDashboard.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiInspectLogDetails.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudCVM.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudLighthouse.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudSSL.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudLayout.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/tencent-cloud/TencentCloudOverview.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "pages/ai-inspect/AiAssistant.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "81b728a82521d58182f76156fa0624e41920fe9a",
+  "diffHash": "3506236b6cc9bf6ac03b923456ee43f3b5f2b68cd041ce03e1e41489bf66731d",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e30e51cbf91419010f5f6d8ab9d29e2d650639bdc7238a73a45db40898c927f7",
+  "reportRef": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260916T082717708Z-41271-f9dfc7fe0a2f.json",
+  "events": [
+    {
+      "eventId": "hook-4ffa4943f517e7f78d93f5a9116d4020",
+      "findingId": "mimosa-bec9dad6fe0d2101459be30e",
+      "type": "finding_blocked",
+      "at": "2026-09-15T14:28:04.823Z",
+      "identity": {
+        "projectRelativeFile": "components/AiChatMarkdown.tsx",
+        "ruleId": "security",
+        "codeEvidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 13,
+      "endLine": 13,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379"
+      },
+      "sequence": 0
+    },
+    {
+      "eventId": "hook-282449d8da2390aafc7912d6e0b316bb",
+      "findingId": "mimosa-bec9dad6fe0d2101459be30e",
+      "type": "finding_blocked",
+      "at": "2026-09-15T14:28:32.554Z",
+      "identity": {
+        "projectRelativeFile": "components/AiChatMarkdown.tsx",
+        "ruleId": "security",
+        "codeEvidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 13,
+      "endLine": 13,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "e2ac553828cad9937de7e1ad540c4e9ca1b11aa331b585d7101d0d00a42c1379"
+      },
+      "sequence": 1
+    }
+  ],
+  "observedFindingIds": [],
+  "verifiedFiles": [],
+  "recordedAt": "2026-09-16T08:27:18.384Z"
+}

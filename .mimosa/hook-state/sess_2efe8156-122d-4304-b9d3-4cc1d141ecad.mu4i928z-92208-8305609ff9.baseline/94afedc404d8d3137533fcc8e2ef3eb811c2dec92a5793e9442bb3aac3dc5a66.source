@@ -1,0 +1,15 @@
+---
+description: After changing React UI, run production build so container/Go serves fresh dist
+globs: react/**/*
+alwaysApply: false
+---
+
+# Frontend build
+
+When you modify any file under `react/`, finish by running from the repo root:
+
+```bash
+cd react && npm run build
+```
+
+The Go server and Docker image serve `react/dist`; without this step, deployed containers keep an old bundle.
