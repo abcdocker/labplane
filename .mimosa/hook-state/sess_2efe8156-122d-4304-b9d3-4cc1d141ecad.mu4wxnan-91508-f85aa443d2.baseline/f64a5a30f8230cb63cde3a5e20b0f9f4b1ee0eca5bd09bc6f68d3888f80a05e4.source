@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   Monitor,
+  Network,
   Server,
   Sparkles,
   Settings,
@@ -44,6 +45,7 @@ const Header: React.FC = () => {
   const isAppcenter = workspace === "appcenter";
   const isBastion = workspace === "bastion";
   const isAiInspect = workspace === "aiinspect";
+  const isMesh = workspace === "mesh";
   const isDocs = workspace === "docs";
 
   const cfgQ = useAppConfig();
@@ -62,6 +64,7 @@ const Header: React.FC = () => {
     moduleVisible(perm, "vcenter") || moduleVisible(perm, "appcenter")
   );
   const headerShowAiInspect = menuItemVisible(perm, "aiInspect", navRole, true);
+  const headerShowMesh = menuItemVisible(perm, "mesh", navRole, true);
 
   /** 与 MySQL 是否连通无关：管理员应始终看到入口；无库时页面内会提示配置 MySQL */
   const showPlatformUsers =
@@ -126,7 +129,7 @@ const Header: React.FC = () => {
                 "border-slate-200 bg-slate-50/90 text-slate-800 hover:bg-slate-100",
                 "focus-visible:ring-2 focus-visible:ring-blue-500/30"
               )}
-              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、文档仓库"
+              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、文档仓库"
             >
               <span
                 className={cn(
@@ -145,7 +148,9 @@ const Header: React.FC = () => {
                               ? "from-teal-600 to-emerald-800"
                               : isAiInspect
                                 ? "from-cyan-600 to-teal-700"
-                                : "from-emerald-600 to-emerald-700"
+                                : isMesh
+                                  ? "from-indigo-600 to-violet-700"
+                                  : "from-emerald-600 to-emerald-700"
                 )}
               >
                 {isHub ? (
@@ -162,6 +167,8 @@ const Header: React.FC = () => {
                   <SquareTerminal size={17} strokeWidth={2.25} />
                 ) : isAiInspect ? (
                   <Sparkles size={17} strokeWidth={2.25} />
+                ) : isMesh ? (
+                  <Network size={17} strokeWidth={2.25} />
                 ) : (
                   <AppWindow size={17} strokeWidth={2.25} />
                 )}
@@ -181,7 +188,9 @@ const Header: React.FC = () => {
                             ? "堡垒机"
                             : isAiInspect
                               ? "AI 巡检"
-                              : "应用中心"}
+                              : isMesh
+                                ? "异地组网"
+                                : "应用中心"}
               </span>
               <ChevronDown size={16} className="text-slate-500" aria-hidden />
             </button>
@@ -268,6 +277,20 @@ const Header: React.FC = () => {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">AI 巡检</span>
                 <span className="text-xs text-muted-foreground">监控中心 · 告警 · AI 助手</span>
+              </div>
+            </DropdownMenuItem>
+            ) : null}
+            {headerShowMesh ? (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 py-2.5"
+              onSelect={() => navigate("/cluster/mesh")}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700">
+                <Network className="text-white" size={17} strokeWidth={2.25} />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">异地组网</span>
+                <span className="text-xs text-muted-foreground">Headscale · 路由 · 流量</span>
               </div>
             </DropdownMenuItem>
             ) : null}

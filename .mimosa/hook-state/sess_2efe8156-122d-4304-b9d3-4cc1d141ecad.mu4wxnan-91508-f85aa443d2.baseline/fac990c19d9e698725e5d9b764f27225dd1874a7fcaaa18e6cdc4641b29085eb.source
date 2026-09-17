@@ -21,6 +21,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
+  Network,
 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
 import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
@@ -198,7 +199,24 @@ const HomeHub: React.FC = () => {
     moduleVisible(perm, "vcenter") || moduleVisible(perm, "appcenter")
   );
   const showAiInspect = menuItemVisible(perm, "aiInspect", hubRole, true);
+  const showMesh = menuItemVisible(perm, "mesh", hubRole, true);
   const showHub = menuItemVisible(perm, "hub", hubRole, true);
+
+  // 异地组网跨实例汇总（Dashboard 卡片统计）
+  const meshSummaryQ = useQuery({
+    queryKey: ["mesh-summary"],
+    queryFn: () =>
+      apiGetJson<{
+        instances: { id: string; nodesTotal: number; nodesOnline: number; routesApproved: number }[];
+      }>("/api/ops/mesh/summary"),
+    enabled: loggedIn && isAdmin,
+    staleTime: 60_000,
+    retry: 0,
+  });
+  const meshInstances = meshSummaryQ.data?.instances ?? [];
+  const meshNodesTotal = meshInstances.reduce((s, i) => s + (i.nodesTotal ?? 0), 0);
+  const meshNodesOnline = meshInstances.reduce((s, i) => s + (i.nodesOnline ?? 0), 0);
+  const meshRoutes = meshInstances.reduce((s, i) => s + (i.routesApproved ?? 0), 0);
 
   // vCenter aggregated stats（useMemo：避免无关 query 更新时重复 reduce）
   const {
@@ -706,6 +724,55 @@ const HomeHub: React.FC = () => {
             </div>
 
             <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-600 group-hover:underline">
+              进入 <ArrowRight size={13} />
+            </span>
+          </Link>
+        )}
+
+        {/* 异地组网 */}
+        {showMesh && (
+          <Link
+            to="/cluster/mesh"
+            className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
+                <Network size={20} strokeWidth={2.2} />
+              </div>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                  meshSummaryQ.isLoading ? "bg-slate-100 text-slate-400" : "bg-indigo-50 text-indigo-700"
+                )}
+              >
+                {meshSummaryQ.isLoading ? "检查中…" : "Headscale"}
+              </span>
+            </div>
+            <h2 className="mt-4 text-base font-semibold text-slate-900">异地组网</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Headscale 控制面、子网路由与站点间流量监控</p>
+
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-slate-100 pt-4">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2.5">
+                <p className="text-[10px] text-slate-400">实例</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                  {meshSummaryQ.isLoading ? "…" : meshInstances.length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2.5">
+                <p className="text-[10px] text-slate-400">在线节点</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                  {meshSummaryQ.isLoading ? "…" : `${meshNodesOnline}/${meshNodesTotal}`}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2.5">
+                <p className="text-[10px] text-slate-400">子网路由</p>
+                <p className="text-sm font-semibold tabular-nums text-slate-900">
+                  {meshSummaryQ.isLoading ? "…" : meshRoutes}
+                </p>
+              </div>
+            </div>
+
+            <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 group-hover:underline">
               进入 <ArrowRight size={13} />
             </span>
           </Link>

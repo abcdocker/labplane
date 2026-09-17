@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { apiGetJson } from "@/lib/api";
+import { apiGetJson, apiDeleteJson, ApiHttpError } from "@/lib/api";
 import { CloudAuthGuide } from "@/pages/tencent-cloud/CloudAuthGuide";
 
 function fmtErr(e: unknown) {
@@ -131,7 +131,26 @@ function StatCard({
 
 export default function QiniuCloudPage() {
   const [accountId, setAccountId] = useState<string>("all");
-  const [tab, setTab] = useState<"overview" | "kodo" | "cdn">("overview");
+  const [tab, setTab] = useState<"overview" | "kodo" | "cdn" | "ssl">("overview");
+  const [sslCerts, setSslCerts] = useState<{ cert_id: string; name: string; common_name: string; not_after: number }[]>([]);
+  const [sslLoading, setSslLoading] = useState(false);
+
+  const loadSSLCerts = async (accId: string) => {
+    setSslLoading(true);
+    try {
+      const res = await apiGetJson<{ certificates: typeof sslCerts }>(`/api/qiniu-cloud/sslcerts?account_id=${accId}`);
+      setSslCerts(res.certificates ?? []);
+    } catch { setSslCerts([]); }
+    finally { setSslLoading(false); }
+  };
+
+  const deleteSSLCert = async (certId: string) => {
+    if (!window.confirm(`确认删除证书 ${certId}？`)) return;
+    try {
+      await apiDeleteJson(`/api/qiniu-cloud/sslcerts/${certId}?account_id=${accountId}`);
+      await loadSSLCerts(accountId);
+    } catch (e) { console.error(e); }
+  };
   const [bucketName, setBucketName] = useState<string>("");
   const [prefix, setPrefix] = useState<string>("");
 
@@ -299,6 +318,12 @@ export default function QiniuCloudPage() {
               onClick={() => setTab("cdn")}
             >
               <Cloud className="inline h-3.5 w-3.5 mr-1" /> CDN
+            </button>
+            <button
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === "ssl" ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50"}`}
+              onClick={() => { setTab("ssl"); if (accountId !== "all" && accountId) void loadSSLCerts(accountId); }}
+            >
+              <FileText className="inline h-3.5 w-3.5 mr-1" /> SSL
             </button>
           </div>
         </div>
@@ -563,6 +588,39 @@ export default function QiniuCloudPage() {
                 </TableBody>
               </Table>
             </div>
+          )}
+        </div>
+      )}
+
+      {tab === "ssl" && accountId && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">SSL 证书列表</p>
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => void loadSSLCerts(accountId)} disabled={sslLoading}>
+              {sslLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />} 刷新
+            </Button>
+          </div>
+          {sslLoading ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> 加载中…</div>
+          ) : sslCerts.length === 0 ? (
+            <p className="text-sm text-slate-400">暂无 SSL 证书</p>
+          ) : (
+            <Table>
+              <TableHeader><TableRow className="bg-slate-50/80"><TableHead>名称</TableHead><TableHead>域名</TableHead><TableHead>到期时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {sslCerts.map((c) => (
+                  <TableRow key={c.cert_id || c.name}>
+                    <TableCell className="font-medium text-slate-800 text-sm">{c.name}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{c.common_name}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{c.not_after ? new Date(c.not_after * 1000).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px] text-red-600"
+                        onClick={() => void deleteSSLCert(c.cert_id || c.name)}>删除</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
       )}

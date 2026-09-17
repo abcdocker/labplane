@@ -20,32 +20,34 @@ const (
 
 // OpsAIModelExtra 模型相关扩展（温度、最大 token 等）。
 type OpsAIModelExtra struct {
-	Temperature     float64 `json:"temperature"`
-	MaxTokens       int     `json:"maxTokens"`
-	TopP            float64 `json:"topP"`
+	Temperature      float64 `json:"temperature"`
+	MaxTokens        int     `json:"maxTokens"`
+	TopP             float64 `json:"topP"`
 	FrequencyPenalty float64 `json:"frequencyPenalty"`
 }
 
 // OpsAIInspectConfig 巡检与调度。
 type OpsAIInspectConfig struct {
-	DailyReportHour   int  `json:"dailyReportHour"`   // 0-23，默认 8；调度按 Asia/Shanghai
-	DailyReportMinute int  `json:"dailyReportMinute"` // 0-59；与 DailyReportHour 同为东八区
-	InspectK8s        bool `json:"inspectK8s"`
-	InspectVCenter    bool `json:"inspectVCenter"`
-	InspectVCenterEvents bool `json:"inspectVCenterEvents"` // vCenter VM 事件与告警巡检
-	InspectPrometheus bool `json:"inspectPrometheus,omitempty"` // 兼容旧配置：读到后会同步到 k8s / vcenter 两项
-	InspectPrometheusK8s bool `json:"inspectPrometheusK8s"`
-	InspectPrometheusVCenter bool `json:"inspectPrometheusVcenter"`
-	InspectVMLog       bool `json:"inspectVmLog"`
-	InspectRedis      bool `json:"inspectRedis"`
-	InspectSSH        bool `json:"inspectSSH"`
-	InspectCloudVm    bool `json:"inspectCloudVm"`
-	ModelExtra        OpsAIModelExtra `json:"modelExtra"`
+	DailyReportHour          int             `json:"dailyReportHour"`   // 0-23，默认 8；调度按 Asia/Shanghai
+	DailyReportMinute        int             `json:"dailyReportMinute"` // 0-59；与 DailyReportHour 同为东八区
+	InspectK8s               bool            `json:"inspectK8s"`
+	InspectVCenter           bool            `json:"inspectVCenter"`
+	InspectVCenterEvents     bool            `json:"inspectVCenterEvents"`        // vCenter VM 事件与告警巡检
+	InspectPrometheus        bool            `json:"inspectPrometheus,omitempty"` // 兼容旧配置：读到后会同步到 k8s / vcenter 两项
+	InspectPrometheusK8s     bool            `json:"inspectPrometheusK8s"`
+	InspectPrometheusVCenter bool            `json:"inspectPrometheusVcenter"`
+	InspectVMLog             bool            `json:"inspectVmLog"`
+	InspectRedis             bool            `json:"inspectRedis"`
+	InspectSSH               bool            `json:"inspectSSH"`
+	InspectCloudVm           bool            `json:"inspectCloudVm"`
+	ModelExtra               OpsAIModelExtra `json:"modelExtra"`
 	// JudgeModel 内嵌判读模型（OpenAI 兼容直连，默认 GLM）；巡检摘要与 findings 根因判读均走它，
 	// 不再依赖 OpenClaw 网关。
 	JudgeModel InspectJudgeModelConfig `json:"judgeModel"`
 	// Playbooks 剧本化 VM/服务巡检开关；nil 视为启用。
 	Playbooks *bool `json:"playbooksEnabled,omitempty"`
+	// DailyTokenLimit 判读模型每日 token 预算（0=不限）；当日累计首次越线时记入告警中心。
+	DailyTokenLimit int64 `json:"dailyTokenLimit,omitempty"`
 }
 
 // PlaybooksEnabled 剧本化巡检是否启用（未配置时默认启用）。
@@ -82,7 +84,7 @@ type OpsMonitoringCustomPanel struct {
 	Title     string   `json:"title"`
 	Category  string   `json:"category"`
 	PromQL    string   `json:"promql"`
-	Scope     string   `json:"scope"` // k8s | vcenter | inherit（inherit 表示跟随页面所选数据源）
+	Scope     string   `json:"scope"`   // k8s | vcenter | inherit（inherit 表示跟随页面所选数据源）
 	Display   string   `json:"display"` // single | matrix
 	LabelKeys []string `json:"labelKeys,omitempty"`
 }
@@ -119,8 +121,8 @@ type OpsAlertRule struct {
 
 // OpsAlertChannel 告警媒介。
 type OpsAlertChannel struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"` // email | wecom | wecom_app
+	ID   string `json:"id"`
+	Type string `json:"type"` // email | wecom | wecom_app | dingtalk | feishu
 	// email
 	SMTPHost    string `json:"smtpHost"`
 	SMTPPort    int    `json:"smtpPort"`
@@ -132,10 +134,14 @@ type OpsAlertChannel struct {
 	// wecom 群机器人 webhook
 	WeComWebhook string `json:"wecomWebhook"`
 	// wecom_app 企业微信「自建应用」API（非 webhook）
-	WeComCorpID       string `json:"wecomCorpId"`
-	WeComAgentID      int    `json:"wecomAgentId"`
+	WeComCorpID        string `json:"wecomCorpId"`
+	WeComAgentID       int    `json:"wecomAgentId"`
 	WeComCorpSecretEnc string `json:"wecomCorpSecretEnc"`
-	WeComToUser       string `json:"wecomToUser"` // 多个 userid 用 | 分隔，或 @all
+	WeComToUser        string `json:"wecomToUser"` // 多个 userid 用 | 分隔，或 @all
+	// dingtalk 群机器人 webhook
+	DingTalkWebhook string `json:"dingtalkWebhook"`
+	// feishu 群机器人 webhook
+	FeishuWebhook string `json:"feishuWebhook"`
 }
 
 // OpsAlertSilence 告警抑制（标签全匹配则静默至 Until）。
@@ -161,8 +167,8 @@ type OpsAlertCenterBundle struct {
 // OpsAlertPendingState 规则待触发计时（内存+KV 简化：仅存 pendingSince key）。
 type OpsAlertPendingState struct {
 	PendingSince map[string]int64 `json:"pendingSince"` // ruleId -> unix
-	LastFiring   map[string]bool    `json:"lastFiring"`
-	LastNotifyAt map[string]int64   `json:"lastNotifyAt"`
+	LastFiring   map[string]bool  `json:"lastFiring"`
+	LastNotifyAt map[string]int64 `json:"lastNotifyAt"`
 }
 
 // InspectionReportItem 一项检查结果。
@@ -175,11 +181,11 @@ type InspectionReportItem struct {
 
 // InspectionSection 分项详情（Markdown，供前端折叠渲染）。
 type InspectionSection struct {
-	ID       string                `json:"id"`
-	Title    string                `json:"title"`
-	Status   string                `json:"status"` // ok | warn | fail | skip
-	Markdown string                `json:"markdown"`
-	Judge    *InspectJudgeVerdict  `json:"judge,omitempty"` // 剧本 findings 的 AI 判读结论
+	ID       string               `json:"id"`
+	Title    string               `json:"title"`
+	Status   string               `json:"status"` // ok | warn | fail | skip
+	Markdown string               `json:"markdown"`
+	Judge    *InspectJudgeVerdict `json:"judge,omitempty"` // 剧本 findings 的 AI 判读结论
 }
 
 // InspectionLLMProbe OpenClaw / OpenAI 兼容接口连通性与模型响应探针。

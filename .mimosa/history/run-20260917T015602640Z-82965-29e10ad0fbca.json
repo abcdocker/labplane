@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260917T015602640Z-82965-29e10ad0fbca",
+  "runStatus": "inconclusive",
+  "errors": [
+    "scan:internal/mesh_store.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:internal/headscale_client.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:internal/mesh_traffic.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:internal/mesh_handlers.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:internal/web.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:internal/headscale_client_test.go: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/lib/workspace.ts: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/pages/mesh/MeshPage.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/components/Header.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/components/Sidebar.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/pages/HomeHub.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/components/UserGuideSheet.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/lib/site-path-descriptions.ts: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/auto-imports.d.ts: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:react/src/App.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+  ],
+  "target": ".",
+  "revision": "032ee0ac9286f4b7aa354493f561f6cc4472e130",
+  "diffHash": "eaf18868baa0317dd27d6135c4c0584bd463a9b4580f6faf6063711c7861e5c5",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-17T01:56:02.640Z",
+  "timing": {
+    "startedAt": "2026-09-17T01:55:59.944Z",
+    "completedAt": "2026-09-17T01:56:02.640Z",
+    "durationMs": 2696
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 1,
+    "bySeverity": {
+      "medium": 1
+    },
+    "byStatus": {
+      "candidate": 1
+    }
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "scanner_failed": 15,
+      "project_check_failed": 15
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T015602640Z-82965-29e10ad0fbca.json"
+}

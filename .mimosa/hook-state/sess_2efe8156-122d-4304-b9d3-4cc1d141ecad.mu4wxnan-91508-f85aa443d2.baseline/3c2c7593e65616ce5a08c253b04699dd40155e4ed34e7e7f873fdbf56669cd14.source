@@ -36,6 +36,7 @@ import {
   Router,
   ClipboardList,
   Gauge,
+  Network,
 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
 import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
@@ -57,6 +58,7 @@ function readWorkspace(): SidebarWorkspace {
       v === "appcenter" ||
       v === "bastion" ||
       v === "aiinspect" ||
+      v === "mesh" ||
       v === "docs"
     ) {
       return v;
@@ -83,6 +85,8 @@ function dashboardPath(ws: SidebarWorkspace): string {
       return "/cluster/bastion";
     case "aiinspect":
       return "/cluster/ai-inspect/dashboard";
+    case "mesh":
+      return "/cluster/mesh";
     case "docs":
       return "/docs";
     default:
@@ -383,6 +387,8 @@ const Sidebar: React.FC = () => {
       setWorkspace("bastion");
     } else if (path.startsWith("/cluster/ai-inspect")) {
       setWorkspace("aiinspect");
+    } else if (path.startsWith("/cluster/mesh")) {
+      setWorkspace("mesh");
     } else if (path.startsWith("/cluster")) {
       setWorkspace("kubernetes");
     }
@@ -400,6 +406,7 @@ const Sidebar: React.FC = () => {
   const showBaotaNav = menuItemVisible(perm, "baota", navRole, moduleVisible(perm, "baota"));
   const showAppCenterNav = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
   const showAiInspectNav = menuItemVisible(perm, "aiInspect", navRole, true);
+  const showMeshNav = menuItemVisible(perm, "mesh", navRole, true);
   const showBastionNav = menuItemVisible(
     perm,
     "vcenter_bastion",
@@ -508,6 +515,7 @@ const Sidebar: React.FC = () => {
   const isAppcenter = workspace === "appcenter";
   const isBastion = workspace === "bastion";
   const isAiinspect = workspace === "aiinspect";
+  const isMesh = workspace === "mesh";
 
   const dashActive = isDashboardActive(location.pathname, workspace);
   const dashTo = dashboardPath(workspace);
@@ -574,7 +582,9 @@ const Sidebar: React.FC = () => {
               ? "堡垒机"
               : isAiinspect
                 ? "AI 巡检"
-                : "应用中心";
+                : isMesh
+                  ? "异地组网"
+                  : "应用中心";
 
   const brandClass = isDocs
     ? "text-violet-600/90"
@@ -590,7 +600,9 @@ const Sidebar: React.FC = () => {
               ? "text-teal-600/90"
               : isAiinspect
                 ? "text-cyan-600/90"
-                : "text-emerald-600/90";
+                : isMesh
+                  ? "text-indigo-600/90"
+                  : "text-emerald-600/90";
 
   const dashTint: "blue" | "violet" | "amber" | "emerald" | "slate" = isDocs
     ? "violet"
@@ -608,7 +620,9 @@ const Sidebar: React.FC = () => {
                 ? "slate"
                 : isAppcenter
                   ? "slate"
-                  : "emerald";
+                  : isMesh
+                    ? "slate"
+                    : "emerald";
 
   const dashLabel = isDocs ? "文档库" : isBastion ? "控制台" : isAppcenter ? "概览" : "Dashboard";
 
@@ -1054,6 +1068,21 @@ const Sidebar: React.FC = () => {
             >
               <Sparkles size={20} className={iconTint(aiInspectConfigureActive, "slate")} />
               <span>巡检配置</span>
+            </Link>
+          </>
+        ) : showMeshNav && isMesh ? (
+          <>
+            <div className="px-4 pb-1 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                异地组网
+              </p>
+            </div>
+            <Link
+              to="/cluster/mesh"
+              className={navLinkTint(location.pathname === "/cluster/mesh", "slate")}
+            >
+              <Network size={20} className={iconTint(location.pathname === "/cluster/mesh", "slate")} />
+              <span>控制面与节点</span>
             </Link>
           </>
         ) : null}

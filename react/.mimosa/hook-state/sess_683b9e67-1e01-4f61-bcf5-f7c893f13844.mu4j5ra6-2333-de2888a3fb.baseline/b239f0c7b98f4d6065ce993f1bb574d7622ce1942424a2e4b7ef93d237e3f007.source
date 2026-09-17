@@ -38,6 +38,8 @@ type AlertChannel = {
   wecomAgentId?: number;
   wecomCorpSecretSet?: boolean;
   wecomToUser?: string;
+  dingtalkWebhook?: string;
+  feishuWebhook?: string;
 };
 
 type AlertSilence = {
@@ -83,6 +85,24 @@ const emptyRule = (): AlertRule => ({
   forSeconds: 120,
   labels: { severity: "warning" },
   annotations: { summary: "阈值告警" },
+});
+
+const newChannel = (type: AlertChannel["type"]): AlertChannel => ({
+  id: `c-${Date.now()}`,
+  type,
+  smtpHost: "",
+  smtpPort: 587,
+  smtpUser: "",
+  smtpPassSet: false,
+  fromAddr: "",
+  toAddrs: "",
+  useTls: true,
+  wecomWebhook: "",
+  dingtalkWebhook: "",
+  feishuWebhook: "",
+  ...(type === "wecom_app"
+    ? { wecomCorpId: "", wecomAgentId: 0, wecomCorpSecretSet: false, wecomToUser: "@all" }
+    : {}),
 });
 
 const AiInspectAlerts: React.FC = () => {
@@ -148,6 +168,8 @@ const AiInspectAlerts: React.FC = () => {
           wecomAgentId: c.wecomAgentId,
           wecomCorpSecret: wecomAppSecret[c.id] || undefined,
           wecomToUser: c.wecomToUser,
+          dingtalkWebhook: c.dingtalkWebhook,
+          feishuWebhook: c.feishuWebhook,
         })),
         channelIds: body.channelIds,
         silences: body.silences,
@@ -192,7 +214,7 @@ const AiInspectAlerts: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">告警中心</h1>
         <p className="mt-1 text-sm text-slate-600">
-          基于 Prometheus 即时查询（与监控中心相同数据源）；支持邮箱、企业微信机器人；支持标签抑制与「for」持续时间；通知正文格式参考 Prometheus 告警文本。
+          基于 Prometheus 即时查询（与监控中心相同数据源）；支持邮箱、企业微信、钉钉与飞书机器人；支持标签抑制与「for」持续时间；通知正文格式参考 Prometheus 告警文本。
         </p>
       </div>
 
@@ -436,76 +458,30 @@ const AiInspectAlerts: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-slate-900">通知通道</h2>
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                const id = `c-${Date.now()}`;
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        channels: [
-                          ...d.channels,
-                          {
-                            id,
-                            type: "email",
-                            smtpHost: "",
-                            smtpPort: 587,
-                            smtpUser: "",
-                            smtpPassSet: false,
-                            fromAddr: "",
-                            toAddrs: "",
-                            useTls: true,
-                            wecomWebhook: "",
-                          },
-                        ],
-                        channelIds: [...d.channelIds, id],
-                      }
-                    : d
-                );
-              }}
-            >
-              添加邮箱通道
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                const id = `c-${Date.now()}`;
-                setDraft((d) =>
-                  d
-                    ? {
-                        ...d,
-                        channels: [
-                          ...d.channels,
-                          {
-                            id,
-                            type: "wecom_app",
-                            smtpHost: "",
-                            smtpPort: 587,
-                            smtpUser: "",
-                            smtpPassSet: false,
-                            fromAddr: "",
-                            toAddrs: "",
-                            useTls: true,
-                            wecomWebhook: "",
-                            wecomCorpId: "",
-                            wecomAgentId: 0,
-                            wecomCorpSecretSet: false,
-                            wecomToUser: "@all",
-                          },
-                        ],
-                        channelIds: [...d.channelIds, id],
-                      }
-                    : d
-                );
-              }}
-            >
-              添加企微应用
-            </Button>
+            {(["email", "wecom_app", "dingtalk", "feishu"] as const).map((t) => (
+              <Button
+                key={t}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const ch = newChannel(t);
+                  setDraft((d) =>
+                    d
+                      ? { ...d, channels: [...d.channels, ch], channelIds: [...d.channelIds, ch.id] }
+                      : d
+                  );
+                }}
+              >
+                {t === "email"
+                  ? "添加邮箱通道"
+                  : t === "wecom_app"
+                    ? "添加企微应用"
+                    : t === "dingtalk"
+                      ? "添加钉钉机器人"
+                      : "添加飞书机器人"}
+              </Button>
+            ))}
           </div>
         </div>
         <div className="mt-4 space-y-6">
@@ -525,6 +501,8 @@ const AiInspectAlerts: React.FC = () => {
                   <option value="email">email</option>
                   <option value="wecom">wecom（群机器人 Webhook）</option>
                   <option value="wecom_app">wecom_app（企业自建应用 API）</option>
+                  <option value="dingtalk">dingtalk（钉钉群机器人 Webhook）</option>
+                  <option value="feishu">feishu（飞书群机器人 Webhook）</option>
                 </select>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -615,6 +593,62 @@ const AiInspectAlerts: React.FC = () => {
                         placeholder="@all 或 userid，多个用 |"
                       />
                     </div>
+                  </div>
+                </div>
+              {c.type === "dingtalk" ? (
+                <div className="mt-3 space-y-2">
+                  <CollapsibleManual
+                    storageKey={`ai-inspect.alerts.dingtalk.${c.id}`}
+                    title="钉钉群机器人对接说明"
+                    variant="muted"
+                    className="border-slate-200 bg-slate-100/80"
+                  >
+                    <p className="text-xs text-slate-700">
+                      在钉钉群「群设置 → 机器人 → 添加机器人 →
+                      自定义」创建机器人。安全设置请选择<strong>「自定义关键词」</strong>
+                      （建议填「告警」，本平台以 text 消息推送告警标题与内容）；暂不支持加签方式（sign
+                      需按请求动态计算）。Webhook 地址需以{" "}
+                      <code className="rounded bg-white px-1">https://oapi.dingtalk.com/robot/send</code> 开头。
+                    </p>
+                  </CollapsibleManual>
+                  <div className="space-y-1">
+                    <Label>Webhook URL</Label>
+                    <Input
+                      value={c.dingtalkWebhook ?? ""}
+                      onChange={(e) => {
+                        const channels = [...draft.channels];
+                        channels[idx] = { ...c, dingtalkWebhook: e.target.value };
+                        setDraft({ ...draft, channels });
+                      }}
+                      placeholder="https://oapi.dingtalk.com/robot/send?access_token=..."
+                    />
+                  </div>
+                </div>
+              ) : c.type === "feishu" ? (
+                <div className="mt-3 space-y-2">
+                  <CollapsibleManual
+                    storageKey={`ai-inspect.alerts.feishu.${c.id}`}
+                    title="飞书群机器人对接说明"
+                    variant="muted"
+                    className="border-slate-200 bg-slate-100/80"
+                  >
+                    <p className="text-xs text-slate-700">
+                      在飞书群「设置 → 群机器人 → 添加机器人 →
+                      自定义机器人」创建，签名校验可关闭（本平台暂不支持加签）。Webhook 地址需以{" "}
+                      <code className="rounded bg-white px-1">https://open.feishu.cn/open-apis/bot</code> 开头。
+                    </p>
+                  </CollapsibleManual>
+                  <div className="space-y-1">
+                    <Label>Webhook URL</Label>
+                    <Input
+                      value={c.feishuWebhook ?? ""}
+                      onChange={(e) => {
+                        const channels = [...draft.channels];
+                        channels[idx] = { ...c, feishuWebhook: e.target.value };
+                        setDraft({ ...draft, channels });
+                      }}
+                      placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                    />
                   </div>
                 </div>
               ) : c.type === "email" ? (

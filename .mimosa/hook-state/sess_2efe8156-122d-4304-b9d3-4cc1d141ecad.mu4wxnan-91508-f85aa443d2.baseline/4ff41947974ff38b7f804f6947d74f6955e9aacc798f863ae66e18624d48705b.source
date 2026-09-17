@@ -111,6 +111,7 @@ func aiUsageRecordCall(kv PlatformKV, feature, model string, promptTokens, compl
 		OK:               ok,
 	})
 	saveAIUsageStats(kv, s)
+	checkAIUsageBudget(kv, date, agg.TotalTokens, agg.TotalTokens-promptTokens-completionTokens)
 }
 
 // handleOpsAIUsageGet 返回模型用量统计（今日 / 近 7 天 / 近 30 天 / 按模型 / 按功能 / 最近调用）。
@@ -160,9 +161,9 @@ func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
 			}
 		}
 		return gin.H{
-			"days":     days,
-			"totals":   tot,
-			"byModel":  byModel,
+			"days":      days,
+			"totals":    tot,
+			"byModel":   byModel,
 			"byFeature": byFeature,
 		}
 	}
@@ -189,4 +190,26 @@ func handleOpsAIUsageGet(c *gin.Context, app *ServerApp) {
 	})
 }
 
-var _ = fmt.Sprintf
+// checkAIUsageBudget 今日 token 用量首次越过日预算时写入告警中心「最近通知」。
+// 用「本次调用前后累计值跨线」判断，天然每自然日至多告警一次，无需额外状态。
+func checkAIUsageBudget(kv PlatformKV, date string, todayTokens, prevTokens int64) {
+	if kv == nil {
+		return
+	}
+	bundle, err := loadOpsAIInspectBundle(kv)
+	if err != nil {
+		return
+	}
+	budget := bundle.AI.DailyTokenLimit
+	if budget <= 0 || todayTokens < budget || prevTokens >= budget {
+		return
+	}
+	msg := fmt.Sprintf("AI 判读模型 %s token 用量已达 %d / %d（%.0f%%），请关注成本。", date, todayTokens, budget, float64(todayTokens)/float64(budget)*100)
+	appendAlertLog(kv, alertLogEntry{
+		Ts:      time.Now().UTC().Format(time.RFC3339),
+		Rule:    "ai_token_budget",
+		Status:  "firing",
+		Message: msg,
+		Source:  "ai_usage",
+	}, 100)
+}
