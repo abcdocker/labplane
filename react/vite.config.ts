@@ -24,6 +24,8 @@ function getUsedLucideIcons() {
     const files = fs.readdirSync(dir);
     for (const file of files) {
       const filePath = path.join(dir, file);
+      // 防御式约束：解析路径必须仍位于扫描根（src）之内，防止符号链接等方式逃逸
+      if (filePath !== srcPath && !filePath.startsWith(srcPath + path.sep)) continue;
       const stat = fs.statSync(filePath);
 
       if (stat.isDirectory()) {
