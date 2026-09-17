@@ -138,6 +138,11 @@ function isDashboardActive(pathname: string, ws: SidebarWorkspace): boolean {
   if (ws === "baota") {
     return pathname.startsWith("/cluster/baota");
   }
+  if (ws === "mesh" || ws === "authentik") {
+    // 这两个工作区的 Dashboard 槽位与组内首项指向同一路径；
+    // 高亮交给组内菜单按路径处理，Dashboard 不再重复点亮，避免同色无法区分。
+    return false;
+  }
   return pathname === p || pathname === `${p}/`;
 }
 

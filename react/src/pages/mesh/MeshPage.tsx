@@ -261,7 +261,7 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
             </Button>
           ) : null}
         </div>
-        {editorOpen ? <InstanceEditor /> : null}
+        {editorOpen ? renderInstanceEditor() : null}
       </div>
     );
   }
@@ -321,12 +321,14 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
         </div>
       ) : null}
 
-      {editorOpen ? <InstanceEditor /> : null}
+      {editorOpen ? renderInstanceEditor() : null}
     </div>
   );
 
-  // ── 实例新增/编辑弹窗（闭包使用上方 state，故定义在组件函数体内）──
-  function InstanceEditor() {
+  // ── 实例新增/编辑弹窗 ──
+  // 注意：必须是「渲染函数」而不是内联组件——若写成 <InstanceEditor />，每次按键
+  // 触发页面重渲染时函数身份变化会导致整个弹窗子树卸载重建（闪屏/丢焦点）。
+  function renderInstanceEditor() {
     const updCollector = (idx: number, patch: Partial<TrafficCollector>) =>
       setDraft((d) => {
         const cs = [...(d.trafficCollectors ?? [])];
