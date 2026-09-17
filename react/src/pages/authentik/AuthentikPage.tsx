@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle2, Copy, Fingerprint, KeyRound, Loader2, Plus, RefreshCw, ShieldCheck,
+  AlertTriangle, CheckCircle2, Copy, Fingerprint, KeyRound, Loader2, Plus, RefreshCw, ShieldCheck,
   Trash2, UserPlus, Users, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -303,7 +303,11 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="truncate text-base font-semibold text-slate-900">{inst.name}</h2>
-            {st ? (
+            {statusQ.isError ? (
+              <span className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                <AlertTriangle className="h-3 w-3" /> {apiErr(statusQ.error)}
+              </span>
+            ) : st ? (
               st.healthy ? (
                 <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
                   <CheckCircle2 className="h-3 w-3" /> 健康{st.version ? ` · ${st.version}` : ""}
@@ -380,6 +384,13 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
   });
   const users = usersQ.data?.users ?? [];
   const groups = usersQ.data?.groups ?? [];
+  if (usersQ.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        用户加载失败：{apiErr(usersQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
   const groupById = useMemo(() => {
     const m: Record<string, AKGroup> = {};
     for (const g of groups) m[g.pk] = g;
@@ -608,6 +619,13 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
     enabled: isAdmin,
   });
   const apps = appsQ.data?.apps ?? [];
+  if (appsQ.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        应用加载失败：{apiErr(appsQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [form, setForm] = useState({ name: "", slug: "", redirectUris: "", groupPK: "" });
@@ -764,6 +782,13 @@ const ProvidersPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
     queryFn: () => apiGetJson<{ providers: AKProvider[] }>(`/api/ops/authentik/instances/${instanceId}/providers/oauth2`),
   });
   const providers = q.data?.providers ?? [];
+  if (q.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        提供程序加载失败：{apiErr(q.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-100">
       <table className="w-full min-w-[640px] text-left text-xs">
@@ -814,6 +839,13 @@ const EventsPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
     queryFn: () => apiGetJson<{ events: Record<string, unknown>[] }>(`/api/ops/authentik/instances/${instanceId}/events?perPage=30`),
   });
   const events = q.data?.events ?? [];
+  if (q.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        事件加载失败：{apiErr(q.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
   return (
     <ul className="max-h-96 space-y-1.5 overflow-y-auto rounded-xl border border-slate-100 p-2.5 font-mono text-[11px] text-slate-700">
       {events.map((e, i) => (
