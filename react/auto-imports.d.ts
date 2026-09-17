@@ -150,6 +150,7 @@ declare global {
   const RefreshCw: typeof import('lucide-react').RefreshCw
   const RotateCcw: typeof import('lucide-react').RotateCcw
   const Route: typeof import('lucide-react').Route
+  const RouteIcon: typeof import('lucide-react').RouteIcon
   const Router: typeof import('lucide-react').Router
   const Save: typeof import('lucide-react').Save
   const Scaling: typeof import('lucide-react').Scaling
@@ -196,6 +197,7 @@ declare global {
   const View: typeof import('lucide-react').View
   const Wallet: typeof import('lucide-react').Wallet
   const Webhook: typeof import('lucide-react').Webhook
+  const Wifi: typeof import('lucide-react').Wifi
   const WifiOff: typeof import('lucide-react').WifiOff
   const Wrench: typeof import('lucide-react').Wrench
   const X: typeof import('lucide-react').X

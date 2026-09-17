@@ -108,6 +108,7 @@ function DocToc() {
     { id: "十一", title: "运维与仓库说明" },
     { id: "十二", title: "AI 巡检、监控中心与告警" },
     { id: "十三", title: "文档文库、分享页与附件存储" },
+    { id: "十四", title: "异地组网（Headscale）" },
   ];
   return (
     <nav
@@ -675,6 +676,32 @@ function DocBody() {
       </Ul>
       <P className="text-xs text-slate-500">
         与实现相关的包：公开页模板 <Code>internal/doc_public_page.go</Code>；COS 生效逻辑 <Code>internal/docs_cos_runtime.go</Code>；编辑器布局 <Code>react/src/md-editor/md-editor-shell.css</Code>。
+      </P>
+
+      <H>十四、异地组网（Headscale）</H>
+      <P>
+        <strong className="text-slate-800">入口</strong>：右上角工作区切换「异地组网」→ <Code>/cluster/mesh</Code>；Dashboard 工作台也有同名卡片（含实例数 / 在线节点 / 子网路由汇总）。
+        模块管理一个或多个 <strong>Headscale 控制面</strong>实例（自建 Tailscale 控制器），适配 v0.26–v0.28 API；登录用户经 Authentik（OIDC）注册时节点会标 <Code>REGISTER_METHOD_OIDC</Code>。
+      </P>
+      <Ul>
+        <Li>
+          <strong>实例管理（管理员）</strong>：填写名称、区域、API 地址与 API Key。API 地址建议用控制面<strong>直连地址</strong>——若公网域名前有 WAF（如宝塔/雷池反代 headscale.frps.cn），网关可能拦截 <Code>/api/v1/*</Code> 的 API 请求，此时改直连地址或为 WAF 加白名单。API Key 用 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储（AES-GCM），界面只回显「已保存」；填 <Code>-</Code> 可清除。
+        </Li>
+        <Li>
+          <strong>节点与路由（router 管理）</strong>：节点表展示 Tailscale IP、所属用户、在线状态、最近在线与子网路由。子网路由器（如 ops 宣告 <Code>192.168.21.0/24</Code>、ukx-nas 宣告 <Code>192.168.31.0/24</Code>）可点「路由」进行<strong>覆盖式审批</strong>：每行一条 CIDR，不在列表中的已宣告路由将被取消。管理员可对节点「过期密钥 / 删除」。
+        </Li>
+        <Li>
+          <strong>预授权密钥</strong>：按用户创建（可复用 / 临时节点 / 有效期小时数）；完整 key 仅创建时展示一次（headscale 列表接口本身返回打码值），可一键复制或「使过期」。
+        </Li>
+        <Li>
+          <strong>流量监控</strong>：headscale 服务端不经过 P2P 数据面、没有节点间流量指标，因此流量数据由<strong>流量采集器</strong>提供——配置 SSH 到子网路由节点（如 ops、ukx-nas），平台执行 <Code>tailscale status --json</Code> 解析每个 peer 的累计 Rx/Tx 字节、在线状态与直连/DERP 中继路径。首次连接自动记录 SSH host key 指纹（TOFU），之后指纹变化将拒绝连接；密码同样加密存储。
+        </Li>
+        <Li>
+          <strong>服务信息</strong>：健康状态、用户列表（OIDC 同步）、节点/路由统计与控制面 Prometheus <Code>/metrics</Code> 关键序列（版本、API 请求数等）；metrics 地址默认按 API 主机推导 <Code>:9090/metrics</Code>，可手动覆盖。
+        </Li>
+      </Ul>
+      <P className="text-xs text-slate-500">
+        与实现相关的包：客户端与出站校验 <Code>internal/headscale_client.go</Code>；实例存储 <Code>internal/mesh_store.go</Code>；流量采集 <Code>internal/mesh_traffic.go</Code>；API <Code>internal/mesh_handlers.go</Code>。
       </P>
     </>
   );

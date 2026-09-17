@@ -245,6 +245,7 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		registerAdminUserRoutes(api, app)
 		registerAccountProfileRoutes(api, app)
 		registerOpsCenterRoutes(api, app)
+		registerMeshRoutes(api, app)
 		registerDocsRoutes(api, app)
 	}
 	log.Println("Dashboard: WebSocket /api/k8s/pods/.../exec/ws、/api/app-center/redis/instances/:id/redis-cli/ws、/api/vcenter/vms/.../console-ws、/api/vcenter/vms/.../ssh/ws、/api/cloud-hosts/:id/ssh/ws、/api/app-center/redis/runtime/ws；GET/DELETE pods；GET summary、namespaces/stats、pods、deployments、statefulsets、daemonsets、pvcs、configmaps、services、nodes；GET/POST prometheus；vCenter API、cloud-hosts")

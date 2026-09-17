@@ -115,6 +115,7 @@ const AiInspectLogsPage = lazy(() => import("./pages/ai-inspect/AiInspectLogs"))
 const AiInspectLogDetailsPage = lazy(() => import("./pages/ai-inspect/AiInspectLogDetails"));
 const AiInspectLogCollectionPage = lazy(() => import("./pages/ai-inspect/AiInspectLogCollection"));
 const AiInspectReportsPage = lazy(() => import("./pages/ai-inspect/AiInspectReports"));
+const MeshPage = lazy(() => import("./pages/mesh/MeshPage"));
 const ClusterPodDetailPage = lazy(() => import("./pages/cluster/ClusterPodDetail"));
 const ClusterPodTerminalPageLazy = lazy(() => import("./pages/cluster/ClusterPodTerminalPage"));
 const ClusterWorkloadDetailPage = lazy(() => import("./pages/cluster/ClusterWorkloadDetail"));
@@ -630,6 +631,14 @@ const App = () => {
                       }
                     />
                   </Route>
+                  <Route
+                    path="mesh"
+                    element={
+                      <RouteSuspense>
+                        <MeshPage />
+                      </RouteSuspense>
+                    }
+                  />
                   <Route path="vcenter/dashboard" element={<VCenterHubDashboard />} />
                   <Route path="vcenter/gpu" element={<VCenterGpuDashboard />} />
                   <Route path="vcenter/hosts/:moref" element={<VCenterHostDetail />} />
