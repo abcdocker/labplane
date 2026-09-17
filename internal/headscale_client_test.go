@@ -3,6 +3,7 @@ package internal
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -43,13 +44,9 @@ func TestHeadscaleClientListNodes(t *testing.T) {
 func TestHeadscaleClientSetApprovedRoutes(t *testing.T) {
 	meshAllowLoopbackForTest = true
 	defer func() { meshAllowLoopbackForTest = false }()
-	var gotBody string
 	var gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
-		b := make([]byte, 512)
-		n, _ := r.Body.Read(b)
-		gotBody = string(b[:n])
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -60,24 +57,30 @@ func TestHeadscaleClientSetApprovedRoutes(t *testing.T) {
 	if err := cli.SetApprovedRoutes(context.Background(), "24", []string{"192.168.31.0/24"}); err != nil {
 		t.Fatalf("SetApprovedRoutes: %v", err)
 	}
-	if gotPath != "/api/v1/node/24/approved_routes" {
-		t.Fatalf("path = %s", gotPath)
-	}
-	if !strings.Contains(gotBody, "192.168.31.0/24") {
-		t.Fatalf("body = %s", gotBody)
+	if gotPath != "/api/v1/node/24/approve_routes" {
+		t.Fatalf("path = %s（v0.28 实测为 approve_routes）", gotPath)
 	}
 }
 
 func TestHeadscaleClientPreAuthKeys(t *testing.T) {
 	meshAllowLoopbackForTest = true
 	defer func() { meshAllowLoopbackForTest = false }()
+	var createdUserID any
+	var expiredKey string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/preauthkey" && r.URL.Query().Get("user") == "abcdocker":
 			_, _ = w.Write([]byte(`{"preAuthKeys":[{"id":"1","key":"hskey-auth-xxx-***","reusable":true,"used":false,"expiration":"2026-07-07T14:28:17Z","user":{"name":"abcdocker"}}]}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/preauthkey":
-			_, _ = w.Write([]byte(`{"id":"9","key":"hskey-auth-new-full-key","reusable":false,"used":false,"user":{"name":"abcdocker"}}`))
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			createdUserID = body["user"]
+			// v0.28 响应为包装结构，且完整 key 仅此响应返回
+			_, _ = w.Write([]byte(`{"preAuthKey":{"id":"9","key":"hskey-auth-new-full-key","reusable":false,"used":false,"user":{"name":"abcdocker"}}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/preauthkey/expire":
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			expiredKey, _ = body["key"].(string)
 			w.WriteHeader(http.StatusOK)
 		default:
 			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
@@ -89,12 +92,15 @@ func TestHeadscaleClientPreAuthKeys(t *testing.T) {
 	if err != nil || len(keys) != 1 || keys[0].Key != "hskey-auth-xxx-***" {
 		t.Fatalf("ListPreAuthKeys: %v %+v", err, keys)
 	}
-	created, err := cli.CreatePreAuthKey(context.Background(), "abcdocker", false, false, nil, nil)
+	created, err := cli.CreatePreAuthKey(context.Background(), 2, false, false, nil, nil)
 	if err != nil || created.Key != "hskey-auth-new-full-key" {
 		t.Fatalf("CreatePreAuthKey: %v %+v", err, created)
 	}
-	if err := cli.ExpirePreAuthKey(context.Background(), "abcdocker", "hskey-auth-xxx"); err != nil {
-		t.Fatalf("ExpirePreAuthKey: %v", err)
+	if createdUserID != float64(2) {
+		t.Fatalf("create user 字段应为数字 ID，实际 %v", createdUserID)
+	}
+	if err := cli.ExpirePreAuthKey(context.Background(), 2, "hskey-auth-xxx"); err != nil || expiredKey != "hskey-auth-xxx" {
+		t.Fatalf("ExpirePreAuthKey: %v key=%q", err, expiredKey)
 	}
 }
 

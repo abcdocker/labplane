@@ -19,8 +19,10 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -419,7 +421,13 @@ func handleMeshKeyCreate(app *ServerApp) gin.HandlerFunc {
 		exp := time.Now().Add(time.Duration(hours) * time.Hour)
 		ctx, cancel := reqCtx()
 		defer cancel()
-		k, err := cli.CreatePreAuthKey(ctx, strings.TrimSpace(body.User), body.Reusable, body.Ephemeral, &exp, body.AclTags)
+		// v0.28 创建/过期接口的 user 字段要求数字 ID：先按名称解析
+		userID, err := meshResolveUserID(ctx, cli, strings.TrimSpace(body.User))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		k, err := cli.CreatePreAuthKey(ctx, userID, body.Reusable, body.Ephemeral, &exp, body.AclTags)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -449,12 +457,31 @@ func handleMeshKeyExpire(app *ServerApp) gin.HandlerFunc {
 		}
 		ctx, cancel := reqCtx()
 		defer cancel()
-		if err := cli.ExpirePreAuthKey(ctx, strings.TrimSpace(body.User), strings.TrimSpace(body.Key)); err != nil {
+		userID, err := meshResolveUserID(ctx, cli, strings.TrimSpace(body.User))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := cli.ExpirePreAuthKey(ctx, userID, strings.TrimSpace(body.Key)); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "已过期"})
 	}
+}
+
+// meshResolveUserID 把用户名解析为 headscale 数字 ID（v0.28 写接口的 user 字段要求数字）。
+func meshResolveUserID(ctx context.Context, cli *headscaleClient, name string) (int64, error) {
+	users, err := cli.ListUsers(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("解析用户失败: %w", err)
+	}
+	for _, u := range users {
+		if strings.EqualFold(u.Name, name) {
+			return strconv.ParseInt(u.ID, 10, 64)
+		}
+	}
+	return 0, fmt.Errorf("用户 %q 不存在", name)
 }
 
 func handleMeshInstanceTrafficCollect(app *ServerApp) gin.HandlerFunc {

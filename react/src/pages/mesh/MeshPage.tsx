@@ -860,6 +860,8 @@ const PreAuthKeysPanel: React.FC<{
   const [hours, setHours] = useState(1);
   const [created, setCreated] = useState("");
   const [copied, setCopied] = useState(false);
+  /** 本会话创建的完整密钥（key.id → 完整值）；headscale 列表接口打码，无法据此过期 */
+  const [createdFullKeys, setCreatedFullKeys] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user && users.length > 0) setUser(users[0].name);
@@ -868,7 +870,10 @@ const PreAuthKeysPanel: React.FC<{
   const createMut = useMutation({
     mutationFn: () => apiPostJson<{ key?: HSPreAuthKey }>(`/api/ops/mesh/instances/${instanceId}/keys`, { user, reusable, ephemeral, hours }),
     onSuccess: (res) => {
-      if (res.key?.key) setCreated(res.key.key);
+      if (res.key?.key) {
+        setCreated(res.key.key);
+        if (res.key.id) setCreatedFullKeys((m) => ({ ...m, [res.key!.id]: res.key!.key }));
+      }
       toast.success("密钥已创建（仅此次展示完整值）");
       onChanged();
     },
@@ -879,6 +884,15 @@ const PreAuthKeysPanel: React.FC<{
     onSuccess: () => { toast.success("密钥已过期"); onChanged(); },
     onError: (e) => toast.error(apiErr(e)),
   });
+  /** 打码 key 传给过期接口会被 headscale 静默忽略（HTTP 200 但无效果），必须用完整值 */
+  const expireKey = (k: HSPreAuthKey) => {
+    const full = createdFullKeys[k.id];
+    if (!full) {
+      toast.info("该密钥的完整值不可知（列表已打码），无法远程过期；请等待其自然过期。");
+      return;
+    }
+    expireMut.mutate({ user: k.user?.name ?? "", key: full });
+  };
 
   return (
     <div className="space-y-4">
@@ -948,10 +962,14 @@ const PreAuthKeysPanel: React.FC<{
                   {isAdmin ? (
                     <td className="px-3 py-2">
                       {!expired ? (
-                        <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
-                          onClick={() => expireMut.mutate({ user: k.user?.name ?? "", key: k.key })}>
-                          使过期
-                        </Button>
+                        createdFullKeys[k.id] ? (
+                          <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
+                            onClick={() => expireKey(k)}>
+                            使过期
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400" title="headscale 列表返回打码值，无法远程过期">无法过期</span>
+                        )
                       ) : null}
                     </td>
                   ) : null}

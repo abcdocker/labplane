@@ -198,9 +198,9 @@ func (h *headscaleClient) SetTags(ctx context.Context, nodeID string, tags []str
 	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/tags", nil, map[string]any{"tags": tags}, nil)
 }
 
-// SetApprovedRoutes 覆盖式审批节点子网路由（v0.26+；router 管理核心）。
+// SetApprovedRoutes 覆盖式审批节点子网路由（v0.28 实测路径为 approve_routes）。
 func (h *headscaleClient) SetApprovedRoutes(ctx context.Context, nodeID string, routes []string) error {
-	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/approved_routes", nil, map[string]any{"routes": routes}, nil)
+	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/approve_routes", nil, map[string]any{"routes": routes}, nil)
 }
 
 func (h *headscaleClient) ListPreAuthKeys(ctx context.Context, user string) ([]HSPreAuthKey, error) {
@@ -212,18 +212,23 @@ func (h *headscaleClient) ListPreAuthKeys(ctx context.Context, user string) ([]H
 	return out.PreAuthKeys, err
 }
 
-func (h *headscaleClient) CreatePreAuthKey(ctx context.Context, user string, reusable, ephemeral bool, expiration *time.Time, aclTags []string) (HSPreAuthKey, error) {
-	body := map[string]any{"user": user, "reusable": reusable, "ephemeral": ephemeral, "aclTags": aclTags}
+// CreatePreAuthKey 创建预授权密钥；v0.28 的 user 字段要求用户数字 ID。
+// 响应为 {"preAuthKey": {...}} 包装结构，需解包后才能拿到完整 key。
+func (h *headscaleClient) CreatePreAuthKey(ctx context.Context, userID int64, reusable, ephemeral bool, expiration *time.Time, aclTags []string) (HSPreAuthKey, error) {
+	body := map[string]any{"user": userID, "reusable": reusable, "ephemeral": ephemeral, "aclTags": aclTags}
 	if expiration != nil {
 		body["expiration"] = expiration.UTC().Format(time.RFC3339)
 	}
-	var out HSPreAuthKey
-	err := h.do(ctx, http.MethodPost, "/api/v1/preauthkey", nil, body, &out)
-	return out, err
+	var wrapper struct {
+		PreAuthKey HSPreAuthKey `json:"preAuthKey"`
+	}
+	err := h.do(ctx, http.MethodPost, "/api/v1/preauthkey", nil, body, &wrapper)
+	return wrapper.PreAuthKey, err
 }
 
-func (h *headscaleClient) ExpirePreAuthKey(ctx context.Context, user, key string) error {
-	return h.do(ctx, http.MethodPost, "/api/v1/preauthkey/expire", nil, map[string]any{"user": user, "key": key}, nil)
+// ExpirePreAuthKey 使预授权密钥过期；userID 为数字 ID，key 为完整密钥值。
+func (h *headscaleClient) ExpirePreAuthKey(ctx context.Context, userID int64, key string) error {
+	return h.do(ctx, http.MethodPost, "/api/v1/preauthkey/expire", nil, map[string]any{"user": userID, "key": key}, nil)
 }
 
 // ── Prometheus /metrics 抓取与精简解析 ──
