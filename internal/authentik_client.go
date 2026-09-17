@@ -158,14 +158,40 @@ type AKApp struct {
 	PolicyEngineMode string `json:"policy_engine_mode,omitempty"`
 }
 
+// AKRedirectURI 兼容 authentik 新旧 API 格式：2024.2 前为纯字符串，
+// 之后为 {"matching_mode": "...", "url": "..."} 对象。
+type AKRedirectURI struct {
+	URL          string `json:"url"`
+	MatchingMode string `json:"matchingMode,omitempty"`
+}
+
+func (r *AKRedirectURI) UnmarshalJSON(b []byte) error {
+	s := strings.TrimSpace(string(b))
+	if len(s) >= 2 && s[0] == '"' {
+		r.URL = ""
+		return json.Unmarshal(b, &r.URL)
+	}
+	var obj struct {
+		URL          string `json:"url"`
+		MatchingMode string `json:"matching_mode"`
+	}
+	if err := json.Unmarshal(b, &obj); err != nil || strings.TrimSpace(obj.URL) == "" {
+		r.URL = s // 无法识别的结构原样保留，不让单条 URI 拖垮整个列表
+		return nil
+	}
+	r.URL = obj.URL
+	r.MatchingMode = obj.MatchingMode
+	return nil
+}
+
 type AKOAuth2Provider struct {
-	PK                int64    `json:"pk"`
-	Name              string   `json:"name"`
-	ClientID          string   `json:"client_id"`
-	ClientSecret      string   `json:"client_secret,omitempty"` // 仅创建响应返回
-	RedirectURIs      []string `json:"redirect_uris"`
-	SubMode           string   `json:"sub_mode"`
-	AuthorizationFlow string   `json:"authorization_flow"`
+	PK                int64           `json:"pk"`
+	Name              string          `json:"name"`
+	ClientID          string          `json:"client_id"`
+	ClientSecret      string          `json:"client_secret,omitempty"` // 仅创建响应返回
+	RedirectURIs      []AKRedirectURI `json:"redirect_uris"`
+	SubMode           string          `json:"sub_mode"`
+	AuthorizationFlow string          `json:"authorization_flow"`
 }
 
 type AKFlow struct {

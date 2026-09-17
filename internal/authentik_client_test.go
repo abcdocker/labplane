@@ -133,3 +133,38 @@ func TestAuthentikCountsUsesPagination(t *testing.T) {
 		t.Fatalf("count = %d", n)
 	}
 }
+
+// authentik 2024.2+ 的 redirect_uris 是对象数组（{matching_mode, url}），旧版为字符串数组；
+// 两种格式都必须能解析，且单条异常不应拖垮整个列表。
+func TestAuthentikListOAuth2ProvidersRedirectURIForms(t *testing.T) {
+	cli := newAuthentikTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"pagination": map[string]any{"count": 3},
+			"results": []map[string]any{
+				{"pk": 29, "name": "new-format", "client_id": "c1",
+					"redirect_uris": []any{
+						map[string]any{"matching_mode": "strict", "url": "https://a/cb"},
+						map[string]any{"matching_mode": "regex", "url": "https://b/.*"},
+					}},
+				{"pk": 30, "name": "old-format", "client_id": "c2", "redirect_uris": []any{"https://c/cb"}},
+				{"pk": 31, "name": "weird-element", "client_id": "c3", "redirect_uris": []any{map[string]any{"unexpected": true}}},
+			},
+		})
+	})
+	providers, err := cli.ListOAuth2Providers(context.Background())
+	if err != nil {
+		t.Fatalf("ListOAuth2Providers: %v", err)
+	}
+	if len(providers) != 3 {
+		t.Fatalf("len = %d", len(providers))
+	}
+	if providers[0].RedirectURIs[0].URL != "https://a/cb" || providers[0].RedirectURIs[0].MatchingMode != "strict" {
+		t.Fatalf("new format parse: %+v", providers[0].RedirectURIs)
+	}
+	if providers[1].RedirectURIs[0].URL != "https://c/cb" || providers[1].RedirectURIs[0].MatchingMode != "" {
+		t.Fatalf("old format parse: %+v", providers[1].RedirectURIs)
+	}
+	if providers[2].RedirectURIs[0].URL == "" {
+		t.Fatalf("weird element should keep raw fallback: %+v", providers[2].RedirectURIs)
+	}
+}

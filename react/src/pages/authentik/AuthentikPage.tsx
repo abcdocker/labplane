@@ -35,9 +35,11 @@ type AKGroup = { pk: string; name: string; parent?: string };
 
 type AKApp = { pk: string; name: string; slug: string; provider?: unknown; meta_launch_url?: string };
 
+type AKRedirectURI = { url: string; matching_mode?: string };
+
 type AKProvider = {
   pk: number; name: string; client_id: string;
-  redirect_uris?: string[]; sub_mode?: string; client_secret?: string;
+  redirect_uris?: AKRedirectURI[]; sub_mode?: string; client_secret?: string;
 };
 
 type AKStatus = {
@@ -813,8 +815,10 @@ const ProvidersPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
               </td>
               <td className="px-3 py-2">
                 <div className="flex flex-col gap-0.5">
-                  {(p.redirect_uris ?? []).map((u) => (
-                    <span key={u} className="font-mono text-[10px] text-slate-500">{u}</span>
+                  {(p.redirect_uris ?? []).map((u, i) => (
+                    <span key={i} className="font-mono text-[10px] text-slate-500" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
+                      {u.url || JSON.stringify(u)}
+                    </span>
                   ))}
                   {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
                 </div>
