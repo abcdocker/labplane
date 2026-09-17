@@ -392,13 +392,6 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
   });
   const users = usersQ.data?.users ?? [];
   const groups = usersQ.data?.groups ?? [];
-  if (usersQ.isError) {
-    return (
-      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
-        用户加载失败：{apiErr(usersQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
-      </p>
-    );
-  }
   const groupById = useMemo(() => {
     const m: Record<string, AKGroup> = {};
     for (const g of groups) m[g.pk] = g;
@@ -484,6 +477,15 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
       ...f,
       groupNames: f.groupNames.includes(name) ? f.groupNames.filter((g) => g !== name) : [...f.groupNames, name],
     }));
+
+  // 错误分支必须在全部 hooks 之后（React hooks 规则），避免查询恢复时 hooks 数量变化导致崩溃
+  if (usersQ.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        用户加载失败：{apiErr(usersQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -719,13 +721,6 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
     void qc.invalidateQueries({ queryKey: ["authentik-providers", instanceId] });
     void qc.invalidateQueries({ queryKey: ["authentik-status", instanceId] });
   };
-  if (appsQ.isError) {
-    return (
-      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
-        应用加载失败：{apiErr(appsQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
-      </p>
-    );
-  }
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [form, setForm] = useState({ name: "", slug: "", redirectUris: "", groupPK: "", mode: "create" as "create" | "link", providerPK: "" });
@@ -807,6 +802,15 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
       metaLaunchUrl: a.meta_launch_url ?? "",
     });
   };
+
+  // 错误分支必须在全部 hooks 之后（React hooks 规则），避免查询恢复时 hooks 数量变化导致崩溃
+  if (appsQ.isError) {
+    return (
+      <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
+        应用加载失败：{apiErr(appsQ.error)}（请检查实例的 API Token 是否已保存、是否有足够权限）
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-3">
