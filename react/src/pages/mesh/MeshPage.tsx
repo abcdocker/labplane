@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, CheckCircle2, ExternalLink, Globe, KeyRound,
   Loader2, Network, Pencil, Plus, RefreshCw, Router, Route as RouteIcon,
-  Server, Trash2, Wifi, WifiOff,
+  Server, ShieldCheck, Trash2, Wifi, WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -225,23 +225,6 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
       void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
       void qc.invalidateQueries({ queryKey: ["mesh-summary"] });
     },
-    onError: (e) => toast.error(apiErr(e)),
-  });
-
-  const delMut = useMutation({
-    mutationFn: (id: string) => apiDeleteJson(`/api/ops/mesh/instances/${id}`),
-    onSuccess: () => {
-      toast.success("实例已删除");
-      setSelectedId("");
-      void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
-      void qc.invalidateQueries({ queryKey: ["mesh-summary"] });
-    },
-    onError: (e) => toast.error(apiErr(e)),
-  });
-
-  const testMut = useMutation({
-    mutationFn: (id: string) => apiPostJson<{ message?: string; nodesCount?: number; usersCount?: number }>(`/api/ops/mesh/instances/${id}/test`, {}),
-    onSuccess: (res) => toast.success(`${res.message ?? "连接成功"}（节点 ${res.nodesCount ?? "?"} · 用户 ${res.usersCount ?? "?"}）`),
     onError: (e) => toast.error(apiErr(e)),
   });
 
@@ -479,6 +462,17 @@ const InstanceDetail: React.FC<{
   const ov = discoverQ.data;
   const nodes = ov?.nodes ?? [];
 
+  const testMut = useMutation({
+    mutationFn: () =>
+      apiPostJson<{ message?: string; nodesCount?: number; usersCount?: number }>(
+        `/api/ops/mesh/instances/${inst.id}/test`,
+        {},
+      ),
+    onSuccess: (res) =>
+      toast.success(`${res.message ?? "连接成功"}（节点 ${res.nodesCount ?? "?"} · 用户 ${res.usersCount ?? "?"}）`),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
   const [confirmDel, setConfirmDel] = useState(false);
   const delMut = useMutation({
     mutationFn: () => apiDeleteJson(`/api/ops/mesh/instances/${inst.id}`),
@@ -523,7 +517,11 @@ const InstanceDetail: React.FC<{
           <p className="truncate font-mono text-[11px] text-slate-400">{inst.apiUrl}{inst.headplaneUrl ? " · headplane 可用" : ""}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={runDiscover}
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+            onClick={() => testMut.mutate()} disabled={testMut.isPending}>
+            {testMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-1 h-3 w-3" />} 测试连接
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => discoverQ.refetch()}
             disabled={discoverQ.isFetching || collectSilentMut.isPending}>
             <RefreshCw className={cn("mr-1 h-3 w-3", (discoverQ.isFetching || collectSilentMut.isPending) && "animate-spin")} /> 自动发现
           </Button>

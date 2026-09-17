@@ -127,22 +127,6 @@ const AuthentikPage: React.FC = () => {
     onError: (e) => toast.error(apiErr(e)),
   });
 
-  const testMut = useMutation({
-    mutationFn: (id: string) => apiPostJson<{ message?: string; version?: string }>(`/api/ops/authentik/instances/${id}/test`, {}),
-    onSuccess: (res) => toast.success(`${res.message ?? "连接成功"}${res.version ? ` · Authentik ${res.version}` : ""}`),
-    onError: (e) => toast.error(apiErr(e)),
-  });
-
-  const delMut = useMutation({
-    mutationFn: (id: string) => apiDeleteJson(`/api/ops/authentik/instances/${id}`),
-    onSuccess: () => {
-      toast.success("实例已删除");
-      setSelectedId("");
-      void qc.invalidateQueries({ queryKey: ["authentik-instances"] });
-    },
-    onError: (e) => toast.error(apiErr(e)),
-  });
-
   if (!instancesQ.isLoading && instances.length === 0) {
     return (
       <div className="space-y-6">
@@ -305,6 +289,12 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
     onError: (e) => toast.error(apiErr(e)),
   });
 
+  const testMut = useMutation({
+    mutationFn: () => apiPostJson<{ message?: string; version?: string }>(`/api/ops/authentik/instances/${inst.id}/test`, {}),
+    onSuccess: (res) => toast.success(`${res.message ?? "连接成功"}${res.version ? ` · Authentik ${res.version}` : ""}`),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
   return (
     <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
@@ -328,6 +318,11 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
           <p className="truncate font-mono text-[11px] text-slate-400">{inst.baseUrl}</p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin ? (
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => testMut.mutate()} disabled={testMut.isPending}>
+              {testMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-1 h-3 w-3" />} 测试连接
+            </Button>
+          ) : null}
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => statusQ.refetch()}>
             <RefreshCw className={cn("mr-1 h-3 w-3", statusQ.isFetching && "animate-spin")} /> 刷新
           </Button>
