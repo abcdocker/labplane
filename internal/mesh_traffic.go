@@ -140,15 +140,37 @@ func collectMeshTrafficViaSSH(ctx context.Context, c MeshTrafficCollector, passw
 		case <-done:
 		}
 	}()
-	out, err := sess.CombinedOutput("tailscale status --json 2>/dev/null || sudo -n tailscale status --json 2>/dev/null")
-	close(done)
-	if err != nil && len(strings.TrimSpace(string(out))) == 0 {
-		snap.Error = "执行 tailscale status 失败: " + err.Error()
-		return snap
+	cmd := strings.TrimSpace(c.Command)
+	if cmd == "" {
+		cmd = "tailscale status --json"
 	}
+	out, runErr := sess.CombinedOutput(cmd + " 2>/dev/null")
+	close(done)
 	var st tsStatusJSON
-	if err := json.Unmarshal(out, &st); err != nil {
-		snap.Error = "解析 tailscale status 失败（节点未安装 tailscale 或输出异常）"
+	if json.Unmarshal(out, &st) != nil {
+		// 普通执行失败（如群晖上 tailscale 在容器内、需 root）：用已知 SSH 密码走 sudo -S 重试
+		if sess2, e2 := client.NewSession(); e2 == nil {
+			defer sess2.Close()
+			done2 := make(chan struct{})
+			go func() {
+				select {
+				case <-ctx.Done():
+					_ = sess2.Close()
+				case <-done2:
+				}
+			}()
+			sess2.Stdin = strings.NewReader(password + "\n")
+			out2, err2 := sess2.CombinedOutput("sudo -S -p '' sh -c " + shellQuote(cmd) + " 2>/dev/null")
+			close(done2)
+			out, runErr = out2, err2
+		}
+	}
+	if json.Unmarshal(out, &st) != nil {
+		if runErr != nil && len(strings.TrimSpace(string(out))) == 0 {
+			snap.Error = "执行采集命令失败: " + runErr.Error()
+		} else {
+			snap.Error = "解析 tailscale status 失败（节点未安装 tailscale 或输出异常）"
+		}
 		return snap
 	}
 	snap.Version = st.Version
@@ -228,6 +250,11 @@ func collectMeshTrafficAll(app *ServerApp, inst MeshInstance) []MeshTrafficSnaps
 }
 
 const kvKeyMeshTraffic = "kubebt_mesh_traffic_v1"
+
+// shellQuote 单引号转义，用于把采集命令安全地包进远端 sh -c。
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
 
 type meshTrafficCache struct {
 	Snapshots map[string]MeshTrafficSnapshot `json:"snapshots"`

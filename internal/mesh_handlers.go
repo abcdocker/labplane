@@ -34,6 +34,7 @@ func registerMeshRoutes(api gin.IRouter, app *ServerApp) {
 	g.DELETE("/instances/:id", AdminOnlyMiddleware(app), handleMeshInstanceDelete(app))
 	g.GET("/summary", handleMeshSummary(app))
 	idg := g.Group("/instances/:id")
+	idg.GET("/discover", handleMeshInstanceDiscover(app))
 	idg.GET("/overview", handleMeshInstanceOverview(app))
 	idg.GET("/metrics", handleMeshInstanceMetrics(app))
 	idg.GET("/traffic", handleMeshInstanceTrafficGet(app))
@@ -532,6 +533,228 @@ func handleMeshSummary(app *ServerApp) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"instances": out})
 	}
+}
+
+// ── 全局自动发现 ──
+
+// MeshDiscoveredNode 节点 + 从节点侧采集合并的客户端信息。
+// headscale v0.26+ API 不再返回客户端 OS/版本，设备类型由流量采集器（tailscale status）补齐。
+type MeshDiscoveredNode struct {
+	HSNode
+	OS            string `json:"os,omitempty"`
+	ClientVersion string `json:"clientVersion,omitempty"`
+}
+
+// MeshSite 自动发现的站点（子网路由器宣告的 CIDR）。
+type MeshSite struct {
+	Subnet      string `json:"subnet"`
+	Router      string `json:"router"`
+	RouterID    string `json:"routerId"`
+	Approved    bool   `json:"approved"`
+	Online      bool   `json:"online"`
+	LastSeen    string `json:"lastSeen,omitempty"`
+	TailscaleIP string `json:"tailscaleIp,omitempty"`
+}
+
+// MeshLink 站点间/节点间链路（来自路由节点侧快照）。
+type MeshLink struct {
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Via     string `json:"via"` // direct | relay
+	CurAddr string `json:"curAddr,omitempty"`
+	Relay   string `json:"relay,omitempty"`
+	RxBytes int64  `json:"rxBytes"`
+	TxBytes int64  `json:"txBytes"`
+	SeenAt  string `json:"seenAt,omitempty"`
+}
+
+// MeshCollectorSuggestion 建议新增的流量采集器（有子网路由但尚未配置采集器的节点）。
+type MeshCollectorSuggestion struct {
+	RouterID string `json:"routerId"`
+	Name     string `json:"name"`
+	Host     string `json:"host"` // 节点 Tailscale IP
+	Port     int    `json:"port"`
+}
+
+// handleMeshInstanceDiscover 一次调用发现：健康/版本 + 用户 + 节点（含加入时间、
+// 注册方式、设备类型合并）+ 站点 + 链路 + 预授权密钥 + 采集器建议。
+func handleMeshInstanceDiscover(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cli, inst, ok, err := meshClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+		defer cancel()
+
+		out := gin.H{"instance": meshInstancePublic(inst)}
+
+		// 流量缓存：节点侧信息来源（OS/版本/链路）
+		cache := loadMeshTrafficCache(app.PlatformKV())
+		byIP := map[string]MeshTrafficPeer{}
+		byHost := map[string]MeshTrafficPeer{}
+		for _, s := range cache {
+			for _, p := range s.Peers {
+				for _, ip := range p.TailscaleIPs {
+					if strings.HasPrefix(ip, "100.") {
+						byIP[ip] = p
+					}
+				}
+				if hn := strings.ToLower(strings.TrimSpace(p.HostName)); hn != "" {
+					byHost[hn] = p
+				}
+			}
+		}
+
+		// 版本：/metrics build info（best-effort）
+		if key, err := meshEncryptionKey(app.Cfg()); err == nil {
+			apiKey, _ := decryptSecret(key, inst.APIKeyEnc)
+			mURL := strings.TrimSpace(inst.MetricsURL)
+			if mURL == "" {
+				mURL = deriveMetricsURL(inst.APIURL)
+			}
+			if mURL != "" {
+				if samples, err := FetchMetrics(ctx, mURL, apiKey, 8*time.Second); err == nil {
+					for _, s := range samples {
+						if s.Name == "headscale_build_info" {
+							out["version"] = s.Labels["version"]
+							break
+						}
+					}
+				}
+			}
+		}
+
+		if err := cli.Health(ctx); err != nil {
+			out["health"] = false
+			out["error"] = err.Error()
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		out["health"] = true
+
+		users, uerr := cli.ListUsers(ctx)
+		if uerr == nil {
+			out["users"] = users
+		}
+		nodes, nerr := cli.ListNodes(ctx)
+		if nerr != nil {
+			out["nodesError"] = nerr.Error()
+			c.JSON(http.StatusOK, out)
+			return
+		}
+		sort.Slice(nodes, func(i, j int) bool { return nodeName(nodes[i]) < nodeName(nodes[j]) })
+
+		routerByName := map[string]HSNode{}
+		for _, n := range nodes {
+			if len(n.ApprovedRoutes) > 0 || len(n.AvailableRoutes) > 0 {
+				routerByName[strings.ToLower(nodeName(n))] = n
+			}
+		}
+		discovered := make([]MeshDiscoveredNode, 0, len(nodes))
+		sites := []MeshSite{}
+		suggestions := []MeshCollectorSuggestion{}
+		coveredHosts := map[string]bool{}
+		for _, col := range inst.TrafficCollectors {
+			coveredHosts[strings.TrimSpace(col.Host)] = true
+		}
+		for _, n := range nodes {
+			dn := MeshDiscoveredNode{HSNode: n}
+			// 设备类型合并：先按 Tailscale IP，再按主机名
+			var peer MeshTrafficPeer
+			var found bool
+			for _, ip := range n.IPAddresses {
+				if p, ok := byIP[ip]; ok {
+					peer, found = p, true
+					break
+				}
+			}
+			if !found {
+				for _, cand := range []string{strings.ToLower(n.GivenName), strings.ToLower(n.Name)} {
+					if p, ok := byHost[cand]; ok {
+						peer, found = p, true
+						break
+					}
+				}
+			}
+			if found {
+				dn.OS = peer.OS
+			}
+			discovered = append(discovered, dn)
+			// 站点归纳
+			tsIP := firstTailscaleIP(n.IPAddresses)
+			subnets := n.ApprovedRoutes
+			if len(subnets) == 0 {
+				subnets = n.AvailableRoutes
+			}
+			for _, sn := range subnets {
+				sites = append(sites, MeshSite{
+					Subnet: sn, Router: nodeName(n), RouterID: n.ID,
+					Approved: len(n.ApprovedRoutes) > 0, Online: n.Online,
+					LastSeen: n.LastSeen, TailscaleIP: tsIP,
+				})
+			}
+			// 采集器建议：有子网路由但未按 Tailscale IP 配置采集器
+			if (len(n.AvailableRoutes) > 0 || len(n.ApprovedRoutes) > 0) && tsIP != "" && !coveredHosts[tsIP] {
+				suggestions = append(suggestions, MeshCollectorSuggestion{
+					RouterID: n.ID, Name: nodeName(n), Host: tsIP, Port: 22,
+				})
+			}
+		}
+		out["nodes"] = discovered
+		out["sites"] = sites
+
+		// 链路：路由节点侧快照中对端也是路由器 → 站点间链路
+		links := []MeshLink{}
+		for _, s := range cache {
+			for _, p := range s.Peers {
+				if _, isRouter := routerByName[strings.ToLower(p.HostName)]; isRouter {
+					via := "relay"
+					if strings.TrimSpace(p.CurAddr) != "" {
+						via = "direct"
+					}
+					links = append(links, MeshLink{
+						From: s.SelfHostName, To: p.HostName, Via: via,
+						CurAddr: p.CurAddr, Relay: p.Relay,
+						RxBytes: p.RxBytes, TxBytes: p.TxBytes, SeenAt: s.CollectedAt,
+					})
+				}
+			}
+		}
+		sort.Slice(links, func(i, j int) bool {
+			return links[i].From+links[i].To < links[j].From+links[j].To
+		})
+		out["links"] = links
+		out["collectorSuggestions"] = suggestions
+
+		// 预授权密钥汇总
+		if users != nil {
+			keys := []HSPreAuthKey{}
+			for _, u := range users {
+				ks, err := cli.ListPreAuthKeys(ctx, u.Name)
+				if err == nil {
+					keys = append(keys, ks...)
+				}
+			}
+			sort.Slice(keys, func(i, j int) bool { return keys[i].CreatedAt > keys[j].CreatedAt })
+			out["preAuthKeys"] = keys
+		}
+		c.JSON(http.StatusOK, out)
+	}
+}
+
+func firstTailscaleIP(ips []string) string {
+	for _, ip := range ips {
+		if strings.HasPrefix(ip, "100.") {
+			return ip
+		}
+	}
+	return ""
 }
 
 // ── 小工具 ──

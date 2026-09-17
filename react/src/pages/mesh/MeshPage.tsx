@@ -28,6 +28,7 @@ type TrafficCollector = {
   port: number;
   user: string;
   passSet?: boolean;
+  command?: string;
   hostKeyFp?: string;
   lastSnapshotAt?: string;
   lastError?: string;
@@ -66,16 +67,32 @@ type HSPreAuthKey = {
   expiration?: string; createdAt?: string; user?: HSUser; aclTags?: string[];
 };
 
-type Overview = {
+type DiscoveredNode = HSNode & { os?: string; clientVersion?: string };
+
+type MeshSite = {
+  subnet: string; router: string; routerId: string; approved: boolean;
+  online: boolean; lastSeen?: string; tailscaleIp?: string;
+};
+
+type MeshLink = {
+  from: string; to: string; via: string; curAddr?: string; relay?: string;
+  rxBytes: number; txBytes: number; seenAt?: string;
+};
+
+type CollectorSuggestion = { routerId: string; name: string; host: string; port: number };
+
+type Discover = {
   instance: MeshInstance;
   health: boolean;
   error?: string;
+  version?: string;
   users?: HSUser[];
-  usersError?: string;
-  nodes?: HSNode[];
+  nodes?: DiscoveredNode[];
   nodesError?: string;
-  routers?: { id: string; name: string; online: boolean; approvedRoutes?: string[]; availableRoutes?: string[] }[];
+  sites?: MeshSite[];
+  links?: MeshLink[];
   preAuthKeys?: HSPreAuthKey[];
+  collectorSuggestions?: CollectorSuggestion[];
 };
 
 type TrafficPeer = {
@@ -166,8 +183,15 @@ const MeshPage: React.FC = () => {
     setCollectorPassInput({});
     setEditorOpen(true);
   };
-  const openEdit = (inst: MeshInstance) => {
-    setDraft({ ...inst, trafficCollectors: (inst.trafficCollectors ?? []).map((c) => ({ ...c })) });
+  const openEdit = (inst: MeshInstance, extraCollector?: { name: string; host: string; port: number }) => {
+    const draftCollected = { ...inst, trafficCollectors: (inst.trafficCollectors ?? []).map((c) => ({ ...c })) };
+    if (extraCollector) {
+      draftCollected.trafficCollectors = [
+        ...(draftCollected.trafficCollectors ?? []),
+        { id: `tc-${Date.now()}`, name: extraCollector.name, host: extraCollector.host, port: extraCollector.port || 22, user: "root", passSet: false },
+      ];
+    }
+    setDraft(draftCollected);
     setApiKeyInput("");
     setCollectorPassInput({});
     setEditorOpen(true);
@@ -192,6 +216,7 @@ const MeshPage: React.FC = () => {
           port: c.port,
           user: c.user,
           password: collectorPassInput[c.id] ?? undefined,
+          command: c.command ?? "",
         })),
       }),
     onSuccess: () => {
@@ -283,7 +308,15 @@ const MeshPage: React.FC = () => {
           </div>
 
           {/* 实例详情 */}
-          {selected ? <InstanceDetail key={selected.id} inst={selected} isAdmin={isAdmin} onEdit={() => openEdit(selected)} /> : null}
+          {selected ? (
+            <InstanceDetail
+              key={selected.id}
+              inst={selected}
+              isAdmin={isAdmin}
+              onEdit={() => openEdit(selected)}
+              onAddCollector={(s) => openEdit(selected, s)}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -356,28 +389,34 @@ const MeshPage: React.FC = () => {
               </Button>
             </div>
             {(draft.trafficCollectors ?? []).map((c, idx) => (
-              <div key={c.id} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3 sm:grid-cols-12">
-                <div className="space-y-1 sm:col-span-3">
-                  <Label className="text-xs">名称</Label>
-                  <Input className="h-8 text-xs" value={c.name} placeholder="ops 路由节点" onChange={(e) => updCollector(idx, { name: e.target.value })} />
+              <div key={c.id} className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                <div className="grid gap-2 sm:grid-cols-12">
+                  <div className="space-y-1 sm:col-span-3">
+                    <Label className="text-xs">名称</Label>
+                    <Input className="h-8 text-xs" value={c.name} placeholder="ops 路由节点" onChange={(e) => updCollector(idx, { name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-3">
+                    <Label className="text-xs">主机</Label>
+                    <Input className="h-8 text-xs" value={c.host} placeholder="100.64.0.1" onChange={(e) => updCollector(idx, { host: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">端口</Label>
+                    <Input className="h-8 text-xs" type="number" value={c.port || 22} onChange={(e) => updCollector(idx, { port: parseInt(e.target.value, 10) || 22 })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">用户</Label>
+                    <Input className="h-8 text-xs" value={c.user} placeholder="root" onChange={(e) => updCollector(idx, { user: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">密码 {c.passSet ? "（已存）" : ""}</Label>
+                    <Input className="h-8 text-xs" type="password" autoComplete="off" value={collectorPassInput[c.id] ?? ""} onChange={(e) => setCollectorPassInput((m) => ({ ...m, [c.id]: e.target.value }))} />
+                  </div>
                 </div>
-                <div className="space-y-1 sm:col-span-3">
-                  <Label className="text-xs">主机</Label>
-                  <Input className="h-8 text-xs" value={c.host} placeholder="100.64.0.1" onChange={(e) => updCollector(idx, { host: e.target.value })} />
+                <div className="space-y-1">
+                  <Label className="text-xs">采集命令（可选，默认 tailscale status --json）</Label>
+                  <Input className="h-8 font-mono text-[11px]" value={c.command ?? ""} placeholder="容器化部署示例：/usr/local/bin/docker exec tailscale-router tailscale status --json" onChange={(e) => updCollector(idx, { command: e.target.value })} />
                 </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs">端口</Label>
-                  <Input className="h-8 text-xs" type="number" value={c.port || 22} onChange={(e) => updCollector(idx, { port: parseInt(e.target.value, 10) || 22 })} />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs">用户</Label>
-                  <Input className="h-8 text-xs" value={c.user} placeholder="root" onChange={(e) => updCollector(idx, { user: e.target.value })} />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-xs">密码 {c.passSet ? "（已存）" : ""}</Label>
-                  <Input className="h-8 text-xs" type="password" autoComplete="off" value={collectorPassInput[c.id] ?? ""} onChange={(e) => setCollectorPassInput((m) => ({ ...m, [c.id]: e.target.value }))} />
-                </div>
-                <div className="flex items-center justify-end sm:col-span-12">
+                <div className="flex items-center justify-end">
                   <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-red-600"
                     onClick={() => setDraft((d) => ({ ...d, trafficCollectors: (d.trafficCollectors ?? []).filter((x) => x.id !== c.id) }))}>
                     <Trash2 className="mr-1 h-3 w-3" /> 移除
@@ -386,7 +425,9 @@ const MeshPage: React.FC = () => {
               </div>
             ))}
             <p className="text-[11px] text-slate-500">
-              采集器会在路由节点上执行 <code className="rounded bg-slate-100 px-1">tailscale status --json</code>；首次连接自动记录 host key 指纹，之后指纹变化将拒绝连接。
+              采集器在路由节点上执行采集命令解析 <code className="rounded bg-slate-100 px-1">tailscale status --json</code>；
+              普通执行失败时自动用已存 SSH 密码走 <code className="rounded bg-slate-100 px-1">sudo -S</code> 重试（群晖等容器化部署适用）。
+              首次连接自动记录 host key 指纹，之后指纹变化将拒绝连接。
             </p>
           </div>
 
@@ -420,13 +461,18 @@ const PageHeader: React.FC<{ isAdmin: boolean; onAdd?: () => void }> = ({ isAdmi
   </div>
 );
 
-const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: () => void }> = ({ inst, isAdmin, onEdit }) => {
+const InstanceDetail: React.FC<{
+  inst: MeshInstance;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onAddCollector: (s: CollectorSuggestion) => void;
+}> = ({ inst, isAdmin, onEdit, onAddCollector }) => {
   const qc = useQueryClient();
-  const overviewQ = useQuery({
-    queryKey: ["mesh-overview", inst.id],
-    queryFn: () => apiGetJson<Overview>(`/api/ops/mesh/instances/${inst.id}/overview`),
+  const discoverQ = useQuery({
+    queryKey: ["mesh-discover", inst.id],
+    queryFn: () => apiGetJson<Discover>(`/api/ops/mesh/instances/${inst.id}/discover`),
   });
-  const ov = overviewQ.data;
+  const ov = discoverQ.data;
   const nodes = ov?.nodes ?? [];
 
   const [confirmDel, setConfirmDel] = useState(false);
@@ -440,6 +486,21 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
     onError: (e) => toast.error(apiErr(e)),
   });
 
+  // 自动发现：刷新控制面聚合 + 静默触发一次流量采集（有采集器时）
+  const collectSilentMut = useMutation({
+    mutationFn: () => apiPostJson(`/api/ops/mesh/instances/${inst.id}/traffic`, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["mesh-traffic", inst.id] });
+      void qc.invalidateQueries({ queryKey: ["mesh-discover", inst.id] });
+      void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
+    },
+    onError: () => { /* 静默：采集失败不阻塞发现 */ },
+  });
+  const runDiscover = () => {
+    discoverQ.refetch();
+    if (isAdmin && (inst.trafficCollectors ?? []).length > 0) collectSilentMut.mutate();
+  };
+
   return (
     <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* 顶栏 */}
@@ -449,7 +510,7 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
             <h2 className="truncate text-base font-semibold text-slate-900">{inst.name}</h2>
             {ov ? (
               ov.health ? (
-                <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700"><CheckCircle2 className="h-3 w-3" /> 健康</span>
+                <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700"><CheckCircle2 className="h-3 w-3" /> 健康{ov.version ? ` · v${ov.version}` : ""}</span>
               ) : (
                 <span className="flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700"><AlertTriangle className="h-3 w-3" /> 不可达</span>
               )
@@ -458,8 +519,9 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
           <p className="truncate font-mono text-[11px] text-slate-400">{inst.apiUrl}{inst.headplaneUrl ? " · headplane 可用" : ""}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => overviewQ.refetch()}>
-            <RefreshCw className={cn("mr-1 h-3 w-3", overviewQ.isFetching && "animate-spin")} /> 刷新
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={runDiscover}
+            disabled={discoverQ.isFetching || collectSilentMut.isPending}>
+            <RefreshCw className={cn("mr-1 h-3 w-3", (discoverQ.isFetching || collectSilentMut.isPending) && "animate-spin")} /> 自动发现
           </Button>
           {inst.headplaneUrl ? (
             <a href={inst.headplaneUrl} target="_blank" rel="noreferrer">
@@ -485,13 +547,19 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
       </div>
 
       <div className="p-4">
-        <Tabs defaultValue="nodes">
+        <Tabs defaultValue="topology">
           <TabsList className="flex flex-wrap">
+            <TabsTrigger value="topology"><Network className="mr-1 h-3.5 w-3.5" /> 拓扑总览</TabsTrigger>
             <TabsTrigger value="nodes"><Server className="mr-1 h-3.5 w-3.5" /> 节点与路由</TabsTrigger>
             <TabsTrigger value="keys"><KeyRound className="mr-1 h-3.5 w-3.5" /> 预授权密钥</TabsTrigger>
             <TabsTrigger value="traffic"><Activity className="mr-1 h-3.5 w-3.5" /> 流量监控</TabsTrigger>
             <TabsTrigger value="service"><Globe className="mr-1 h-3.5 w-3.5" /> 服务信息</TabsTrigger>
           </TabsList>
+
+          {/* 拓扑总览 */}
+          <TabsContent value="topology" className="mt-3">
+            <TopologyPanel discover={ov} isAdmin={isAdmin} onAddCollector={onAddCollector} />
+          </TabsContent>
 
           {/* 节点与路由 */}
           <TabsContent value="nodes" className="mt-3">
@@ -501,7 +569,7 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
 
           {/* 密钥 */}
           <TabsContent value="keys" className="mt-3">
-            <PreAuthKeysPanel instanceId={inst.id} isAdmin={isAdmin} keys={ov?.preAuthKeys ?? []} users={ov?.users ?? []} onChanged={() => overviewQ.refetch()} />
+            <PreAuthKeysPanel instanceId={inst.id} isAdmin={isAdmin} keys={ov?.preAuthKeys ?? []} users={ov?.users ?? []} onChanged={() => discoverQ.refetch()} />
           </TabsContent>
 
           {/* 流量监控 */}
@@ -511,7 +579,7 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
 
           {/* 服务信息 */}
           <TabsContent value="service" className="mt-3">
-            <ServicePanel overview={ov} />
+            <ServicePanel discover={ov} />
           </TabsContent>
         </Tabs>
       </div>
@@ -519,9 +587,127 @@ const InstanceDetail: React.FC<{ inst: MeshInstance; isAdmin: boolean; onEdit: (
   );
 };
 
+// ── 拓扑总览（自动发现）──
+
+const TopologyPanel: React.FC<{ discover?: Discover; isAdmin: boolean; onAddCollector: (s: CollectorSuggestion) => void }> = ({ discover, isAdmin, onAddCollector }) => {
+  if (!discover) {
+    return <p className="flex items-center gap-2 py-6 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> 发现中…</p>;
+  }
+  if (!discover.health) {
+    return <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">控制面不可达：{discover.error}</p>;
+  }
+  const sites = discover.sites ?? [];
+  const links = discover.links ?? [];
+  const suggestions = discover.collectorSuggestions ?? [];
+  const nodes = discover.nodes ?? [];
+  const online = nodes.filter((n) => n.online).length;
+  const withOs = nodes.filter((n) => n.os).length;
+
+  return (
+    <div className="space-y-4">
+      {/* 汇总条 */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <StatCard icon={<Server className="h-4 w-4" />} label="节点" value={String(nodes.length)} />
+        <StatCard icon={<Wifi className="h-4 w-4" />} label="在线" value={String(online)} tone="emerald" />
+        <StatCard icon={<Router className="h-4 w-4" />} label="站点/子网" value={String(sites.length)} tone="sky" />
+        <StatCard icon={<Activity className="h-4 w-4" />} label="链路" value={String(links.length)} tone="violet" />
+        <StatCard icon={<Globe className="h-4 w-4" />} label="已识别设备类型" value={`${withOs}/${nodes.length}`} />
+      </div>
+
+      {/* 站点 */}
+      <div>
+        <p className="mb-2 text-xs font-semibold text-slate-800">站点（子网路由器）</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {sites.map((s) => (
+            <div key={s.subnet + s.routerId} className={cn("rounded-xl border p-3", s.approved ? "border-sky-200 bg-sky-50/50" : "border-amber-200 bg-amber-50/50")}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs font-semibold text-slate-900">{s.subnet}</span>
+                {s.online ? <span className="flex items-center gap-1 text-[10px] text-emerald-700"><Wifi className="h-3 w-3" /> 在线</span> : <span className="text-[10px] text-slate-400">离线</span>}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-600">
+                路由器 <span className="font-medium">{s.router}</span>
+                {s.tailscaleIp ? <span className="ml-1 font-mono text-[10px] text-slate-400">{s.tailscaleIp}</span> : null}
+              </p>
+              <p className="mt-0.5 text-[10px]">
+                {s.approved ? (
+                  <span className="text-sky-700">已审批 · 加入 {fmtTime(s.lastSeen)}</span>
+                ) : (
+                  <span className="text-amber-700">已宣告待审批</span>
+                )}
+              </p>
+            </div>
+          ))}
+          {sites.length === 0 ? <p className="text-xs text-slate-400">未发现子网路由器（无站点宣告）。</p> : null}
+        </div>
+      </div>
+
+      {/* 链路 */}
+      <div>
+        <p className="mb-2 text-xs font-semibold text-slate-800">站点间链路（来自路由节点侧采集）</p>
+        <div className="overflow-x-auto rounded-xl border border-slate-100">
+          <table className="w-full min-w-[560px] text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-3 py-1.5 font-medium">起点</th>
+                <th className="px-3 py-1.5 font-medium">对端</th>
+                <th className="px-3 py-1.5 font-medium">路径</th>
+                <th className="px-3 py-1.5 font-medium">收 ↓ / 发 ↑</th>
+                <th className="px-3 py-1.5 font-medium">采样时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {links.map((l, i) => (
+                <tr key={`${l.from}-${l.to}-${i}`} className="border-t border-slate-50">
+                  <td className="px-3 py-1.5 font-medium text-slate-800">{l.from}</td>
+                  <td className="px-3 py-1.5 font-medium text-slate-800">{l.to}</td>
+                  <td className="px-3 py-1.5">
+                    {l.via === "direct" ? (
+                      <span className="font-mono text-[10px] text-emerald-700" title={l.curAddr}>直连 {l.curAddr}</span>
+                    ) : (
+                      <span className="text-[10px] text-amber-700">DERP {l.relay}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-slate-600">{fmtBytes(l.rxBytes)} / {fmtBytes(l.txBytes)}</td>
+                  <td className="px-3 py-1.5 text-slate-400">{fmtTime(l.seenAt)}</td>
+                </tr>
+              ))}
+              {links.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                  暂无链路数据：请先在「流量监控」配置采集器并采集一次（拓扑按钮「自动发现」会同时触发采集）。
+                </td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 采集器建议 */}
+      {isAdmin && suggestions.length > 0 ? (
+        <div className="rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3">
+          <p className="text-xs font-semibold text-indigo-900">建议添加的流量采集器</p>
+          <p className="mt-0.5 text-[11px] text-indigo-700/80">以下子网路由器尚未配置采集节点侧流量的 SSH 采集器：</p>
+          <ul className="mt-2 space-y-1.5">
+            {suggestions.map((s) => (
+              <li key={s.routerId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/80 px-2.5 py-1.5">
+                <span className="text-xs text-slate-800">{s.name} <span className="ml-1 font-mono text-[10px] text-slate-400">{s.host}:{s.port}</span></span>
+                <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => onAddCollector(s)}>
+                  <Plus className="mr-1 h-3 w-3" /> 添加到实例
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[10px] text-indigo-700/70">
+            添加后补一个 SSH 密码即可；若节点是容器化 tailscale（如群晖），在「采集命令」里填 docker exec 形式的命令。
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 // ── 节点表（含路由管理）──
 
-const NodesTable: React.FC<{ nodes: HSNode[]; instanceId: string; isAdmin: boolean }> = ({ nodes, instanceId, isAdmin }) => {
+const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmin: boolean }> = ({ nodes, instanceId, isAdmin }) => {
   const qc = useQueryClient();
   const [routeEditId, setRouteEditId] = useState("");
   const [routesDraft, setRoutesDraft] = useState("");
@@ -548,15 +734,17 @@ const NodesTable: React.FC<{ nodes: HSNode[]; instanceId: string; isAdmin: boole
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-100">
-      <table className="w-full min-w-[760px] text-left text-xs">
+      <table className="w-full min-w-[860px] text-left text-xs">
         <thead className="bg-slate-50 text-slate-500">
           <tr>
             <th className="px-3 py-2 font-medium">节点</th>
             <th className="px-3 py-2 font-medium">Tailscale IP</th>
+            <th className="px-3 py-2 font-medium">类型</th>
             <th className="px-3 py-2 font-medium">用户</th>
             <th className="px-3 py-2 font-medium">状态</th>
             <th className="px-3 py-2 font-medium">子网路由（router）</th>
             <th className="px-3 py-2 font-medium">最近在线</th>
+            <th className="px-3 py-2 font-medium">加入时间</th>
             {isAdmin ? <th className="px-3 py-2 font-medium">操作</th> : null}
           </tr>
         </thead>
@@ -570,6 +758,16 @@ const NodesTable: React.FC<{ nodes: HSNode[]; instanceId: string; isAdmin: boole
                 ) : null}
               </td>
               <td className="px-3 py-2 font-mono text-[11px] text-slate-600">{(n.ipAddresses ?? []).filter((ip) => ip.startsWith("100.")).join(", ") || "—"}</td>
+              <td className="px-3 py-2">
+                {n.os ? (
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700">{n.os}</span>
+                ) : (
+                  <span className="text-[10px] text-slate-300" title="由流量采集器自动补齐">待采集</span>
+                )}
+                {n.registerMethod === "REGISTER_METHOD_OIDC" ? (
+                  <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] text-violet-700">OIDC</span>
+                ) : null}
+              </td>
               <td className="px-3 py-2 text-slate-600">{n.user?.name ?? "—"}</td>
               <td className="px-3 py-2">
                 {n.online ? (
@@ -592,6 +790,7 @@ const NodesTable: React.FC<{ nodes: HSNode[]; instanceId: string; isAdmin: boole
                 )}
               </td>
               <td className="px-3 py-2 text-slate-500">{fmtTime(n.lastSeen)}</td>
+              <td className="px-3 py-2 text-slate-500" title={n.createdAt ?? ""}>{fmtTime(n.createdAt)}</td>
               {isAdmin ? (
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1.5">
@@ -616,7 +815,7 @@ const NodesTable: React.FC<{ nodes: HSNode[]; instanceId: string; isAdmin: boole
             </tr>
           ))}
           {nodes.length === 0 ? (
-            <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">暂无节点</td></tr>
+            <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">暂无节点</td></tr>
           ) : null}
         </tbody>
       </table>
@@ -862,19 +1061,18 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean }> = ({ 
 
 // ── 服务信息 ──
 
-const ServicePanel: React.FC<{ overview?: Overview }> = ({ overview }) => {
+const ServicePanel: React.FC<{ discover?: Discover }> = ({ discover: ov }) => {
   const metricsQ = useQuery({
-    queryKey: ["mesh-metrics", overview?.instance?.id],
-    queryFn: () => apiGetJson<{ metricsUrl?: string; samples: MetricSample[] }>(`/api/ops/mesh/instances/${overview!.instance.id}/metrics`),
-    enabled: Boolean(overview?.instance?.id),
+    queryKey: ["mesh-metrics", ov?.instance?.id],
+    queryFn: () => apiGetJson<{ metricsUrl?: string; samples: MetricSample[] }>(`/api/ops/mesh/instances/${ov!.instance.id}/metrics`),
+    enabled: Boolean(ov?.instance?.id),
     staleTime: 30_000,
   });
-  const ov = overview;
   const nodes = ov?.nodes ?? [];
   const onlineCount = nodes.filter((n) => n.online).length;
   const routesTotal = nodes.reduce((acc, n) => acc + (n.approvedRoutes?.length ?? 0), 0);
   const oidcUsers = (ov?.users ?? []).filter((u) => u.provider === "oidc").length;
-  const version = (metricsQ.data?.samples ?? []).find((s) => s.name === "headscale_build_info")?.labels?.version;
+  const version = ov?.version ?? (metricsQ.data?.samples ?? []).find((s) => s.name === "headscale_build_info")?.labels?.version;
 
   return (
     <div className="space-y-4">

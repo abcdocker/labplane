@@ -694,7 +694,10 @@ function DocBody() {
           <strong>预授权密钥</strong>：按用户创建（可复用 / 临时节点 / 有效期小时数）；完整 key 仅创建时展示一次（headscale 列表接口本身返回打码值），可一键复制或「使过期」。
         </Li>
         <Li>
-          <strong>流量监控</strong>：headscale 服务端不经过 P2P 数据面、没有节点间流量指标，因此流量数据由<strong>流量采集器</strong>提供——配置 SSH 到子网路由节点（如 ops、ukx-nas），平台执行 <Code>tailscale status --json</Code> 解析每个 peer 的累计 Rx/Tx 字节、在线状态与直连/DERP 中继路径。首次连接自动记录 SSH host key 指纹（TOFU），之后指纹变化将拒绝连接；密码同样加密存储。
+          <strong>自动发现与拓扑总览</strong>：只填 API 地址和 Key，「自动发现」一次拉取健康/版本、用户（OIDC 标注）、全部节点（<strong>加入时间</strong>、注册方式、在线状态、子网路由）、站点归纳（每个子网路由器宣告的 CIDR 自动聚成站点卡）与<strong>链路</strong>（路由器之间的直连/DERP 中继路径与收发流量）。headscale v0.26+ 的 API 不再提供客户端设备类型，<strong>设备类型（OS）</strong>由流量采集器侧的 <Code>tailscale status --json</Code> 自动合并补齐；发现结果同时给出<strong>采集器建议</strong>（有子网路由但没配采集器的节点，一键按 Tailscale IP 预填）。
+        </Li>
+        <Li>
+          <strong>流量监控</strong>：headscale 服务端不经过 P2P 数据面、没有节点间流量指标，因此流量数据由<strong>流量采集器</strong>提供——配置 SSH 到子网路由节点（如 ops、ukx-nas），平台执行 <Code>tailscale status --json</Code> 解析每个 peer 的累计 Rx/Tx 字节、在线状态与直连/DERP 中继路径。普通执行失败时自动用已存 SSH 密码走 <Code>sudo -S</Code> 重试；容器化部署（如群晖的 <Code>tailscale-router</Code> 容器）可在「采集命令」里填 <Code>/usr/local/bin/docker exec tailscale-router tailscale status --json</Code>。首次连接自动记录 SSH host key 指纹（TOFU），之后指纹变化将拒绝连接；密码同样加密存储。
         </Li>
         <Li>
           <strong>服务信息</strong>：健康状态、用户列表（OIDC 同步）、节点/路由统计与控制面 Prometheus <Code>/metrics</Code> 关键序列（版本、API 请求数等）；metrics 地址默认按 API 主机推导 <Code>:9090/metrics</Code>，可手动覆盖。

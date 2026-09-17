@@ -22,6 +22,9 @@ type MeshTrafficCollector struct {
 	Port    int    `json:"port"` // 0 视为 22
 	User    string `json:"user"`
 	PassEnc string `json:"passEnc,omitempty"` // SSH 密码密文；留空表示沿用已存密码
+	// Command 远端采集命令；空为 `tailscale status --json`。容器化部署（如群晖）可写
+	// `/usr/local/bin/docker exec tailscale-router tailscale status --json`。
+	Command string `json:"command,omitempty"`
 	// HostKeyFp SSH host key SHA256 指纹（TOFU 首次采集时自动学习；更换节点后清空重学）
 	HostKeyFp string `json:"hostKeyFp,omitempty"`
 	// 运行时状态（采集后回写）
@@ -88,6 +91,7 @@ func meshInstancePublic(in MeshInstance) map[string]any {
 			"port":           c.Port,
 			"user":           c.User,
 			"passSet":        strings.TrimSpace(c.PassEnc) != "",
+			"command":        c.Command,
 			"hostKeyFp":      c.HostKeyFp,
 			"lastSnapshotAt": c.LastSnapshotAt,
 			"lastError":      c.LastError,
@@ -130,6 +134,7 @@ type meshTrafficCollectorPutInput struct {
 	Port     int    `json:"port"`
 	User     string `json:"user"`
 	Password string `json:"password"` // 留空保留；"-" 清除
+	Command  string `json:"command"`  // 可选；空=默认 tailscale status --json
 }
 
 // upsertMeshInstance 把入参合并进 bundle，返回 (实例, 是否新实例)。
@@ -184,6 +189,7 @@ func upsertMeshInstance(b *meshSettingsBundle, in meshInstancePutInput, enc func
 		c := MeshTrafficCollector{
 			ID: cin.ID, Name: strings.TrimSpace(cin.Name),
 			Host: strings.TrimSpace(cin.Host), Port: cin.Port, User: strings.TrimSpace(cin.User),
+			Command: strings.TrimSpace(cin.Command),
 		}
 		if strings.TrimSpace(c.ID) == "" {
 			c.ID = fmt.Sprintf("tc-%d", time.Now().UnixNano())
