@@ -138,6 +138,34 @@ func TestAuthentikAppWizardChain(t *testing.T) {
 	}
 }
 
+func TestAuthentikBindingsParse(t *testing.T) {
+	cli := newAuthentikTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("target") != "app-uuid" {
+			t.Fatalf("target = %s", r.URL.Query().Get("target"))
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"pagination": map[string]any{"count": 2},
+			"results": []map[string]any{
+				{"pk": "b1", "order": 0, "enabled": true,
+					"group": map[string]any{"pk": "g1", "name": "authentik Headscale"}, "target": "app-uuid"},
+				{"pk": "b2", "order": 1, "enabled": true,
+					"user": map[string]any{"pk": 6, "username": "abcdocker"}, "target": "app-uuid"},
+			},
+		})
+	})
+	list, err := cli.ListBindings(context.Background(), "app-uuid")
+	if err != nil || len(list) != 2 {
+		t.Fatalf("ListBindings: %v %+v", err, list)
+	}
+	out := parseBindingsOut(list)
+	if out[0].Kind != "group" || out[0].GroupName != "authentik Headscale" || out[0].GroupPK != "g1" {
+		t.Fatalf("group binding parse: %+v", out[0])
+	}
+	if out[1].Kind != "user" || out[1].Username != "abcdocker" || out[1].UserPK != 6 {
+		t.Fatalf("user binding parse: %+v", out[1])
+	}
+}
+
 func TestAuthentikCountsUsesPagination(t *testing.T) {
 	cli := newAuthentikTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("page_size") != "1" {

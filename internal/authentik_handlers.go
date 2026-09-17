@@ -21,6 +21,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,6 +43,7 @@ func registerAuthentikRoutes(api gin.IRouter, app *ServerApp) {
 	idg.GET("/status", handleAuthentikStatus(app))
 	idg.GET("/users", handleAuthentikUsersGet(app))
 	idg.POST("/users", AdminOnlyMiddleware(app), handleAuthentikUserCreate(app))
+	idg.PUT("/users/:uid", AdminOnlyMiddleware(app), handleAuthentikUserUpdate(app))
 	idg.POST("/users/:uid/password", AdminOnlyMiddleware(app), handleAuthentikUserPassword(app))
 	idg.POST("/users/:uid/active", AdminOnlyMiddleware(app), handleAuthentikUserActive(app))
 	idg.DELETE("/users/:uid", AdminOnlyMiddleware(app), handleAuthentikUserDelete(app))
@@ -49,7 +51,15 @@ func registerAuthentikRoutes(api gin.IRouter, app *ServerApp) {
 	idg.POST("/groups", AdminOnlyMiddleware(app), handleAuthentikGroupCreate(app))
 	idg.GET("/apps", handleAuthentikAppsGet(app))
 	idg.POST("/apps", AdminOnlyMiddleware(app), handleAuthentikAppCreate(app))
+	idg.PUT("/apps/:slug", AdminOnlyMiddleware(app), handleAuthentikAppUpdate(app))
+	idg.DELETE("/apps/:slug", AdminOnlyMiddleware(app), handleAuthentikAppDelete(app))
 	idg.GET("/providers/oauth2", handleAuthentikProvidersGet(app))
+	idg.POST("/providers/oauth2", AdminOnlyMiddleware(app), handleAuthentikProviderCreate(app))
+	idg.PUT("/providers/:pk", AdminOnlyMiddleware(app), handleAuthentikProviderUpdate(app))
+	idg.DELETE("/providers/:pk", AdminOnlyMiddleware(app), handleAuthentikProviderDelete(app))
+	idg.GET("/bindings", handleAuthentikBindingsGet(app))
+	idg.POST("/bindings", AdminOnlyMiddleware(app), handleAuthentikBindingCreate(app))
+	idg.DELETE("/bindings/:bid", AdminOnlyMiddleware(app), handleAuthentikBindingDelete(app))
 	idg.GET("/events", handleAuthentikEventsGet(app))
 	idg.POST("/test", AdminOnlyMiddleware(app), handleAuthentikTest(app))
 }
@@ -459,8 +469,9 @@ func handleAuthentikAppsGet(app *ServerApp) gin.HandlerFunc {
 }
 
 // handleAuthentikAppCreate 对接向导：一次完成「OAuth2 提供程序 + 应用 + 组绑定」。
-// 请求：{name, slug?, redirectUris[], groupPK?}
-// 响应含 client_id / client_secret（仅此次返回，请立即复制）。
+// 请求：{name, slug?, redirectUris[], groupPK?, providerPK?}
+// providerPK 提供时直接关联已有提供程序（跳过新建与 Flow 解析）；
+// 否则新建提供程序，响应含 client_id / client_secret（仅此次返回，请立即复制）。
 func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
@@ -468,6 +479,7 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 			Slug         string   `json:"slug"`
 			RedirectUris []string `json:"redirectUris"`
 			GroupPK      string   `json:"groupPK"`
+			ProviderPK   *int64   `json:"providerPK"`
 		}
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
@@ -478,8 +490,8 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "应用名称必填"})
 			return
 		}
-		if len(body.RedirectUris) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "至少填写一个回调 redirect URI"})
+		if body.ProviderPK == nil && len(body.RedirectUris) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "需提供 redirectUris（新建）或 providerPK（关联已有）"})
 			return
 		}
 		slug := strings.TrimSpace(body.Slug)
@@ -497,6 +509,27 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 		defer cancel()
+		var provider *AKOAuth2Provider
+		if body.ProviderPK != nil {
+			// 关联已有提供程序
+			appObj, err := cli.CreateApp(ctx, name, slug, *body.ProviderPK)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "创建应用失败: " + err.Error()})
+				return
+			}
+			if strings.TrimSpace(body.GroupPK) != "" {
+				if err := cli.CreateAppGroupBinding(ctx, appObj.PK, body.GroupPK); err != nil {
+					c.JSON(http.StatusOK, gin.H{
+						"message":      "应用已创建，但组绑定失败（可稍后在「访问绑定」中补）",
+						"app":          appObj,
+						"bindingError": err.Error(),
+					})
+					return
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "应用已创建并关联已有提供程序", "app": appObj})
+			return
+		}
 		flow, err := cli.FindFlowBySlug(ctx, authentikImplicitConsentFlowSlug)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -507,11 +540,12 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		provider, err := cli.CreateOAuth2Provider(ctx, name+" (OIDC)", body.RedirectUris, flow.PK, invalidationFlow.PK)
+		providerObj, err := cli.CreateOAuth2Provider(ctx, name+" (OIDC)", body.RedirectUris, flow.PK, invalidationFlow.PK)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "创建提供程序失败: " + err.Error()})
 			return
 		}
+		provider = &providerObj
 		appObj, err := cli.CreateApp(ctx, name, slug, provider.PK)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "创建应用失败: " + err.Error(), "provider": provider})
@@ -520,7 +554,7 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 		if strings.TrimSpace(body.GroupPK) != "" {
 			if err := cli.CreateAppGroupBinding(ctx, appObj.PK, body.GroupPK); err != nil {
 				c.JSON(http.StatusOK, gin.H{
-					"message":      "应用已创建，但组绑定失败（可稍后在 Authentik 控制台补）",
+					"message":      "应用已创建，但组绑定失败（可稍后在「访问绑定」中补）",
 					"app":          appObj,
 					"provider":     provider,
 					"bindingError": err.Error(),
@@ -574,6 +608,387 @@ func handleAuthentikEventsGet(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"events": events})
+	}
+}
+
+// ── 应用：更新 / 删除 / 访问绑定 ──
+
+func handleAuthentikAppUpdate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Name          string  `json:"name"`
+			Provider      *int64  `json:"provider"` // 提供 pk 时挂/换提供程序
+			MetaLaunchURL *string `json:"metaLaunchUrl"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		patch := map[string]any{}
+		if strings.TrimSpace(body.Name) != "" {
+			patch["name"] = strings.TrimSpace(body.Name)
+		}
+		if body.Provider != nil {
+			patch["provider"] = *body.Provider
+		}
+		if body.MetaLaunchURL != nil {
+			patch["meta_launch_url"] = strings.TrimSpace(*body.MetaLaunchURL)
+		}
+		if len(patch) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无可更新字段"})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.UpdateApp(ctx, c.Param("slug"), patch); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "应用已更新"})
+	}
+}
+
+func handleAuthentikAppDelete(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.DeleteApp(ctx, c.Param("slug")); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "应用已删除"})
+	}
+}
+
+// bindingOut 绑定的友好输出：group/user 无论对象还是 pk 都展开成可显示字段。
+type bindingOut struct {
+	PK        string `json:"pk"`
+	Order     int    `json:"order"`
+	Enabled   bool   `json:"enabled"`
+	Kind      string `json:"kind"` // group | user | other
+	GroupPK   string `json:"groupPK,omitempty"`
+	GroupName string `json:"groupName,omitempty"`
+	UserPK    int64  `json:"userPK,omitempty"`
+	Username  string `json:"username,omitempty"`
+}
+
+func parseBindingsOut(list []AKBinding) []bindingOut {
+	out := make([]bindingOut, 0, len(list))
+	for _, b := range list {
+		o := bindingOut{PK: b.PK, Order: b.Order, Enabled: b.Enabled, Kind: "other"}
+		if len(b.Group) > 0 && string(b.Group) != "null" {
+			var g struct {
+				PK   string `json:"pk"`
+				Name string `json:"name"`
+			}
+			if json.Unmarshal(b.Group, &g) == nil && g.PK != "" {
+				o.Kind = "group"
+				o.GroupPK = g.PK
+				o.GroupName = g.Name
+			} else {
+				var gpks string
+				if json.Unmarshal(b.Group, &gpks) == nil && gpks != "" {
+					o.Kind = "group"
+					o.GroupPK = gpks
+					o.GroupName = gpks
+				}
+			}
+		}
+		if len(b.User) > 0 && string(b.User) != "null" {
+			var u struct {
+				PK       int64  `json:"pk"`
+				Username string `json:"username"`
+			}
+			if json.Unmarshal(b.User, &u) == nil && u.PK != 0 {
+				o.Kind = "user"
+				o.UserPK = u.PK
+				o.Username = u.Username
+			}
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
+func handleAuthentikBindingsGet(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		target := strings.TrimSpace(c.Query("target"))
+		if target == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 target 参数"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		list, err := cli.ListBindings(ctx, target)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"bindings": parseBindingsOut(list)})
+	}
+}
+
+func handleAuthentikBindingCreate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Target  string `json:"target"`  // 应用 pk
+			GroupPK string `json:"groupPK"` // 二选一
+			UserPK  int64  `json:"userPK"`  // 二选一
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		if strings.TrimSpace(body.Target) == "" || (body.GroupPK == "" && body.UserPK == 0) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "target 与 groupPK/userPK 必填其一"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		patch := map[string]any{"target": body.Target, "order": 0}
+		if body.GroupPK != "" {
+			patch["group"] = body.GroupPK
+		} else {
+			patch["user"] = body.UserPK
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.CreateBinding(ctx, patch); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "绑定已创建"})
+	}
+}
+
+func handleAuthentikBindingDelete(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.DeleteBinding(ctx, c.Param("bid")); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "绑定已移除"})
+	}
+}
+
+// ── 提供程序：新建 / 更新 / 删除 ──
+
+func handleAuthentikProviderCreate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Name         string   `json:"name"`
+			RedirectUris []string `json:"redirectUris"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		if strings.TrimSpace(body.Name) == "" || len(body.RedirectUris) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "名称与回调 redirect URI 必填"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+		defer cancel()
+		flow, err := cli.FindFlowBySlug(ctx, authentikImplicitConsentFlowSlug)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		invalidationFlow, err := cli.FindFlowBySlug(ctx, authentikInvalidationFlowSlug)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		provider, err := cli.CreateOAuth2Provider(ctx, strings.TrimSpace(body.Name), body.RedirectUris, flow.PK, invalidationFlow.PK)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "提供程序已创建", "provider": provider})
+	}
+}
+
+func handleAuthentikProviderUpdate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Name         string   `json:"name"`
+			RedirectUris []string `json:"redirectUris"`
+			SubMode      string   `json:"subMode"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		pk, err := strconv.ParseInt(c.Param("pk"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "提供程序 ID 无效"})
+			return
+		}
+		patch := map[string]any{}
+		if strings.TrimSpace(body.Name) != "" {
+			patch["name"] = strings.TrimSpace(body.Name)
+		}
+		if len(body.RedirectUris) > 0 {
+			uris := make([]map[string]string, 0, len(body.RedirectUris))
+			for _, u := range body.RedirectUris {
+				uris = append(uris, map[string]string{"matching_mode": "strict", "url": strings.TrimSpace(u)})
+			}
+			patch["redirect_uris"] = uris
+		}
+		if strings.TrimSpace(body.SubMode) != "" {
+			patch["sub_mode"] = strings.TrimSpace(body.SubMode)
+		}
+		if len(patch) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无可更新字段"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.UpdateProvider(ctx, pk, patch); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "提供程序已更新"})
+	}
+}
+
+func handleAuthentikProviderDelete(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		pk, err := strconv.ParseInt(c.Param("pk"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "提供程序 ID 无效"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.DeleteProvider(ctx, pk); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "提供程序已删除"})
+	}
+}
+
+// ── 用户：更新（基础信息 + 组关联）──
+
+func handleAuthentikUserUpdate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Name   string   `json:"name"`
+			Email  string   `json:"email"`
+			Groups []string `json:"groups"` // 组 pk 全量列表
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		pk, err := strconv.ParseInt(c.Param("uid"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "用户 ID 无效"})
+			return
+		}
+		patch := map[string]any{}
+		if body.Name != "" {
+			patch["name"] = strings.TrimSpace(body.Name)
+		}
+		if body.Email != "" {
+			patch["email"] = strings.TrimSpace(body.Email)
+		}
+		if body.Groups != nil {
+			patch["groups"] = body.Groups
+		}
+		if len(patch) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无可更新字段"})
+			return
+		}
+		cli, _, ok, err := authentikClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := reqCtx()
+		defer cancel()
+		if err := cli.PatchUser(ctx, pk, patch); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "用户已更新"})
 	}
 }
 

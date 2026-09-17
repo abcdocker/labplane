@@ -192,6 +192,8 @@ type AKOAuth2Provider struct {
 	RedirectURIs      []AKRedirectURI `json:"redirect_uris"`
 	SubMode           string          `json:"sub_mode"`
 	AuthorizationFlow string          `json:"authorization_flow"`
+	AssignedAppSlug   string          `json:"assigned_application_slug,omitempty"`
+	AssignedAppName   string          `json:"assigned_application_name,omitempty"`
 }
 
 type AKFlow struct {
@@ -276,6 +278,11 @@ func (a *authentikClient) DeleteApp(ctx context.Context, slug string) error {
 	return a.do(ctx, http.MethodDelete, "/core/applications/"+url.PathEscape(slug)+"/", nil, nil, nil)
 }
 
+// UpdateApp 更新应用（name/provider/meta_launch_url 等；provider 传 pk 实现应用↔提供程序关联）。
+func (a *authentikClient) UpdateApp(ctx context.Context, slug string, body map[string]any) error {
+	return a.do(ctx, http.MethodPatch, "/core/applications/"+url.PathEscape(slug)+"/", nil, body, nil)
+}
+
 // ── OAuth2 提供程序 ──
 
 func (a *authentikClient) ListOAuth2Providers(ctx context.Context) ([]AKOAuth2Provider, error) {
@@ -307,6 +314,16 @@ func (a *authentikClient) CreateOAuth2Provider(ctx context.Context, name string,
 	return out, err
 }
 
+// UpdateProvider 更新 OAuth2 提供程序（name/redirect_uris/sub_mode；redirect_uris 传字典形式）。
+func (a *authentikClient) UpdateProvider(ctx context.Context, pk int64, body map[string]any) error {
+	return a.do(ctx, http.MethodPatch, fmt.Sprintf("/providers/oauth2/%d/", pk), nil, body, nil)
+}
+
+// DeleteProvider 删除 OAuth2 提供程序；若已关联应用，authentik 会级联解除。
+func (a *authentikClient) DeleteProvider(ctx context.Context, pk int64) error {
+	return a.do(ctx, http.MethodDelete, fmt.Sprintf("/providers/oauth2/%d/", pk), nil, nil, nil)
+}
+
 // ── Flow / 绑定 ──
 
 func (a *authentikClient) FindFlowBySlug(ctx context.Context, slug string) (AKFlow, error) {
@@ -329,6 +346,36 @@ func (a *authentikClient) FindFlowBySlug(ctx context.Context, slug string) (AKFl
 func (a *authentikClient) CreateAppGroupBinding(ctx context.Context, appPK, groupPK string) error {
 	body := map[string]any{"target": appPK, "group": groupPK, "order": 0}
 	return a.do(ctx, http.MethodPost, "/policy/bindings/", nil, body, nil)
+}
+
+// ── 绑定（应用 ↔ 组/用户 关联）──
+
+// AKBinding 策略绑定；group/user 字段在不同版本可能是对象或 pk 字符串，保留原始 JSON。
+type AKBinding struct {
+	PK      string          `json:"pk"`
+	Order   int             `json:"order"`
+	Enabled bool            `json:"enabled"`
+	Group   json.RawMessage `json:"group,omitempty"`
+	User    json.RawMessage `json:"user,omitempty"`
+}
+
+// ListBindings 列出某目标（应用/提供程序 pk）的访问绑定。
+func (a *authentikClient) ListBindings(ctx context.Context, target string) ([]AKBinding, error) {
+	q := url.Values{"target": []string{target}}
+	raws, err := a.listPaged(ctx, "/policy/bindings/", q)
+	if err != nil {
+		return nil, err
+	}
+	return unmarshalInto[AKBinding](raws)
+}
+
+// CreateBinding 创建绑定；body 需含 target 与 group 或 user（pk）。
+func (a *authentikClient) CreateBinding(ctx context.Context, body map[string]any) error {
+	return a.do(ctx, http.MethodPost, "/policy/bindings/", nil, body, nil)
+}
+
+func (a *authentikClient) DeleteBinding(ctx context.Context, pk string) error {
+	return a.do(ctx, http.MethodDelete, "/policy/bindings/"+url.PathEscape(pk)+"/", nil, nil, nil)
 }
 
 // ── 事件与系统状态 ──

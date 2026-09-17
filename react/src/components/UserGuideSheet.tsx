@@ -718,10 +718,13 @@ function DocBody() {
           <strong>实例管理（管理员）</strong>：填写名称、Base URL 与 <strong>API Token</strong>（Authentik 管理后台 → Directory → Tokens &amp; passwords 创建）。Token 用 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储，界面只回显「已保存」；填 <Code>-</Code> 可清除。
         </Li>
         <Li>
-          <strong>用户管理</strong>：搜索、创建（用户名/姓名/邮箱/初始密码可选/<strong>多选组</strong>）、启用停用、重置密码、删除。创建用户时勾选组即完成「认证信息下发」；初始密码留空则由用户走找回流程或 OIDC。
+          <strong>用户管理</strong>：搜索、创建（用户名/姓名/邮箱/初始密码可选/<strong>多选组</strong>）、编辑（姓名/邮箱/<strong>重新关联组</strong>）、启用停用、重置密码、删除。创建或编辑用户时勾选组即完成「认证信息下发」；初始密码留空则由用户走找回流程或 OIDC。
         </Li>
         <Li>
-          <strong>应用对接向导</strong>：一次完成 <strong>OAuth2 提供程序 + 应用创建 + 组绑定</strong>——填应用名称与回调 redirect URI（每行一条），选允许访问的组；完成后展示 <Code>client_id</Code> / <Code>client_secret</Code>（仅此次展示，请立即复制到目标应用，例如 headscale 的 OIDC client 配置）。
+          <strong>应用管理</strong>：列表 + 编辑（名称、入口 URL、<strong>关联/更换 OAuth2 提供程序</strong>）+ 删除；「访问绑定」可把<strong>组或单个用户</strong>绑定到应用（绑定后成员才可见/可访问），支持移除。新建对接向导支持两种模式：<strong>新建提供程序</strong>（自动创建并返回 client_secret）或<strong>关联已有提供程序</strong>。
+        </Li>
+        <Li>
+          <strong>提供程序管理</strong>：独立的新建（名称 + 回调 redirect URI，自动解析授权/失效 Flow）、编辑（名称、回调地址、sub 模式）、删除；列表展示 Client ID、回调地址与所属应用。创建/编辑均按 authentik 2024.2+ 的字典格式提交 redirect_uris。
         </Li>
         <Li>
           <strong>提供程序与事件</strong>：OAuth2 提供程序列表（Client ID、回调地址、sub 模式）；最近事件流（登录、策略动作等）便于排查 SSO 问题。

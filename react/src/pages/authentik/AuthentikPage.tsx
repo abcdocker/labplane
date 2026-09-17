@@ -40,6 +40,12 @@ type AKRedirectURI = { url: string; matching_mode?: string };
 type AKProvider = {
   pk: number; name: string; client_id: string;
   redirect_uris?: AKRedirectURI[]; sub_mode?: string; client_secret?: string;
+  assignedAppSlug?: string; assignedAppName?: string;
+};
+
+type AKBinding = {
+  pk: string; order: number; enabled: boolean; kind: string;
+  groupPK?: string; groupName?: string; userPK?: number; username?: string;
 };
 
 type AKStatus = {
@@ -361,7 +367,7 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
           </TabsContent>
 
           <TabsContent value="providers" className="mt-3">
-            <ProvidersPanel instanceId={inst.id} />
+            <ProvidersPanel instanceId={inst.id} isAdmin={isAdmin} />
           </TabsContent>
 
           <TabsContent value="events" className="mt-3">
@@ -404,6 +410,8 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
   const [resetUser, setResetUser] = useState<AKUser | null>(null);
   const [resetPw, setResetPw] = useState("");
   const [confirmDel, setConfirmDel] = useState<AKUser | null>(null);
+  const [editUser, setEditUser] = useState<AKUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", groupPKs: [] as string[] });
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["authentik-users", instanceId] });
@@ -448,6 +456,28 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
     onSuccess: () => { toast.success("用户已删除"); setConfirmDel(null); invalidate(); },
     onError: (e) => toast.error(apiErr(e)),
   });
+
+  const updateMut = useMutation({
+    mutationFn: (p: { uid: number; body: Record<string, unknown> }) =>
+      apiPutJson(`/api/ops/authentik/instances/${instanceId}/users/${p.uid}`, p.body),
+    onSuccess: () => { toast.success("用户已更新"); setEditUser(null); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const openEditUser = (u: AKUser) => {
+    setEditUser(u);
+    setEditForm({
+      name: u.name ?? "",
+      email: u.email ?? "",
+      groupPKs: [...(u.groups ?? [])],
+    });
+  };
+
+  const toggleEditGroup = (pk: string) =>
+    setEditForm((f) => ({
+      ...f,
+      groupPKs: f.groupPKs.includes(pk) ? f.groupPKs.filter((g) => g !== pk) : [...f.groupPKs, pk],
+    }));
 
   const toggleGroup = (name: string) =>
     setForm((f) => ({
@@ -505,12 +535,16 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
                 </td>
                 <td className="px-3 py-2 text-slate-500">{u.last_login ? fmtTime(u.last_login) : "从未"}</td>
                 {isAdmin ? (
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
-                        onClick={() => { setResetUser(u); setResetPw(""); }}>
-                        重置密码
-                      </Button>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                      onClick={() => openEditUser(u)}>
+                      编辑
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                      onClick={() => { setResetUser(u); setResetPw(""); }}>
+                      重置密码
+                    </Button>
                       <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-slate-600"
                         onClick={() => activeMut.mutate({ uid: u.pk, active: !u.is_active })}>
                         {u.is_active ? "停用" : "启用"}
@@ -587,6 +621,54 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
         </DialogContent>
       </Dialog>
 
+      {/* 编辑用户（关联组） */}
+      <Dialog open={Boolean(editUser)} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>编辑用户：{editUser?.username}</DialogTitle>
+            <DialogDescription>勾选组即完成认证信息关联（如 headscale 的 OIDC 组），保存立即生效。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>姓名</Label>
+                <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>邮箱</Label>
+                <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>所属组</Label>
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+                {groups.map((g) => (
+                  <label key={g.pk} className="flex items-center gap-1.5 text-xs text-slate-700">
+                    <input type="checkbox" checked={editForm.groupPKs.includes(g.pk)} onChange={() => toggleEditGroup(g.pk)} />
+                    {g.name}
+                  </label>
+                ))}
+                {groups.length === 0 ? <span className="text-xs text-slate-400">未获取到组</span> : null}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditUser(null)}>取消</Button>
+            <Button type="button" disabled={updateMut.isPending || !editUser}
+              onClick={() => editUser && updateMut.mutate({
+                uid: editUser.pk,
+                body: {
+                  name: editForm.name,
+                  email: editForm.email,
+                  groups: editForm.groupPKs,
+                },
+              })}>
+              {updateMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 重置密码 */}
       <Dialog open={Boolean(resetUser)} onOpenChange={(o) => { if (!o) setResetUser(null); }}>
         <DialogContent className="max-w-sm">
@@ -620,7 +702,23 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
     queryFn: () => apiGetJson<{ groups: AKGroup[] }>(`/api/ops/authentik/instances/${instanceId}/groups`),
     enabled: isAdmin,
   });
+  const providersQ = useQuery({
+    queryKey: ["authentik-providers", instanceId],
+    queryFn: () => apiGetJson<{ providers: AKProvider[] }>(`/api/ops/authentik/instances/${instanceId}/providers/oauth2`),
+    enabled: isAdmin,
+  });
+  const usersQ = useQuery({
+    queryKey: ["authentik-users", instanceId, ""],
+    queryFn: () => apiGetJson<{ users: AKUser[] }>(`/api/ops/authentik/instances/${instanceId}/users`),
+    enabled: isAdmin,
+  });
   const apps = appsQ.data?.apps ?? [];
+  const providers = providersQ.data?.providers ?? [];
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["authentik-apps", instanceId] });
+    void qc.invalidateQueries({ queryKey: ["authentik-providers", instanceId] });
+    void qc.invalidateQueries({ queryKey: ["authentik-status", instanceId] });
+  };
   if (appsQ.isError) {
     return (
       <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
@@ -630,16 +728,31 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
   }
 
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", slug: "", redirectUris: "", groupPK: "" });
+  const [form, setForm] = useState({ name: "", slug: "", redirectUris: "", groupPK: "", mode: "create" as "create" | "link", providerPK: "" });
   const [result, setResult] = useState<{ client_id: string; client_secret: string; name: string } | null>(null);
+  const [editApp, setEditApp] = useState<AKApp | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", providerPK: "", metaLaunchUrl: "" });
+  const [confirmDelApp, setConfirmDelApp] = useState<AKApp | null>(null);
+  const [bindApp, setBindApp] = useState<AKApp | null>(null);
+  const [bindKind, setBindKind] = useState<"group" | "user">("group");
+  const [bindTarget, setBindTarget] = useState("");
+  const [confirmDelBinding, setConfirmDelBinding] = useState<AKBinding | null>(null);
+
+  const bindingsQ = useQuery({
+    queryKey: ["authentik-bindings", instanceId, bindApp?.pk],
+    queryFn: () => apiGetJson<{ bindings: AKBinding[] }>(`/api/ops/authentik/instances/${instanceId}/bindings?target=${encodeURIComponent(bindApp?.pk ?? "")}`),
+    enabled: Boolean(bindApp),
+  });
 
   const createMut = useMutation({
     mutationFn: () =>
       apiPostJson<{ message?: string; provider?: AKProvider; app?: AKApp }>(`/api/ops/authentik/instances/${instanceId}/apps`, {
         name: form.name,
         slug: form.slug || undefined,
-        redirectUris: form.redirectUris.split("\n").map((s) => s.trim()).filter(Boolean),
         groupPK: form.groupPK || undefined,
+        ...(form.mode === "create"
+          ? { redirectUris: form.redirectUris.split("\n").map((s) => s.trim()).filter(Boolean) }
+          : { providerPK: form.providerPK ? parseInt(form.providerPK, 10) : undefined }),
       }),
     onSuccess: (res) => {
       toast.success(res.message ?? "对接完成");
@@ -651,48 +764,98 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
           name: res.app?.name ?? form.name,
         });
       }
-      setForm({ name: "", slug: "", redirectUris: "", groupPK: "" });
-      void qc.invalidateQueries({ queryKey: ["authentik-apps", instanceId] });
-      void qc.invalidateQueries({ queryKey: ["authentik-providers", instanceId] });
-      void qc.invalidateQueries({ queryKey: ["authentik-status", instanceId] });
+      setForm({ name: "", slug: "", redirectUris: "", groupPK: "", mode: "create", providerPK: "" });
+      invalidate();
     },
     onError: (e) => toast.error(apiErr(e)),
   });
+
+  const updateMut = useMutation({
+    mutationFn: (p: { slug: string; body: Record<string, unknown> }) =>
+      apiPutJson(`/api/ops/authentik/instances/${instanceId}/apps/${p.slug}`, p.body),
+    onSuccess: () => { toast.success("应用已更新"); setEditApp(null); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const delAppMut = useMutation({
+    mutationFn: (slug: string) => apiDeleteJson(`/api/ops/authentik/instances/${instanceId}/apps/${slug}`),
+    onSuccess: () => { toast.success("应用已删除"); setConfirmDelApp(null); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const bindMut = useMutation({
+    mutationFn: () =>
+      apiPostJson(`/api/ops/authentik/instances/${instanceId}/bindings`, {
+        target: bindApp?.pk,
+        ...(bindKind === "group" ? { groupPK: bindTarget } : { userPK: parseInt(bindTarget, 10) }),
+      }),
+    onSuccess: () => { toast.success("绑定已创建"); setBindTarget(""); void qc.invalidateQueries({ queryKey: ["authentik-bindings", instanceId, bindApp?.pk] }); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const unbindMut = useMutation({
+    mutationFn: (pk: string) => apiDeleteJson(`/api/ops/authentik/instances/${instanceId}/bindings/${pk}`),
+    onSuccess: () => { toast.success("绑定已移除"); setConfirmDelBinding(null); void qc.invalidateQueries({ queryKey: ["authentik-bindings", instanceId, bindApp?.pk] }); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const openEditApp = (a: AKApp) => {
+    setEditApp(a);
+    setEditForm({
+      name: a.name ?? "",
+      providerPK: a.provider != null ? String(a.provider) : "",
+      metaLaunchUrl: a.meta_launch_url ?? "",
+    });
+  };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          应用 = Authentik 里的站点入口；对接向导会同时创建 <strong>OAuth2 / OIDC 提供程序</strong>并把选中的组绑定到应用。
+          应用 = Authentik 里的站点入口；可新建对接（自动创建 OIDC 提供程序）、关联已有提供程序，并管理组/用户的访问绑定。
         </p>
         {isAdmin ? (
-          <Button type="button" size="sm" className="h-8 text-xs" onClick={() => setWizardOpen(true)}>
+          <Button type="button" size="sm" className="h-8 text-xs" onClick={() => { setForm({ name: "", slug: "", redirectUris: "", groupPK: "", mode: "create", providerPK: "" }); setWizardOpen(true); }}>
             <Plus className="mr-1 h-3.5 w-3.5" /> 新建应用对接
           </Button>
         ) : null}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-100">
-        <table className="w-full min-w-[560px] text-left text-xs">
+        <table className="w-full min-w-[680px] text-left text-xs">
           <thead className="bg-slate-50 text-slate-500">
             <tr>
               <th className="px-3 py-2 font-medium">应用</th>
               <th className="px-3 py-2 font-medium">Slug</th>
-              <th className="px-3 py-2 font-medium">提供程序</th>
+              <th className="px-3 py-2 font-medium">提供程序 pk</th>
               <th className="px-3 py-2 font-medium">入口 URL</th>
+              {isAdmin ? <th className="px-3 py-2 font-medium">操作</th> : null}
             </tr>
           </thead>
           <tbody>
             {apps.map((a) => (
-              <tr key={a.pk} className="border-t border-slate-50">
+              <tr key={a.pk} className="border-t border-slate-50 hover:bg-slate-50/60">
                 <td className="px-3 py-2 font-medium text-slate-900">{a.name}</td>
                 <td className="px-3 py-2 font-mono text-[11px] text-slate-600">{a.slug}</td>
-                <td className="px-3 py-2 text-slate-600">{a.provider ? String(a.provider) : "—"}</td>
+                <td className="px-3 py-2 text-slate-600">{a.provider != null ? String(a.provider) : <span className="text-amber-600">未关联</span>}</td>
                 <td className="px-3 py-2 font-mono text-[10px] text-slate-500">{a.meta_launch_url || "—"}</td>
+                {isAdmin ? (
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => setBindApp(a)}>访问绑定</Button>
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => openEditApp(a)}>编辑</Button>
+                      {confirmDelApp?.pk === a.pk ? (
+                        <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={() => delAppMut.mutate(a.slug)}>确认删除？</Button>
+                      ) : (
+                        <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600" onClick={() => setConfirmDelApp(a)}>删除</Button>
+                      )}
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             ))}
             {apps.length === 0 ? (
-              <tr><td colSpan={4} className="px-3 py-8 text-center text-slate-400">{appsQ.isLoading ? "加载中…" : "暂无应用"}</td></tr>
+              <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">{appsQ.isLoading ? "加载中…" : "暂无应用"}</td></tr>
             ) : null}
           </tbody>
         </table>
@@ -704,7 +867,7 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
           <DialogHeader>
             <DialogTitle>新建应用对接（OAuth2 / OIDC）</DialogTitle>
             <DialogDescription>
-              一次完成：创建 OAuth2 提供程序 → 创建应用 → 把选中组绑定到应用。client_secret 仅创建时展示。
+              新建模式：自动创建提供程序并返回 client_secret（仅展示一次）；关联模式：直接挂到已有提供程序。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
@@ -718,17 +881,40 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
                 <Input value={form.slug} placeholder="myapp" onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>回调 redirect URI *（每行一条）</Label>
-              <Textarea rows={3} className="font-mono text-xs" value={form.redirectUris}
-                placeholder={"https://app.example.com/auth/callback\nhttps://headscale.example.com/oidc/callback"}
-                onChange={(e) => setForm((f) => ({ ...f, redirectUris: e.target.value }))} />
+            <div className="flex gap-4 text-xs text-slate-700">
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={form.mode === "create"} onChange={() => setForm((f) => ({ ...f, mode: "create" }))} />
+                新建提供程序
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={form.mode === "link"} onChange={() => setForm((f) => ({ ...f, mode: "link" }))} />
+                关联已有提供程序
+              </label>
             </div>
+            {form.mode === "create" ? (
+              <div className="space-y-1">
+                <Label>回调 redirect URI *（每行一条）</Label>
+                <Textarea rows={3} className="font-mono text-xs" value={form.redirectUris}
+                  placeholder={"https://app.example.com/auth/callback\nhttps://headscale.example.com/oidc/callback"}
+                  onChange={(e) => setForm((f) => ({ ...f, redirectUris: e.target.value }))} />
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <Label>已有提供程序 *</Label>
+                <select className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs"
+                  value={form.providerPK} onChange={(e) => setForm((f) => ({ ...f, providerPK: e.target.value }))}>
+                  <option value="">选择提供程序…</option>
+                  {providers.map((p) => (
+                    <option key={p.pk} value={p.pk}>{p.name}（pk {p.pk}{p.assignedAppSlug ? ` · 已用于 ${p.assignedAppSlug}` : ""}）</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label>允许访问的组（可选）</Label>
               <select className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs"
                 value={form.groupPK} onChange={(e) => setForm((f) => ({ ...f, groupPK: e.target.value }))}>
-                <option value="">不限制（稍后手动配置策略）</option>
+                <option value="">不限制（稍后可在「访问绑定」配置）</option>
                 {(groupsQ.data?.groups ?? []).map((g) => (
                   <option key={g.pk} value={g.pk}>{g.name}</option>
                 ))}
@@ -737,10 +923,113 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setWizardOpen(false)}>取消</Button>
-            <Button type="button" disabled={createMut.isPending || !form.name.trim() || !form.redirectUris.trim()} onClick={() => createMut.mutate()}>
+            <Button type="button" disabled={createMut.isPending || !form.name.trim() || (form.mode === "create" ? !form.redirectUris.trim() : !form.providerPK)} onClick={() => createMut.mutate()}>
               {createMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 创建对接
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑应用 */}
+      <Dialog open={Boolean(editApp)} onOpenChange={(o) => { if (!o) setEditApp(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>编辑应用：{editApp?.slug}</DialogTitle>
+            <DialogDescription>可在此把应用挂到（或换到）某个 OAuth2 提供程序。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <Label>应用名称</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>关联的提供程序</Label>
+              <select className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs"
+                value={editForm.providerPK} onChange={(e) => setEditForm((f) => ({ ...f, providerPK: e.target.value }))}>
+                <option value="">保持不变</option>
+                {providers.map((p) => (
+                  <option key={p.pk} value={p.pk}>{p.name}（pk {p.pk}）</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>入口 URL（meta_launch_url，可选）</Label>
+              <Input className="font-mono text-xs" value={editForm.metaLaunchUrl} onChange={(e) => setEditForm((f) => ({ ...f, metaLaunchUrl: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditApp(null)}>取消</Button>
+            <Button type="button" disabled={updateMut.isPending} onClick={() => editApp && updateMut.mutate({
+              slug: editApp.slug,
+              body: {
+                name: editForm.name || undefined,
+                ...(editForm.providerPK ? { provider: parseInt(editForm.providerPK, 10) } : {}),
+                metaLaunchUrl: editForm.metaLaunchUrl,
+              },
+            })}>
+              {updateMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 访问绑定 */}
+      <Dialog open={Boolean(bindApp)} onOpenChange={(o) => { if (!o) { setBindApp(null); setConfirmDelBinding(null); } }}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>访问绑定：{bindApp?.name}</DialogTitle>
+            <DialogDescription>把组或用户绑定到应用，绑定后成员才可见/可访问（未绑定任何策略时按 Authentik 默认策略）。</DialogDescription>
+          </DialogHeader>
+          {isAdmin ? (
+            <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+              <div className="space-y-1">
+                <Label className="text-xs">类型</Label>
+                <select className="h-8 rounded border border-slate-200 bg-white px-2 text-xs" value={bindKind}
+                  onChange={(e) => { setBindKind(e.target.value as "group" | "user"); setBindTarget(""); }}>
+                  <option value="group">组</option>
+                  <option value="user">用户</option>
+                </select>
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <Label className="text-xs">{bindKind === "group" ? "选择组" : "选择用户"}</Label>
+                <select className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs" value={bindTarget}
+                  onChange={(e) => setBindTarget(e.target.value)}>
+                  <option value="">选择…</option>
+                  {bindKind === "group"
+                    ? (groupsQ.data?.groups ?? []).map((g) => <option key={g.pk} value={g.pk}>{g.name}</option>)
+                    : (usersQ.data?.users ?? []).map((u) => <option key={u.pk} value={u.pk}>{u.username}{u.name ? `（${u.name}）` : ""}</option>)}
+                </select>
+              </div>
+              <Button type="button" size="sm" className="h-8 text-xs" disabled={bindMut.isPending || !bindTarget} onClick={() => bindMut.mutate()}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> 添加绑定
+              </Button>
+            </div>
+          ) : null}
+          <ul className="space-y-1.5">
+            {(bindingsQ.data?.bindings ?? []).map((b) => (
+              <li key={b.pk} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-1.5 text-xs">
+                <span className="text-slate-800">
+                  <span className={cn("mr-1.5 rounded px-1 text-[10px]", b.kind === "group" ? "bg-violet-50 text-violet-700" : "bg-sky-50 text-sky-700")}>
+                    {b.kind === "group" ? "组" : b.kind === "user" ? "用户" : "其他"}
+                  </span>
+                  {b.kind === "group" ? b.groupName || b.groupPK : b.kind === "user" ? b.username || `pk ${b.userPK}` : b.pk}
+                  {!b.enabled ? <span className="ml-1 text-[10px] text-slate-400">（禁用）</span> : null}
+                </span>
+                {isAdmin ? (
+                  confirmDelBinding?.pk === b.pk ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={() => unbindMut.mutate(b.pk)}>确认移除？</Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600" onClick={() => setConfirmDelBinding(b)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )
+                ) : null}
+              </li>
+            ))}
+            {(bindingsQ.data?.bindings ?? []).length === 0 ? (
+              <li className="py-4 text-center text-xs text-slate-400">{bindingsQ.isLoading ? "加载中…" : "暂无绑定"}</li>
+            ) : null}
+          </ul>
         </DialogContent>
       </Dialog>
 
@@ -778,12 +1067,53 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
 
 // ── 提供程序 ──
 
-const ProvidersPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
+const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanceId, isAdmin }) => {
+  const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["authentik-providers", instanceId],
     queryFn: () => apiGetJson<{ providers: AKProvider[] }>(`/api/ops/authentik/instances/${instanceId}/providers/oauth2`),
   });
   const providers = q.data?.providers ?? [];
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", redirectUris: "" });
+  const [editProv, setEditProv] = useState<AKProvider | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", redirectUris: "", subMode: "user_email" });
+  const [confirmDel, setConfirmDel] = useState<AKProvider | null>(null);
+
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["authentik-providers", instanceId] });
+    void qc.invalidateQueries({ queryKey: ["authentik-status", instanceId] });
+  };
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      apiPostJson<{ message?: string; provider?: AKProvider }>(`/api/ops/authentik/instances/${instanceId}/providers/oauth2`, {
+        name: createForm.name,
+        redirectUris: createForm.redirectUris.split("\n").map((s) => s.trim()).filter(Boolean),
+      }),
+    onSuccess: (res) => {
+      toast.success(res.message ?? "提供程序已创建");
+      setCreateOpen(false);
+      setCreateForm({ name: "", redirectUris: "" });
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (p: { pk: number; body: Record<string, unknown> }) =>
+      apiPutJson(`/api/ops/authentik/instances/${instanceId}/providers/${p.pk}`, p.body),
+    onSuccess: () => { toast.success("提供程序已更新"); setEditProv(null); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (pk: number) => apiDeleteJson(`/api/ops/authentik/instances/${instanceId}/providers/${pk}`),
+    onSuccess: () => { toast.success("提供程序已删除"); setConfirmDel(null); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
   if (q.isError) {
     return (
       <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
@@ -792,45 +1122,150 @@ const ProvidersPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-100">
-      <table className="w-full min-w-[640px] text-left text-xs">
-        <thead className="bg-slate-50 text-slate-500">
-          <tr>
-            <th className="px-3 py-2 font-medium">名称</th>
-            <th className="px-3 py-2 font-medium">Client ID</th>
-            <th className="px-3 py-2 font-medium">回调地址</th>
-            <th className="px-3 py-2 font-medium">sub 模式</th>
-          </tr>
-        </thead>
-        <tbody>
-          {providers.map((p) => (
-            <tr key={p.pk} className="border-t border-slate-50">
-              <td className="px-3 py-2 font-medium text-slate-900">{p.name}</td>
-              <td className="px-3 py-2">
-                <span className="font-mono text-[11px] text-slate-700">{p.client_id}</span>
-                <Button type="button" size="sm" variant="ghost" className="ml-1 h-5 w-5 p-0 text-slate-400"
-                  onClick={() => void navigator.clipboard.writeText(p.client_id).catch(() => {})}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex flex-col gap-0.5">
-                  {(p.redirect_uris ?? []).map((u, i) => (
-                    <span key={i} className="font-mono text-[10px] text-slate-500" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
-                      {u.url || JSON.stringify(u)}
-                    </span>
-                  ))}
-                  {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
-                </div>
-              </td>
-              <td className="px-3 py-2 text-slate-500">{p.sub_mode ?? "—"}</td>
+    <div className="space-y-3">
+      {isAdmin ? (
+        <div className="flex items-center justify-end">
+          <Button type="button" size="sm" className="h-8 text-xs" onClick={() => { setCreateForm({ name: "", redirectUris: "" }); setCreateOpen(true); }}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> 新建提供程序
+          </Button>
+        </div>
+      ) : null}
+      <div className="overflow-x-auto rounded-xl border border-slate-100">
+        <table className="w-full min-w-[760px] text-left text-xs">
+          <thead className="bg-slate-50 text-slate-500">
+            <tr>
+              <th className="px-3 py-2 font-medium">名称</th>
+              <th className="px-3 py-2 font-medium">Client ID</th>
+              <th className="px-3 py-2 font-medium">回调地址</th>
+              <th className="px-3 py-2 font-medium">所属应用</th>
+              <th className="px-3 py-2 font-medium">sub 模式</th>
+              {isAdmin ? <th className="px-3 py-2 font-medium">操作</th> : null}
             </tr>
-          ))}
-          {providers.length === 0 ? (
-            <tr><td colSpan={4} className="px-3 py-8 text-center text-slate-400">{q.isLoading ? "加载中…" : "暂无 OAuth2 提供程序"}</td></tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {providers.map((p) => (
+              <tr key={p.pk} className="border-t border-slate-50 align-top hover:bg-slate-50/60">
+                <td className="px-3 py-2 font-medium text-slate-900">{p.name}</td>
+                <td className="px-3 py-2">
+                  <span className="font-mono text-[11px] text-slate-700">{p.client_id}</span>
+                  <Button type="button" size="sm" variant="ghost" className="ml-1 h-5 w-5 p-0 text-slate-400"
+                    onClick={() => void navigator.clipboard.writeText(p.client_id).catch(() => {})}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-col gap-0.5">
+                    {(p.redirect_uris ?? []).map((u, i) => (
+                      <span key={i} className="font-mono text-[10px] text-slate-500" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
+                        {u.url || JSON.stringify(u)}
+                      </span>
+                    ))}
+                    {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-slate-600">{p.assignedAppSlug ? <span className="font-mono text-[10px]">{p.assignedAppSlug}</span> : <span className="text-[10px] text-slate-300">未关联</span>}</td>
+                <td className="px-3 py-2 text-slate-500">{p.sub_mode ?? "—"}</td>
+                {isAdmin ? (
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        onClick={() => {
+                          setEditProv(p);
+                          setEditForm({
+                            name: p.name ?? "",
+                            redirectUris: (p.redirect_uris ?? []).map((u) => u.url).join("\n"),
+                            subMode: p.sub_mode || "user_email",
+                          });
+                        }}>
+                        编辑
+                      </Button>
+                      {confirmDel?.pk === p.pk ? (
+                        <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={() => delMut.mutate(p.pk)}>确认删除？</Button>
+                      ) : (
+                        <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600" onClick={() => setConfirmDel(p)}>删除</Button>
+                      )}
+                    </div>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+            {providers.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">{q.isLoading ? "加载中…" : "暂无 OAuth2 提供程序"}</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 新建提供程序 */}
+      <Dialog open={createOpen} onOpenChange={(o) => { if (!o) setCreateOpen(false); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>新建 OAuth2 提供程序</DialogTitle>
+            <DialogDescription>仅创建提供程序；如需连带应用与组绑定，请用「应用对接」的新建向导。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <Label>名称 *</Label>
+              <Input value={createForm.name} placeholder="MyApp (OIDC)" onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>回调 redirect URI *（每行一条，strict 匹配）</Label>
+              <Textarea rows={3} className="font-mono text-xs" value={createForm.redirectUris}
+                placeholder="https://app.example.com/auth/callback"
+                onChange={(e) => setCreateForm((f) => ({ ...f, redirectUris: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
+            <Button type="button" disabled={createMut.isPending || !createForm.name.trim() || !createForm.redirectUris.trim()} onClick={() => createMut.mutate()}>
+              {createMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 创建
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑提供程序 */}
+      <Dialog open={Boolean(editProv)} onOpenChange={(o) => { if (!o) setEditProv(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>编辑提供程序：{editProv?.name}</DialogTitle>
+            <DialogDescription>client_id 由 Authentik 固定分配，不可修改。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <Label>名称</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>回调 redirect URI（每行一条）</Label>
+              <Textarea rows={3} className="font-mono text-xs" value={editForm.redirectUris}
+                onChange={(e) => setEditForm((f) => ({ ...f, redirectUris: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>sub 模式</Label>
+              <select className="h-8 w-full rounded border border-slate-200 bg-white px-2 text-xs"
+                value={editForm.subMode} onChange={(e) => setEditForm((f) => ({ ...f, subMode: e.target.value }))}>
+                <option value="user_email">user_email（以邮箱为唯一标识）</option>
+                <option value="username">username</option>
+                <option value="hashed_username">hashed_username</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditProv(null)}>取消</Button>
+            <Button type="button" disabled={updateMut.isPending} onClick={() => editProv && updateMut.mutate({
+              pk: editProv.pk,
+              body: {
+                name: editForm.name || undefined,
+                redirectUris: editForm.redirectUris.split("\n").map((s) => s.trim()).filter(Boolean),
+                subMode: editForm.subMode,
+              },
+            })}>
+              {updateMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
