@@ -10,6 +10,7 @@ import {
   LogOut,
   Monitor,
   Network,
+  Fingerprint,
   Server,
   Sparkles,
   Settings,
@@ -46,6 +47,7 @@ const Header: React.FC = () => {
   const isBastion = workspace === "bastion";
   const isAiInspect = workspace === "aiinspect";
   const isMesh = workspace === "mesh";
+  const isAuthentik = workspace === "authentik";
   const isDocs = workspace === "docs";
 
   const cfgQ = useAppConfig();
@@ -65,6 +67,7 @@ const Header: React.FC = () => {
   );
   const headerShowAiInspect = menuItemVisible(perm, "aiInspect", navRole, true);
   const headerShowMesh = menuItemVisible(perm, "mesh", navRole, true);
+  const headerShowAuthentik = menuItemVisible(perm, "authentik", navRole, true);
 
   /** 与 MySQL 是否连通无关：管理员应始终看到入口；无库时页面内会提示配置 MySQL */
   const showPlatformUsers =
@@ -129,7 +132,7 @@ const Header: React.FC = () => {
                 "border-slate-200 bg-slate-50/90 text-slate-800 hover:bg-slate-100",
                 "focus-visible:ring-2 focus-visible:ring-blue-500/30"
               )}
-              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、文档仓库"
+              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库"
             >
               <span
                 className={cn(
@@ -150,7 +153,9 @@ const Header: React.FC = () => {
                                 ? "from-cyan-600 to-teal-700"
                                 : isMesh
                                   ? "from-indigo-600 to-violet-700"
-                                  : "from-emerald-600 to-emerald-700"
+                                  : isAuthentik
+                                    ? "from-fuchsia-600 to-purple-700"
+                                    : "from-emerald-600 to-emerald-700"
                 )}
               >
                 {isHub ? (
@@ -169,6 +174,8 @@ const Header: React.FC = () => {
                   <Sparkles size={17} strokeWidth={2.25} />
                 ) : isMesh ? (
                   <Network size={17} strokeWidth={2.25} />
+                ) : isAuthentik ? (
+                  <Fingerprint size={17} strokeWidth={2.25} />
                 ) : (
                   <AppWindow size={17} strokeWidth={2.25} />
                 )}
@@ -190,7 +197,9 @@ const Header: React.FC = () => {
                               ? "AI 巡检"
                               : isMesh
                                 ? "异地组网"
-                                : "应用中心"}
+                                : isAuthentik
+                                  ? "Authentik"
+                                  : "应用中心"}
               </span>
               <ChevronDown size={16} className="text-slate-500" aria-hidden />
             </button>
@@ -291,6 +300,20 @@ const Header: React.FC = () => {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">异地组网</span>
                 <span className="text-xs text-muted-foreground">Headscale · 路由 · 流量</span>
+              </div>
+            </DropdownMenuItem>
+            ) : null}
+            {headerShowAuthentik ? (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 py-2.5"
+              onSelect={() => navigate("/cluster/authentik")}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-600 to-purple-700">
+                <Fingerprint className="text-white" size={17} strokeWidth={2.25} />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">Authentik</span>
+                <span className="text-xs text-muted-foreground">SSO · 用户 · 应用对接</span>
               </div>
             </DropdownMenuItem>
             ) : null}

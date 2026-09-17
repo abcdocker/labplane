@@ -10,6 +10,7 @@ export type WorkspaceId =
   | "bastion"
   | "aiinspect"
   | "mesh"
+  | "authentik"
   | "docs";
 
 export function workspaceFromPathname(pathname: string): WorkspaceId {
@@ -22,6 +23,7 @@ export function workspaceFromPathname(pathname: string): WorkspaceId {
   if (pathname.startsWith("/cluster/bastion")) return "bastion";
   if (pathname.startsWith("/cluster/ai-inspect")) return "aiinspect";
   if (pathname.startsWith("/cluster/mesh")) return "mesh";
+  if (pathname.startsWith("/cluster/authentik")) return "authentik";
   if (pathname.startsWith("/cluster/vcenter")) return "vcenter";
   if (pathname.startsWith("/cluster")) return "kubernetes";
   return "kubernetes";

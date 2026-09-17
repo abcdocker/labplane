@@ -116,6 +116,7 @@ const AiInspectLogDetailsPage = lazy(() => import("./pages/ai-inspect/AiInspectL
 const AiInspectLogCollectionPage = lazy(() => import("./pages/ai-inspect/AiInspectLogCollection"));
 const AiInspectReportsPage = lazy(() => import("./pages/ai-inspect/AiInspectReports"));
 const MeshPage = lazy(() => import("./pages/mesh/MeshPage"));
+const AuthentikPage = lazy(() => import("./pages/authentik/AuthentikPage"));
 const ClusterPodDetailPage = lazy(() => import("./pages/cluster/ClusterPodDetail"));
 const ClusterPodTerminalPageLazy = lazy(() => import("./pages/cluster/ClusterPodTerminalPage"));
 const ClusterWorkloadDetailPage = lazy(() => import("./pages/cluster/ClusterWorkloadDetail"));
@@ -636,6 +637,22 @@ const App = () => {
                     element={
                       <RouteSuspense>
                         <MeshPage />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="mesh/traffic"
+                    element={
+                      <RouteSuspense>
+                        <MeshPage initialTab="traffic" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="authentik"
+                    element={
+                      <RouteSuspense>
+                        <AuthentikPage />
                       </RouteSuspense>
                     }
                   />

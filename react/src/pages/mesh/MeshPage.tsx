@@ -151,7 +151,7 @@ const apiErr = (e: unknown) => (e instanceof ApiHttpError ? e.serverMessage : e 
 
 // ──────────────────────────── 页面 ────────────────────────────
 
-const MeshPage: React.FC = () => {
+const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
   const qc = useQueryClient();
   const { status } = useAuth();
   const isAdmin = status?.role === "admin";
@@ -313,6 +313,7 @@ const MeshPage: React.FC = () => {
               key={selected.id}
               inst={selected}
               isAdmin={isAdmin}
+              initialTab={initialTab}
               onEdit={() => openEdit(selected)}
               onAddCollector={(s) => openEdit(selected, s)}
             />
@@ -464,9 +465,10 @@ const PageHeader: React.FC<{ isAdmin: boolean; onAdd?: () => void }> = ({ isAdmi
 const InstanceDetail: React.FC<{
   inst: MeshInstance;
   isAdmin: boolean;
+  initialTab?: string;
   onEdit: () => void;
   onAddCollector: (s: CollectorSuggestion) => void;
-}> = ({ inst, isAdmin, onEdit, onAddCollector }) => {
+}> = ({ inst, isAdmin, initialTab, onEdit, onAddCollector }) => {
   const qc = useQueryClient();
   const discoverQ = useQuery({
     queryKey: ["mesh-discover", inst.id],
@@ -547,7 +549,7 @@ const InstanceDetail: React.FC<{
       </div>
 
       <div className="p-4">
-        <Tabs defaultValue="topology">
+        <Tabs defaultValue={initialTab && ["topology", "nodes", "keys", "traffic", "service"].includes(initialTab) ? initialTab : "topology"}>
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="topology"><Network className="mr-1 h-3.5 w-3.5" /> 拓扑总览</TabsTrigger>
             <TabsTrigger value="nodes"><Server className="mr-1 h-3.5 w-3.5" /> 节点与路由</TabsTrigger>

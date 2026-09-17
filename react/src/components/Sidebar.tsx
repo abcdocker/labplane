@@ -37,6 +37,7 @@ import {
   ClipboardList,
   Gauge,
   Network,
+  Fingerprint,
 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
 import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
@@ -59,6 +60,7 @@ function readWorkspace(): SidebarWorkspace {
       v === "bastion" ||
       v === "aiinspect" ||
       v === "mesh" ||
+      v === "authentik" ||
       v === "docs"
     ) {
       return v;
@@ -87,6 +89,8 @@ function dashboardPath(ws: SidebarWorkspace): string {
       return "/cluster/ai-inspect/dashboard";
     case "mesh":
       return "/cluster/mesh";
+    case "authentik":
+      return "/cluster/authentik";
     case "docs":
       return "/docs";
     default:
@@ -387,6 +391,8 @@ const Sidebar: React.FC = () => {
       setWorkspace("bastion");
     } else if (path.startsWith("/cluster/ai-inspect")) {
       setWorkspace("aiinspect");
+    } else if (path.startsWith("/cluster/authentik")) {
+      setWorkspace("authentik");
     } else if (path.startsWith("/cluster/mesh")) {
       setWorkspace("mesh");
     } else if (path.startsWith("/cluster")) {
@@ -407,6 +413,7 @@ const Sidebar: React.FC = () => {
   const showAppCenterNav = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
   const showAiInspectNav = menuItemVisible(perm, "aiInspect", navRole, true);
   const showMeshNav = menuItemVisible(perm, "mesh", navRole, true);
+  const showAuthentikNav = menuItemVisible(perm, "authentik", navRole, true);
   const showBastionNav = menuItemVisible(
     perm,
     "vcenter_bastion",
@@ -516,6 +523,7 @@ const Sidebar: React.FC = () => {
   const isBastion = workspace === "bastion";
   const isAiinspect = workspace === "aiinspect";
   const isMesh = workspace === "mesh";
+  const isAuthentik = workspace === "authentik";
 
   const dashActive = isDashboardActive(location.pathname, workspace);
   const dashTo = dashboardPath(workspace);
@@ -584,7 +592,9 @@ const Sidebar: React.FC = () => {
                 ? "AI 巡检"
                 : isMesh
                   ? "异地组网"
-                  : "应用中心";
+                  : isAuthentik
+                    ? "Authentik"
+                    : "应用中心";
 
   const brandClass = isDocs
     ? "text-violet-600/90"
@@ -602,7 +612,9 @@ const Sidebar: React.FC = () => {
                 ? "text-cyan-600/90"
                 : isMesh
                   ? "text-indigo-600/90"
-                  : "text-emerald-600/90";
+                  : isAuthentik
+                    ? "text-fuchsia-600/90"
+                    : "text-emerald-600/90";
 
   const dashTint: "blue" | "violet" | "amber" | "emerald" | "slate" = isDocs
     ? "violet"
@@ -622,7 +634,9 @@ const Sidebar: React.FC = () => {
                   ? "slate"
                   : isMesh
                     ? "slate"
-                    : "emerald";
+                    : isAuthentik
+                      ? "slate"
+                      : "emerald";
 
   const dashLabel = isDocs ? "文档库" : isBastion ? "控制台" : isAppcenter ? "概览" : "Dashboard";
 
@@ -1083,6 +1097,28 @@ const Sidebar: React.FC = () => {
             >
               <Network size={20} className={iconTint(location.pathname === "/cluster/mesh", "slate")} />
               <span>控制面与节点</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/traffic"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/traffic"), "slate")}
+            >
+              <NodeActivityIcon size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/traffic"), "slate")} />
+              <span>流量监控</span>
+            </Link>
+          </>
+        ) : showAuthentikNav && isAuthentik ? (
+          <>
+            <div className="px-4 pb-1 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Authentik
+              </p>
+            </div>
+            <Link
+              to="/cluster/authentik"
+              className={navLinkTint(location.pathname === "/cluster/authentik", "slate")}
+            >
+              <Fingerprint size={20} className={iconTint(location.pathname === "/cluster/authentik", "slate")} />
+              <span>SSO 管理台</span>
             </Link>
           </>
         ) : null}

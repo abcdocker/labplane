@@ -57,6 +57,7 @@ export function describeSitePath(raw: string): string {
       { test: /^\/cluster\/ai-inspect\//, desc: "前端：AI 巡检（监控/告警/日志）" },
       { test: /^\/ai-inspect/, desc: "前端：AI 巡检（监控/告警）" },
       { test: /^\/cluster\/mesh/, desc: "前端：异地组网（Headscale）" },
+      { test: /^\/cluster\/authentik/, desc: "前端：Authentik 统一认证管理" },
       { test: /^\/app-center/, desc: "前端：应用中心" },
       { test: /^\/cluster\//, desc: "前端：Kubernetes 集群" },
       { test: /^\/vcenter\//, desc: "前端：vCenter / 云主机" },

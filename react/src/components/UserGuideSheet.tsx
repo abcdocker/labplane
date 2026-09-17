@@ -109,6 +109,7 @@ function DocToc() {
     { id: "十二", title: "AI 巡检、监控中心与告警" },
     { id: "十三", title: "文档文库、分享页与附件存储" },
     { id: "十四", title: "异地组网（Headscale）" },
+    { id: "十五", title: "Authentik 统一认证" },
   ];
   return (
     <nav
@@ -705,6 +706,29 @@ function DocBody() {
       </Ul>
       <P className="text-xs text-slate-500">
         与实现相关的包：客户端与出站校验 <Code>internal/headscale_client.go</Code>；实例存储 <Code>internal/mesh_store.go</Code>；流量采集 <Code>internal/mesh_traffic.go</Code>；API <Code>internal/mesh_handlers.go</Code>。
+      </P>
+
+      <H>十五、Authentik 统一认证</H>
+      <P>
+        <strong className="text-slate-800">入口</strong>：右上角工作区切换「Authentik」→ <Code>/cluster/authentik</Code>；Dashboard 工作台有同名卡片（用户 / 应用 / 提供程序计数与 SSO 健康状态）。
+        平台通过 Authentik 管理 API（<Code>/api/v3</Code>，Bearer Token）完成常用的认证管理，与「异地组网」联动：<strong>平台建用户 → 勾选组（如 headscale 的「authentik Headscale」组）→ 用户即可 OIDC 登录异地组网客户端</strong>，无需登录 Authentik 控制台。
+      </P>
+      <Ul>
+        <Li>
+          <strong>实例管理（管理员）</strong>：填写名称、Base URL 与 <strong>API Token</strong>（Authentik 管理后台 → Directory → Tokens &amp; passwords 创建）。Token 用 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储，界面只回显「已保存」；填 <Code>-</Code> 可清除。
+        </Li>
+        <Li>
+          <strong>用户管理</strong>：搜索、创建（用户名/姓名/邮箱/初始密码可选/<strong>多选组</strong>）、启用停用、重置密码、删除。创建用户时勾选组即完成「认证信息下发」；初始密码留空则由用户走找回流程或 OIDC。
+        </Li>
+        <Li>
+          <strong>应用对接向导</strong>：一次完成 <strong>OAuth2 提供程序 + 应用创建 + 组绑定</strong>——填应用名称与回调 redirect URI（每行一条），选允许访问的组；完成后展示 <Code>client_id</Code> / <Code>client_secret</Code>（仅此次展示，请立即复制到目标应用，例如 headscale 的 OIDC client 配置）。
+        </Li>
+        <Li>
+          <strong>提供程序与事件</strong>：OAuth2 提供程序列表（Client ID、回调地址、sub 模式）；最近事件流（登录、策略动作等）便于排查 SSO 问题。
+        </Li>
+      </Ul>
+      <P className="text-xs text-slate-500">
+        与实现相关的包：API 客户端 <Code>internal/authentik_client.go</Code>；实例存储 <Code>internal/authentik_store.go</Code>；路由 <Code>internal/authentik_handlers.go</Code>；前端 <Code>react/src/pages/authentik/AuthentikPage.tsx</Code>。
       </P>
     </>
   );

@@ -75,6 +75,7 @@ declare global {
   const FileText: typeof import('lucide-react').FileText
   const Files: typeof import('lucide-react').Files
   const Filter: typeof import('lucide-react').Filter
+  const Fingerprint: typeof import('lucide-react').Fingerprint
   const Flame: typeof import('lucide-react').Flame
   const Folder: typeof import('lucide-react').Folder
   const FolderGit2: typeof import('lucide-react').FolderGit2
@@ -192,6 +193,7 @@ declare global {
   const Upload: typeof import('lucide-react').Upload
   const User: typeof import('lucide-react').User
   const UserCircle: typeof import('lucide-react').UserCircle
+  const UserPlus: typeof import('lucide-react').UserPlus
   const UserRound: typeof import('lucide-react').UserRound
   const Users: typeof import('lucide-react').Users
   const View: typeof import('lucide-react').View
