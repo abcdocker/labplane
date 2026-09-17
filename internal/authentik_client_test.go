@@ -80,17 +80,29 @@ func TestAuthentikAppWizardChain(t *testing.T) {
 	cli := newAuthentikTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/v3/flows/instances/":
+			slug := r.URL.Query().Get("slug")
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"pagination": map[string]any{"count": 1},
-				"results":    []map[string]any{{"pk": "flow-uuid", "slug": "default-provider-authorization-implicit-consent", "name": "implicit"}},
+				"results":    []map[string]any{{"pk": "flow-" + slug, "slug": slug, "name": slug}},
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/api/v3/providers/oauth2/":
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body["authorization_flow"] != "flow-uuid" {
-				t.Fatalf("flow = %v", body["authorization_flow"])
+			if body["authorization_flow"] != "flow-default-provider-authorization-implicit-consent" {
+				t.Fatalf("authorization_flow = %v", body["authorization_flow"])
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"pk": 7, "name": "x", "client_id": "cid", "client_secret": "sec", "redirect_uris": []string{"https://app/cb"}})
+			if body["invalidation_flow"] != "flow-default-invalidation-flow" {
+				t.Fatalf("invalidation_flow = %v（2024.2+ 必填）", body["invalidation_flow"])
+			}
+			uris, _ := body["redirect_uris"].([]any)
+			if len(uris) == 0 {
+				t.Fatalf("redirect_uris 为空")
+			}
+			first, _ := uris[0].(map[string]any)
+			if first["url"] != "https://app/cb" || first["matching_mode"] != "strict" {
+				t.Fatalf("redirect_uris[0] = %v（2024.2+ 要求字典形式）", uris[0])
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"pk": 7, "name": "x", "client_id": "cid", "client_secret": "sec"})
 		case r.Method == http.MethodPost && r.URL.Path == "/api/v3/core/applications/":
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
@@ -109,7 +121,11 @@ func TestAuthentikAppWizardChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindFlowBySlug: %v", err)
 	}
-	provider, err := cli.CreateOAuth2Provider(ctx, "MyApp (OIDC)", []string{"https://app/cb"}, flow.PK)
+	invalidationFlow, err := cli.FindFlowBySlug(ctx, "default-invalidation-flow")
+	if err != nil {
+		t.Fatalf("FindFlowBySlug(invalidation): %v", err)
+	}
+	provider, err := cli.CreateOAuth2Provider(ctx, "MyApp (OIDC)", []string{"https://app/cb"}, flow.PK, invalidationFlow.PK)
 	if err != nil || provider.ClientSecret != "sec" {
 		t.Fatalf("CreateOAuth2Provider: %v %+v", err, provider)
 	}

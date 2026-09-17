@@ -30,6 +30,7 @@ import (
 )
 
 const authentikImplicitConsentFlowSlug = "default-provider-authorization-implicit-consent"
+const authentikInvalidationFlowSlug = "default-invalidation-flow"
 
 func registerAuthentikRoutes(api gin.IRouter, app *ServerApp) {
 	g := api.Group("/ops/authentik")
@@ -501,7 +502,12 @@ func handleAuthentikAppCreate(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		provider, err := cli.CreateOAuth2Provider(ctx, name+" (OIDC)", body.RedirectUris, flow.PK)
+		invalidationFlow, err := cli.FindFlowBySlug(ctx, authentikInvalidationFlowSlug)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		provider, err := cli.CreateOAuth2Provider(ctx, name+" (OIDC)", body.RedirectUris, flow.PK, invalidationFlow.PK)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "创建提供程序失败: " + err.Error()})
 			return

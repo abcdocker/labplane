@@ -287,11 +287,17 @@ func (a *authentikClient) ListOAuth2Providers(ctx context.Context) ([]AKOAuth2Pr
 }
 
 // CreateOAuth2Provider 创建 OIDC 提供程序；client_secret 仅本次响应返回。
-func (a *authentikClient) CreateOAuth2Provider(ctx context.Context, name string, redirectURIs []string, flowPK string) (AKOAuth2Provider, error) {
+// authentik 2024.2+ 要求 redirect_uris 为对象数组且 invalidation_flow 必填。
+func (a *authentikClient) CreateOAuth2Provider(ctx context.Context, name string, redirectURIs []string, flowPK, invalidationFlowPK string) (AKOAuth2Provider, error) {
+	uris := make([]map[string]string, 0, len(redirectURIs))
+	for _, u := range redirectURIs {
+		uris = append(uris, map[string]string{"matching_mode": "strict", "url": strings.TrimSpace(u)})
+	}
 	body := map[string]any{
 		"name":                   name,
 		"authorization_flow":     flowPK,
-		"redirect_uris":          redirectURIs,
+		"invalidation_flow":      invalidationFlowPK,
+		"redirect_uris":          uris,
 		"sub_mode":               "user_email",
 		"access_token_validity":  "hours=1",
 		"refresh_token_validity": "days=30",
