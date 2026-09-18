@@ -40,7 +40,7 @@ type AKRedirectURI = { url: string; matching_mode?: string };
 type AKProvider = {
   pk: number; name: string; client_id: string;
   redirect_uris?: AKRedirectURI[]; sub_mode?: string; client_secret?: string;
-  assignedAppSlug?: string; assignedAppName?: string;
+  assigned_application_slug?: string; assigned_application_name?: string;
 };
 
 type AKBinding = {
@@ -904,7 +904,7 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
                   value={form.providerPK} onChange={(e) => setForm((f) => ({ ...f, providerPK: e.target.value }))}>
                   <option value="">选择提供程序…</option>
                   {providers.map((p) => (
-                    <option key={p.pk} value={p.pk}>{p.name}（pk {p.pk}{p.assignedAppSlug ? ` · 已用于 ${p.assignedAppSlug}` : ""}）</option>
+                    <option key={p.pk} value={p.pk}>{p.name}（pk {p.pk}{p.assigned_application_slug ? ` · 已用于 ${p.assigned_application_slug}` : ""}）</option>
                   ))}
                 </select>
               </div>
@@ -1162,7 +1162,7 @@ const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ in
                     {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
                   </div>
                 </td>
-                <td className="px-3 py-2 text-slate-600">{p.assignedAppSlug ? <span className="font-mono text-[10px]">{p.assignedAppSlug}</span> : <span className="text-[10px] text-slate-300">未关联</span>}</td>
+                <td className="px-3 py-2 text-slate-600">{p.assigned_application_slug ? <span className="font-mono text-[10px]">{p.assigned_application_slug}</span> : <span className="text-[10px] text-slate-300">未关联</span>}</td>
                 <td className="px-3 py-2 text-slate-500">{p.sub_mode ?? "—"}</td>
                 {isAdmin ? (
                   <td className="px-3 py-2">
