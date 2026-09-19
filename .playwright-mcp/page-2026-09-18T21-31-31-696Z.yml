@@ -1,0 +1,197 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - region "Notifications alt+T"
+    - generic [ref=f2e5]:
+      - complementary [ref=f2e6]:
+        - generic [ref=f2e10]:
+          - generic [ref=f2e11]: Kube-BT-Sync
+          - generic [ref=f2e12]: 异地组网
+          - generic [ref=f2e13]: 工作区切换见顶部栏
+        - navigation [ref=f2e14]:
+          - link "Dashboard" [ref=f2e15] [cursor=pointer]:
+            - /url: /cluster/mesh
+          - paragraph [ref=f2e23]: 异地组网
+          - link "拓扑总览" [ref=f2e24] [cursor=pointer]:
+            - /url: /cluster/mesh/topology
+          - link "节点与路由" [ref=f2e31] [cursor=pointer]:
+            - /url: /cluster/mesh/nodes
+          - link "预授权密钥" [ref=f2e36] [cursor=pointer]:
+            - /url: /cluster/mesh/keys
+          - link "流量监控" [ref=f2e41] [cursor=pointer]:
+            - /url: /cluster/mesh/traffic
+          - link "服务信息" [ref=f2e45] [cursor=pointer]:
+            - /url: /cluster/mesh/service
+          - generic [ref=f2e50]:
+            - paragraph [ref=f2e51]: headscale 实例
+            - generic [ref=f2e52]:
+              - link "腾讯" [ref=f2e53] [cursor=pointer]:
+                - /url: /cluster/mesh?inst=mesh-1789735986499826000
+              - link "添加实例" [ref=f2e56] [cursor=pointer]:
+                - /url: /cluster/mesh?new=1
+        - generic [ref=f2e60]:
+          - paragraph [ref=f2e61]: 运行状态
+          - generic [ref=f2e62]:
+            - generic [ref=f2e63]: Kubernetes 已连接
+            - generic [ref=f2e66]: vCenter 未配置
+            - generic [ref=f2e69]: Redis 已连接
+            - generic [ref=f2e72]: MySQL 已连接
+            - generic [ref=f2e75]: 宝塔 待检查
+          - paragraph [ref=f2e78]: "DDNS: home.i4t.com"
+          - paragraph [ref=f2e79]: "同步间隔: 30s"
+      - generic [ref=f2e80]:
+        - banner [ref=f2e81]:
+          - link "工作台" [ref=f2e82] [cursor=pointer]:
+            - /url: /
+          - searchbox "全局搜索" [ref=f2e90]
+          - generic [ref=f2e91]:
+            - button "切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库" [ref=f2e92]:
+              - generic [ref=f2e99]: 异地组网
+            - button "通知" [ref=f2e102]
+            - button "admin 已登录" [ref=f2e108]:
+              - generic [ref=f2e113]:
+                - generic [ref=f2e114]: admin
+                - generic [ref=f2e115]: 已登录
+        - main [ref=f2e118]:
+          - generic [ref=f2e122]:
+            - generic [ref=f2e123]:
+              - generic [ref=f2e124]:
+                - heading "异地组网 Dashboard" [level=1] [ref=f2e125]
+                - paragraph [ref=f2e131]: 跨 headscale 实例的总体态势：实例健康、节点明细、站点子网、站点间链路与待处理事项（60s 自动刷新）。
+              - generic [ref=f2e132]:
+                - button "刷新" [ref=f2e133]
+                - link [ref=f2e139] [cursor=pointer]:
+                  - /url: /cluster/mesh?new=1
+                  - button "添加实例" [ref=f2e140]
+            - generic [ref=f2e142]:
+              - generic [ref=f2e143]:
+                - paragraph [ref=f2e144]: 实例（启用/全部）
+                - paragraph [ref=f2e148]: 1/1
+              - generic [ref=f2e149]:
+                - paragraph [ref=f2e150]: 节点总数
+                - paragraph [ref=f2e154]: "6"
+              - generic [ref=f2e155]:
+                - paragraph [ref=f2e156]: 在线节点
+                - paragraph [ref=f2e161]: 5/6
+              - generic [ref=f2e162]:
+                - paragraph [ref=f2e163]: 已批子网路由
+                - paragraph [ref=f2e168]: "2"
+            - generic [ref=f2e170]:
+              - generic [ref=f2e171]:
+                - generic [ref=f2e172]:
+                  - generic [ref=f2e176]: 腾讯
+                  - generic [ref=f2e177]: 腾讯云
+                - generic [ref=f2e178]: 健康
+              - generic [ref=f2e182]:
+                - generic [ref=f2e183]:
+                  - paragraph [ref=f2e184]: 节点 在线/总数
+                  - paragraph [ref=f2e185]: 5/6
+                - generic [ref=f2e186]:
+                  - paragraph [ref=f2e187]: 已批路由
+                  - paragraph [ref=f2e188]: "2"
+                - generic [ref=f2e189]:
+                  - paragraph [ref=f2e190]: 状态
+                  - paragraph [ref=f2e191]: 正常
+              - generic [ref=f2e192]:
+                - link "拓扑" [ref=f2e193] [cursor=pointer]:
+                  - /url: /cluster/mesh/topology?inst=mesh-1789735986499826000
+                - link "流量" [ref=f2e199] [cursor=pointer]:
+                  - /url: /cluster/mesh/traffic?inst=mesh-1789735986499826000
+                - link "密钥" [ref=f2e202] [cursor=pointer]:
+                  - /url: /cluster/mesh/keys?inst=mesh-1789735986499826000
+                - link "服务" [ref=f2e206] [cursor=pointer]:
+                  - /url: /cluster/mesh/service?inst=mesh-1789735986499826000
+            - generic [ref=f2e210]:
+              - paragraph [ref=f2e212]: 节点明细（跨实例 · 在线优先）
+              - table [ref=f2e217]:
+                - rowgroup [ref=f2e218]:
+                  - row [ref=f2e219]:
+                    - columnheader "节点" [ref=f2e220]
+                    - columnheader "实例" [ref=f2e221]
+                    - columnheader "Tailscale IP" [ref=f2e222]
+                    - columnheader "真实地址" [ref=f2e223]
+                    - columnheader "子网路由" [ref=f2e224]
+                    - columnheader "最近在线" [ref=f2e225]
+                - rowgroup [ref=f2e226]:
+                  - row [ref=f2e227]:
+                    - cell "macbook-oidc-test-yopvvo6v" [ref=f2e228]
+                    - cell "腾讯" [ref=f2e234]
+                    - cell "100.64.0.6" [ref=f2e235]
+                    - cell "192.168.31.224" [ref=f2e236]
+                    - cell "—" [ref=f2e237]
+                    - cell "7 小时前" [ref=f2e238]
+                  - row [ref=f2e239]:
+                    - cell "macbook-prd-jnhhvcus" [ref=f2e240]
+                    - cell "腾讯" [ref=f2e246]
+                    - cell "100.64.0.14" [ref=f2e247]
+                    - cell "—" [ref=f2e248]
+                    - cell "—" [ref=f2e249]
+                    - cell "17 分钟前" [ref=f2e250]
+                  - row [ref=f2e251]:
+                    - cell "🐧 ops" [ref=f2e252]
+                    - cell "腾讯" [ref=f2e258]
+                    - cell "100.64.0.1" [ref=f2e259]
+                    - cell "—" [ref=f2e260]
+                    - cell "192.168.21.0/24, 192.168.21.0/24" [ref=f2e261]
+                    - cell "1 小时前" [ref=f2e262]
+                  - row [ref=f2e263]:
+                    - cell "🐧 ukx-nas" [ref=f2e264]
+                    - cell "腾讯" [ref=f2e270]
+                    - cell "100.64.0.16" [ref=f2e271]
+                    - cell "—" [ref=f2e272]
+                    - cell "192.168.31.0/24, 192.168.31.0/24" [ref=f2e273]
+                    - cell "4 小时前" [ref=f2e274]
+                  - row [ref=f2e275]:
+                    - cell "🪟 windows-r730" [ref=f2e276]
+                    - cell "腾讯" [ref=f2e282]
+                    - cell "100.64.0.17" [ref=f2e283]
+                    - cell "192.168.21.96" [ref=f2e284]
+                    - cell "—" [ref=f2e285]
+                    - cell "刚刚" [ref=f2e286]
+                  - row [ref=f2e287]:
+                    - cell "🪟 windows-desktop-11-home" [ref=f2e288]
+                    - cell "腾讯" [ref=f2e297]
+                    - cell "100.64.0.7" [ref=f2e298]
+                    - cell "—" [ref=f2e299]
+                    - cell "—" [ref=f2e300]
+                    - cell "1 小时前" [ref=f2e301]
+            - generic [ref=f2e302]:
+              - paragraph [ref=f2e303]: 站点与子网
+              - generic [ref=f2e308]:
+                - generic [ref=f2e309]:
+                  - generic [ref=f2e310]:
+                    - generic [ref=f2e311]: 192.168.21.0/24
+                    - generic [ref=f2e312]: 在线
+                  - paragraph [ref=f2e317]: 路由器 ops100.64.0.1
+                  - paragraph [ref=f2e318]:
+                    - generic [ref=f2e319]: 已审批 · 1 小时前
+                - generic [ref=f2e320]:
+                  - generic [ref=f2e321]:
+                    - generic [ref=f2e322]: 192.168.31.0/24
+                    - generic [ref=f2e323]: 在线
+                  - paragraph [ref=f2e328]: 路由器 ukx-nas100.64.0.16
+                  - paragraph [ref=f2e329]:
+                    - generic [ref=f2e330]: 已审批 · 4 小时前
+            - generic [ref=f2e331]:
+              - paragraph [ref=f2e332]: 站点间链路（路由节点侧视角）
+              - table [ref=f2e336]:
+                - rowgroup [ref=f2e337]:
+                  - row [ref=f2e338]:
+                    - columnheader "起点" [ref=f2e339]
+                    - columnheader "对端" [ref=f2e340]
+                    - columnheader "路径" [ref=f2e341]
+                    - columnheader "收 ↓ / 发 ↑" [ref=f2e342]
+                    - columnheader "采样时间" [ref=f2e343]
+                - rowgroup [ref=f2e344]:
+                  - row [ref=f2e345]:
+                    - cell "ops" [ref=f2e346]
+                    - cell "ukx-nas" [ref=f2e347]
+                    - cell "DERP hkg" [ref=f2e348]
+                    - cell "0 B / 0 B" [ref=f2e350]
+                    - cell "刚刚" [ref=f2e351]
+                  - row [ref=f2e352]:
+                    - cell "ukx-nas" [ref=f2e353]
+                    - cell "ops" [ref=f2e354]
+                    - cell "DERP hkg" [ref=f2e355]
+                    - cell "0 B / 0 B" [ref=f2e357]
+                    - cell "刚刚" [ref=f2e358]
+  - button "打开使用文档" [ref=f2e359]

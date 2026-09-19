@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260917T024138995Z-94701-835797a00737",
+  "runStatus": "inconclusive",
+  "errors": [
+    "baseline:.: baseline_partial: baseline capture had enumeration or snapshot errors",
+    "scan:pages/tencent-cloud/TencentCloudCDN.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/qiniu-cloud/QiniuCloudPage.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:App.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/HomeHub.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/tencent-cloud/TencentCloudSSL.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/ai-inspect/AiAssistant.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/ai-inspect/AiInspectAlerts.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:pages/ai-inspect/AiInspectHome.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:lib/site-path-descriptions.ts: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:lib/workspace.ts: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:components/Header.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:components/Sidebar.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+    "scan:components/UserGuideSheet.tsx: scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+  ],
+  "target": ".",
+  "revision": "c04336541e99499192f6052349c0888248050dd8",
+  "diffHash": "b2b2df81c5c6e69ce18ba8b14e91a72d252f9a2c26c32bdb4f0da0694eb53bd6",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-17T02:41:38.995Z",
+  "timing": {
+    "startedAt": "2026-09-17T02:41:36.195Z",
+    "completedAt": "2026-09-17T02:41:38.995Z",
+    "durationMs": 2800
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "baseline_partial": 1,
+      "scanner_failed": 13,
+      "project_check_failed": 14
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_2efe8156-122d-4304-b9d3-4cc1d141ecad-20260917T024138995Z-94701-835797a00737.json"
+}

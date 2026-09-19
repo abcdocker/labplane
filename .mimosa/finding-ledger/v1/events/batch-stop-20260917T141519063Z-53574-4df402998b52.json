@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260917T141519063Z-53574-4df402998b52",
+  "runId": "20260917T141519063Z-53574-4df402998b52",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": "internal/zz_live_smoke_test.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "candidate_limit_exceeded",
+        "stage": "candidate-select",
+        "target": "internal/app_redis_handlers.go",
+        "detail": "57 changed reviewable file(s) were not scanned because the limit is 20",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "internal/zz_live_smoke_test.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "internal/app_redis_handlers.go",
+        "detail": "candidate_limit_exceeded: 57 changed reviewable file(s) were not scanned because the limit is 20",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "dde4cfb64ae989f79c347e5de8d127b77d546b8b",
+  "diffHash": "456038c9243096a390189c2af1cd54b9d07693f92affcb8d5801479cb11b780a",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e49b86b315520da59c120c65ceebfd72adc2ad52e6054c31bbbe49e8b95af0c9",
+  "reportRef": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T141519063Z-53574-4df402998b52.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/headscale_client.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/mesh_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/headscale_client_test.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/mesh/MeshPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/admin_users_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_assistant.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_discovery.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_tools_extra.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/ai_usage.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/api_response_cache.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/api_security.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_cloud_vm.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_kafka_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_kafka_k8s_deploy.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_kafka_perf.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_kafka_template.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_opensearch_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_opensearch_k8s_deploy.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_opensearch_template.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/app_redis.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-17T14:15:19.543Z"
+}

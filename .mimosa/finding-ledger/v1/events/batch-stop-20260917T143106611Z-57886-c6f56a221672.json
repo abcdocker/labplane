@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260917T143106611Z-57886-c6f56a221672",
+  "runId": "20260917T143106611Z-57886-c6f56a221672",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "9adef7ad8de418b07219b0fa6fffc13edd71c616",
+  "diffHash": "a6e4e96cdeb6a2cd02c4ffcb1c7e2e280c7b319ec208c148bcb52e1232e584ee",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e49b86b315520da59c120c65ceebfd72adc2ad52e6054c31bbbe49e8b95af0c9",
+  "reportRef": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T143106611Z-57886-c6f56a221672.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "react/src/pages/mesh/MeshPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/authentik/AuthentikPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-17T14:31:06.902Z"
+}

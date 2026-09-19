@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260919T102215161Z-47688-fb575df76e1c",
+  "runId": "20260919T102215161Z-47688-fb575df76e1c",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": "internal/zz_dbglogin_test.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "internal/zz_dbglogin_test.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "525266548beed47794eadf21b192b89b5b9a09c7",
+  "diffHash": "e97850baa279a328f57898a3a1d658a43c354921b0c4cda5ad624003fbf99876",
+  "rulesVersion": "unavailable",
+  "sessionHash": "02a39f7e46ae4012ca348d302f6b3ee48977040583a2812725de733d82711382",
+  "reportRef": ".mimosa/reports/task-review-sess_45560b63-c4a2-4fc4-a403-9d632bf2bad0-20260919T102215161Z-47688-fb575df76e1c.json",
+  "events": [
+    {
+      "eventId": "hook-7dd733ee12fd971725bbe79c8bb59bc5",
+      "findingId": "mimosa-d108d65fbe180f13d806f381",
+      "type": "finding_observed",
+      "at": "2026-09-19T10:16:40.059Z",
+      "identity": {
+        "projectRelativeFile": "internal/zz_dbglogin_test.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "c0b726f95726710b691a0059978a91af489ba2aacef5029c1321ced81f815794",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 48,
+      "endLine": 48,
+      "reasonCode": "advisory",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "c0b726f95726710b691a0059978a91af489ba2aacef5029c1321ced81f815794"
+      },
+      "sequence": 0
+    }
+  ],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/mesh_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/mesh/MeshPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/mesh_keymeta.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/mesh/MeshJoin.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/mesh/MeshDashboard.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-19T10:22:15.388Z"
+}

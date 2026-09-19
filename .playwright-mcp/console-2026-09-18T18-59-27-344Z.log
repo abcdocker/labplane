@@ -1,0 +1,6 @@
+[  360908ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/app-center/cloud-vm/ssh-security-events:0
+[  361486ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/ops/cluster-advisory:0
+[  361913ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/app-center/cloud-vm/ssh-security-events:0
+[  362490ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/ops/cluster-advisory:0
+[  362965ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/host/egress-notification:0
+[  363968ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/host/egress-notification:0

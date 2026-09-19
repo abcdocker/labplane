@@ -1,14 +1,14 @@
 {
   "schemaVersion": "mimosa-hook-status/v1",
-  "recordedAt": "2026-09-17T01:44:13.802Z",
+  "recordedAt": "2026-09-17T09:34:16.825Z",
   "sessionId": "sess_683b9e67-1e01-4f61-bcf5-f7c893f13844",
   "event": "PostToolUse",
   "toolName": "Edit",
-  "file": "src/App.tsx",
-  "outcome": "clear",
-  "coverage": "complete",
+  "file": "/Users/macmini/Desktop/桌面 - Macmini的Mac mini/kube-bt-sync/internal/authentik_client_test.go",
+  "outcome": "inconclusive",
+  "coverage": "partial",
   "findingCount": 0,
-  "durationMs": 14,
+  "durationMs": 10,
   "hostState": "hook_complete",
   "reportHint": ".mimosa/reports/"
 }

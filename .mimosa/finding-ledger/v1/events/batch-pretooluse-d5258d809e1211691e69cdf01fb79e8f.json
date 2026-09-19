@@ -1,0 +1,192 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "pretooluse-d5258d809e1211691e69cdf01fb79e8f",
+  "runId": null,
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "PreToolUse"
+  },
+  "revision": null,
+  "diffHash": null,
+  "rulesVersion": null,
+  "sessionHash": "02a39f7e46ae4012ca348d302f6b3ee48977040583a2812725de733d82711382",
+  "reportRef": null,
+  "events": [
+    {
+      "eventId": "hook-12687718c30bdfe6d721831baf322e18",
+      "findingId": "mimosa-fb04969b6ce7de9c3ccb13ac",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "e8a11fa0d48a49c566f5b14c8215c9b0e73f56c0c5b9cccc747d15fa63bacd35",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 191,
+      "endLine": 191,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "e8a11fa0d48a49c566f5b14c8215c9b0e73f56c0c5b9cccc747d15fa63bacd35"
+      },
+      "sequence": 0
+    },
+    {
+      "eventId": "hook-d9ff38e1ffe12afc270ceb81578db172",
+      "findingId": "mimosa-b685e5cd039d49f3bc1d98b4",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "5fe27107af2fc8db36602fe91cb2dc5881d16897ad9cf870e78e67aea09f0b53",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 192,
+      "endLine": 192,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "5fe27107af2fc8db36602fe91cb2dc5881d16897ad9cf870e78e67aea09f0b53"
+      },
+      "sequence": 1
+    },
+    {
+      "eventId": "hook-61bd4bddc52a78295392c0981f799d62",
+      "findingId": "mimosa-d0be1f8d6cc95e7436b1d452",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "2b682353df2f3b15ec8bf8b2fb42bdc5566532f51f2afd692620148412f3273c",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 215,
+      "endLine": 215,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "2b682353df2f3b15ec8bf8b2fb42bdc5566532f51f2afd692620148412f3273c"
+      },
+      "sequence": 2
+    },
+    {
+      "eventId": "hook-832e39a987236b6b6529a60bcc220cf1",
+      "findingId": "mimosa-8b13f397c0a292170de33235",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "d3f68f996afc66a09ad1681bf0f5eee8840b55fbf3ebca81401ae3d0df9741ba",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 216,
+      "endLine": 216,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "d3f68f996afc66a09ad1681bf0f5eee8840b55fbf3ebca81401ae3d0df9741ba"
+      },
+      "sequence": 3
+    },
+    {
+      "eventId": "hook-e534a3f4c0f94e32519a6c4c77697884",
+      "findingId": "mimosa-b80c9dffcd04cc472e7adb65",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "4553b25de486bc577a8c8467793b87134604a57cd0667e500e3b6645e3a412b4",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 230,
+      "endLine": 230,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "4553b25de486bc577a8c8467793b87134604a57cd0667e500e3b6645e3a412b4"
+      },
+      "sequence": 4
+    },
+    {
+      "eventId": "hook-69558a6a64854bf9b2f5dc6f131f305c",
+      "findingId": "mimosa-acabdb063582b8cdf7e44aaf",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "070424b81b650f5e0aa09f3b46a46528d65dad1ee35e0a0bafb605910558b6a7",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 231,
+      "endLine": 231,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "070424b81b650f5e0aa09f3b46a46528d65dad1ee35e0a0bafb605910558b6a7"
+      },
+      "sequence": 5
+    },
+    {
+      "eventId": "hook-4ffe8ff739a127559e9550ab945824d7",
+      "findingId": "mimosa-c11e2f9f42df3ffa2a17aaa5",
+      "type": "finding_blocked",
+      "at": "2026-09-19T14:24:19.180Z",
+      "identity": {
+        "projectRelativeFile": "cmd/tsjoin-gui/main.go",
+        "ruleId": "security",
+        "codeEvidenceHash": "3c6eda6afc18805d6fbdd8a948048dcffe896d668527143eb94f03e7cd897828",
+        "confidence": "stable"
+      },
+      "scope": "direct",
+      "line": 234,
+      "endLine": 234,
+      "reasonCode": "deny",
+      "reportedToAgent": true,
+      "evidence": {
+        "kind": "source",
+        "boundary": "candidate",
+        "producer": "deterministic",
+        "evidenceHash": "3c6eda6afc18805d6fbdd8a948048dcffe896d668527143eb94f03e7cd897828"
+      },
+      "sequence": 6
+    }
+  ],
+  "observedFindingIds": [],
+  "verifiedFiles": [],
+  "recordedAt": "2026-09-19T14:24:19.394Z"
+}

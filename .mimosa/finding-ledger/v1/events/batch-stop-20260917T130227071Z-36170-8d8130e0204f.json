@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260917T130227071Z-36170-8d8130e0204f",
+  "runId": "20260917T130227071Z-36170-8d8130e0204f",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "b90f1927760e9cf10cb40dd1465235009f9b0689",
+  "diffHash": "f4bc946fb8e9ee10e3129b015db70a156f2467a96547483c337fc78641e8c77c",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e49b86b315520da59c120c65ceebfd72adc2ad52e6054c31bbbe49e8b95af0c9",
+  "reportRef": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T130227071Z-36170-8d8130e0204f.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "react/src/pages/authentik/AuthentikPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-17T13:02:27.358Z"
+}

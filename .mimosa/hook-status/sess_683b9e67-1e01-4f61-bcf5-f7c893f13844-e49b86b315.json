@@ -1,14 +1,14 @@
 {
   "schemaVersion": "mimosa-hook-status/v1",
-  "recordedAt": "2026-09-17T01:51:11.465Z",
+  "recordedAt": "2026-09-18T02:07:50.506Z",
   "sessionId": "sess_683b9e67-1e01-4f61-bcf5-f7c893f13844",
   "event": "PostToolUse",
   "toolName": "Edit",
-  "file": "react/src/lib/site-path-descriptions.ts",
+  "file": "react/src/pages/authentik/AuthentikPage.tsx",
   "outcome": "clear",
   "coverage": "complete",
   "findingCount": 0,
-  "durationMs": 15,
+  "durationMs": 5,
   "hostState": "hook_complete",
   "reportHint": ".mimosa/reports/"
 }

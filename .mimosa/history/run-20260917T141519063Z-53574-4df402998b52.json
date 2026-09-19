@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260917T141519063Z-53574-4df402998b52",
+  "runStatus": "inconclusive",
+  "errors": [
+    "candidate-select:internal/zz_live_smoke_test.go: changed_file_unreadable: observed changed file no longer exists or cannot be read",
+    "candidate-select:internal/app_redis_handlers.go: candidate_limit_exceeded: 57 changed reviewable file(s) were not scanned because the limit is 20"
+  ],
+  "target": ".",
+  "revision": "dde4cfb64ae989f79c347e5de8d127b77d546b8b",
+  "diffHash": "456038c9243096a390189c2af1cd54b9d07693f92affcb8d5801479cb11b780a",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-17T14:15:19.063Z",
+  "timing": {
+    "startedAt": "2026-09-17T14:15:16.810Z",
+    "completedAt": "2026-09-17T14:15:19.063Z",
+    "durationMs": 2253
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "changed_file_unreadable": 1,
+      "candidate_limit_exceeded": 1,
+      "project_check_failed": 2
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T141519063Z-53574-4df402998b52.json"
+}

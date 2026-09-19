@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260918T153255095Z-93592-cd2b11248f90",
+  "runId": "20260918T153255095Z-93592-cd2b11248f90",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "525266548beed47794eadf21b192b89b5b9a09c7",
+  "diffHash": "e29f6d56145d29d59cdd8aee7f5764c59f83d6a34df2d6d169f56c5f7a576971",
+  "rulesVersion": "unavailable",
+  "sessionHash": "02a39f7e46ae4012ca348d302f6b3ee48977040583a2812725de733d82711382",
+  "reportRef": ".mimosa/reports/task-review-sess_45560b63-c4a2-4fc4-a403-9d632bf2bad0-20260918T153255095Z-93592-cd2b11248f90.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/mesh_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "react/src/pages/mesh/MeshPage.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "run.sh",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-18T15:32:55.326Z"
+}

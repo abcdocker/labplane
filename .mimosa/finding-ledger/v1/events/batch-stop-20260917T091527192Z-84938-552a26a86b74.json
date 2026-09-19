@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260917T091527192Z-84938-552a26a86b74",
+  "runId": "20260917T091527192Z-84938-552a26a86b74",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "ac5a074ce12668751f7aaf62e3559615f2afa2a6",
+  "diffHash": "4bf58dc8453ba29823c8656940f19edbaa72168061365db6e6a6d1f60ee9e11a",
+  "rulesVersion": "unavailable",
+  "sessionHash": "e49b86b315520da59c120c65ceebfd72adc2ad52e6054c31bbbe49e8b95af0c9",
+  "reportRef": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T091527192Z-84938-552a26a86b74.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/authentik_client.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/authentik_handlers.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "internal/authentik_client_test.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-17T09:15:27.965Z"
+}

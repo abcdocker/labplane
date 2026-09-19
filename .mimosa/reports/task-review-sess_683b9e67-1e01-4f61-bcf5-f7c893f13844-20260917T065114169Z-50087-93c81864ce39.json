@@ -1,0 +1,731 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260917T065114169Z-50087-93c81864ce39",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "baseline-read",
+      "target": "internal/authentik_client.go",
+      "reason": "baseline_snapshot_unreadable: file is missing from task baseline"
+    },
+    {
+      "stage": "baseline-read",
+      "target": "internal/authentik_handlers.go",
+      "reason": "baseline_snapshot_unreadable: file is missing from task baseline"
+    },
+    {
+      "stage": "baseline-read",
+      "target": "internal/authentik_store.go",
+      "reason": "baseline_snapshot_unreadable: file is missing from task baseline"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/components/Sidebar.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/lib/workspace.ts",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/App.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/mesh/MeshPage.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "internal/authentik_client_test.go",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/authentik/AuthentikPage.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/pages/HomeHub.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/auto-imports.d.ts",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/lib/site-path-descriptions.ts",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/components/Header.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "react/src/components/UserGuideSheet.tsx",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "internal/authentik_client.go",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "internal/authentik_handlers.go",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "internal/authentik_store.go",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "internal/web.go",
+      "reason": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 672,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 12
+    },
+    "change_tracking": {
+      "touched_observed": 7,
+      "touched_retained": 7,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 15,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 15,
+      "selected_files": 15,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 15,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 15,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "baseline_snapshot_unreadable": 3,
+      "scanner_failed": 15,
+      "project_check_failed": 18
+    },
+    "reasons": [
+      {
+        "code": "baseline_snapshot_unreadable",
+        "stage": "baseline-read",
+        "target": "internal/authentik_client.go",
+        "detail": "file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "baseline_snapshot_unreadable",
+        "stage": "baseline-read",
+        "target": "internal/authentik_handlers.go",
+        "detail": "file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "baseline_snapshot_unreadable",
+        "stage": "baseline-read",
+        "target": "internal/authentik_store.go",
+        "detail": "file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/components/Sidebar.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/lib/workspace.ts",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/App.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/mesh/MeshPage.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "internal/authentik_client_test.go",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/authentik/AuthentikPage.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/auto-imports.d.ts",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/lib/site-path-descriptions.ts",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/components/Header.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "react/src/components/UserGuideSheet.tsx",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "internal/authentik_client.go",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "internal/authentik_handlers.go",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "internal/authentik_store.go",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "internal/web.go",
+        "detail": "spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline-read",
+        "target": "internal/authentik_client.go",
+        "detail": "baseline_snapshot_unreadable: file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline-read",
+        "target": "internal/authentik_handlers.go",
+        "detail": "baseline_snapshot_unreadable: file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "baseline-read",
+        "target": "internal/authentik_store.go",
+        "detail": "baseline_snapshot_unreadable: file is missing from task baseline",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/components/Sidebar.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/lib/workspace.ts",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/App.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/mesh/MeshPage.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "internal/authentik_client_test.go",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/authentik/AuthentikPage.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/pages/HomeHub.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/auto-imports.d.ts",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/lib/site-path-descriptions.ts",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/components/Header.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "react/src/components/UserGuideSheet.tsx",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "internal/authentik_client.go",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "internal/authentik_handlers.go",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "internal/authentik_store.go",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "internal/web.go",
+        "detail": "scanner_failed: spawnSync /opt/homebrew/Cellar/node/25.8.0/bin/node ETIMEDOUT",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-17T06:51:14.169Z",
+  "session_id": "sess_683b9e67-1e01-4f61-bcf5-f7c893f13844",
+  "target": ".",
+  "revision": "729353c4e74445ebc1398c512bf07535b28ad86d",
+  "rules_version": "unavailable",
+  "diff_hash": "79769a1595475d4da886b6ad4e84a8ea783d04060b2d258848416c00f184ae4d",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 15,
+    "changed_files": [
+      {
+        "file": "internal/authentik_client_test.go",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 135
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "663886903fcf5bc187690a1c46b75686a898bd7794cd49d6b2f026c99aa46e1f"
+      },
+      {
+        "file": "internal/authentik_client.go",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 329
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "2f6b1154ddf373784ad54b996a4551c6173dc8949b187fca9749a566bbcc2d62"
+      },
+      {
+        "file": "internal/authentik_handlers.go",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 611
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "4302e5455ac30b44607843f7cfb75f1189bb306099bb9e19c2709129f782f55b"
+      },
+      {
+        "file": "internal/authentik_store.go",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 123
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "22dc80bd44629b037ded6ccdd428ab8f99e9a8c8ccdc67a24a709499233dd623"
+      },
+      {
+        "file": "internal/web.go",
+        "ranges": [
+          {
+            "start": 249,
+            "end": 249
+          }
+        ],
+        "before_hash": "e5b261d6106163de31a41d9fef63415c1156823ded0cfc6d81f6877b35299598",
+        "after_hash": "3fe59e7787dd0d91f6714fc19694aa7a1e5a53d5992310e82bb58a80562060a6"
+      },
+      {
+        "file": "react/auto-imports.d.ts",
+        "ranges": [
+          {
+            "start": 78,
+            "end": 78
+          },
+          {
+            "start": 196,
+            "end": 196
+          }
+        ],
+        "before_hash": "7659cc22747306dabf336127dd9276a1500980c60fdd8035738fd260f876f6c3",
+        "after_hash": "59e76e390e8701e78ff9aa242fd6a092f9988835af4ec169ef08c40cdc5a48a0"
+      },
+      {
+        "file": "react/src/App.tsx",
+        "ranges": [
+          {
+            "start": 119,
+            "end": 119
+          },
+          {
+            "start": 641,
+            "end": 656
+          }
+        ],
+        "before_hash": "98788ac47d85d409363eb349db48c5770a66c4f3ef2090e90f882f7b1854e938",
+        "after_hash": "3be6db0cd8fe24eda75d2810f013535c80335d1f1655eec1c7f2624900a9e67c"
+      },
+      {
+        "file": "react/src/components/Header.tsx",
+        "ranges": [
+          {
+            "start": 13,
+            "end": 13
+          },
+          {
+            "start": 50,
+            "end": 50
+          },
+          {
+            "start": 70,
+            "end": 70
+          },
+          {
+            "start": 135,
+            "end": 135
+          },
+          {
+            "start": 156,
+            "end": 158
+          },
+          {
+            "start": 177,
+            "end": 178
+          },
+          {
+            "start": 200,
+            "end": 202
+          },
+          {
+            "start": 306,
+            "end": 319
+          }
+        ],
+        "before_hash": "807de5d3ebb044382dc96ba69acc19602a5efe7552136589c8f6796c9bea8696",
+        "after_hash": "282271f6454399857b2b88a721f7d305b53851f37fdfcf128d4df67dc807e53e"
+      },
+      {
+        "file": "react/src/components/Sidebar.tsx",
+        "ranges": [
+          {
+            "start": 40,
+            "end": 40
+          },
+          {
+            "start": 63,
+            "end": 63
+          },
+          {
+            "start": 92,
+            "end": 93
+          },
+          {
+            "start": 394,
+            "end": 395
+          },
+          {
+            "start": 416,
+            "end": 416
+          },
+          {
+            "start": 526,
+            "end": 526
+          },
+          {
+            "start": 595,
+            "end": 597
+          },
+          {
+            "start": 615,
+            "end": 617
+          },
+          {
+            "start": 637,
+            "end": 639
+          },
+          {
+            "start": 1101,
+            "end": 1122
+          }
+        ],
+        "before_hash": "1cff614315b2f56d7256b46d61caec475359692b31e84408d7cce16603cc60cc",
+        "after_hash": "b7a735af4268c1902d74731d5a3311df0068af0649b6fbd2a461dd06c44f25c0"
+      },
+      {
+        "file": "react/src/components/UserGuideSheet.tsx",
+        "ranges": [
+          {
+            "start": 112,
+            "end": 112
+          },
+          {
+            "start": 710,
+            "end": 732
+          }
+        ],
+        "before_hash": "9f0574fd254540e3e950da8752b2149547121500dc44e11983e1820190dc92ef",
+        "after_hash": "ce1465f3d4d9ba2238d15996321b84927f8d074f9ba11fe5e9a7ffe7f87a3d7a"
+      },
+      {
+        "file": "react/src/lib/site-path-descriptions.ts",
+        "ranges": [
+          {
+            "start": 60,
+            "end": 60
+          }
+        ],
+        "before_hash": "bd7a24da13a66862622fed7bc520827035c597dae1089b924d1690104b757e09",
+        "after_hash": "02447ea0a2151ac748cc27793f47b540a38f63b02793b3248db5d7a66ed45a67"
+      },
+      {
+        "file": "react/src/lib/workspace.ts",
+        "ranges": [
+          {
+            "start": 13,
+            "end": 13
+          },
+          {
+            "start": 26,
+            "end": 26
+          }
+        ],
+        "before_hash": "59e98fc184156f486e357b2011518dfa3a42ea4b72126b5a7e918ee2c191d38e",
+        "after_hash": "c59c11a85ecf1216b0ddcbc8e4d4b2d999a76c1cfd1adbadee6144af13b03626"
+      },
+      {
+        "file": "react/src/pages/authentik/AuthentikPage.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 830
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "93eba4ba0f8ee73263f08b6754c255a8e9bf096d0dd4c44d16e9afbc31facf23"
+      },
+      {
+        "file": "react/src/pages/HomeHub.tsx",
+        "ranges": [
+          {
+            "start": 25,
+            "end": 25
+          },
+          {
+            "start": 222,
+            "end": 239
+          },
+          {
+            "start": 799,
+            "end": 845
+          }
+        ],
+        "before_hash": "71cf37f4fe763bb6763048f287fccc2134ea3f197dcb68236a54a9b711e1ad29",
+        "after_hash": "e480a3c9eb3e33fc6a6469c20bdb549e5633c22eb457729dee2ec02a72a116c0"
+      },
+      {
+        "file": "react/src/pages/mesh/MeshPage.tsx",
+        "ranges": [
+          {
+            "start": 154,
+            "end": 154
+          },
+          {
+            "start": 316,
+            "end": 316
+          },
+          {
+            "start": 468,
+            "end": 468
+          },
+          {
+            "start": 471,
+            "end": 471
+          },
+          {
+            "start": 552,
+            "end": 552
+          }
+        ],
+        "before_hash": "259759b07fd540d355211323a95933c74c622d4e35f0db14240c8241a8683312",
+        "after_hash": "940d9ae635953818bd8ebcf1b5fe81ba83aaeeff07cafef3ad8d72020de2df23"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-17T06:51:11.217Z",
+    "completed_at": "2026-09-17T06:51:14.169Z",
+    "duration_ms": 2952,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 2952,
+    "peakMemoryBytes": 129253376,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T065114169Z-50087-93c81864ce39.json",
+    "latest_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844.json",
+    "history_summary": ".mimosa/history/run-20260917T065114169Z-50087-93c81864ce39.json"
+  }
+}

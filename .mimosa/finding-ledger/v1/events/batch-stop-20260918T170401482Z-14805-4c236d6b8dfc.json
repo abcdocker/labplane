@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260918T170401482Z-14805-4c236d6b8dfc",
+  "runId": "20260918T170401482Z-14805-4c236d6b8dfc",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "changed_file_unreadable",
+        "stage": "candidate-select",
+        "target": "internal/zz_meshfix_test.go",
+        "detail": "observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "internal/zz_meshfix_test.go",
+        "detail": "changed_file_unreadable: observed changed file no longer exists or cannot be read",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "525266548beed47794eadf21b192b89b5b9a09c7",
+  "diffHash": "106c3552a5ec5ec18cb2bdb19ee9e8e5b5026eafc07b980aa250e06ca7fd3d6c",
+  "rulesVersion": "unavailable",
+  "sessionHash": "02a39f7e46ae4012ca348d302f6b3ee48977040583a2812725de733d82711382",
+  "reportRef": ".mimosa/reports/task-review-sess_45560b63-c4a2-4fc4-a403-9d632bf2bad0-20260918T170401482Z-14805-4c236d6b8dfc.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "internal/mesh_traffic.go",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-18T17:04:01.701Z"
+}

@@ -1,0 +1,344 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260917T032219644Z-6416-5ba435c3b0b4",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 670,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 6
+    },
+    "change_tracking": {
+      "touched_observed": 4,
+      "touched_retained": 4,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 6,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 6,
+      "selected_files": 6,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 6,
+      "scanned_files": 6,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-17T03:22:19.644Z",
+  "session_id": "sess_683b9e67-1e01-4f61-bcf5-f7c893f13844",
+  "target": ".",
+  "revision": "667e6aac95e30c58a30d889a56f526f2b1cf7b4f",
+  "rules_version": "unavailable",
+  "diff_hash": "9f1a12e3d655128c6af80b572c9fe823c584b4ecec84c52c1c57345ce6513103",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 6,
+    "changed_files": [
+      {
+        "file": "internal/mesh_handlers.go",
+        "ranges": [
+          {
+            "start": 37,
+            "end": 37
+          },
+          {
+            "start": 538,
+            "end": 759
+          }
+        ],
+        "before_hash": "75cef009075bdfbdfb76e387acf6038c0b5c7664cab6bb320d6061e82d7375d3",
+        "after_hash": "db539f46a01d908fe543db77e2fe25514a5a7adbdcede0884080e0d3bfb23165"
+      },
+      {
+        "file": "internal/mesh_store.go",
+        "ranges": [
+          {
+            "start": 25,
+            "end": 27
+          },
+          {
+            "start": 94,
+            "end": 94
+          },
+          {
+            "start": 137,
+            "end": 137
+          },
+          {
+            "start": 192,
+            "end": 192
+          }
+        ],
+        "before_hash": "d854f510d5e33d3be3db3dd0659d7a19983543c05b90b617c5ddd48ff16b0918",
+        "after_hash": "e4b7ab63f99df73ed6c9459d859682320c2fb80cb492999d60581018a07c2276"
+      },
+      {
+        "file": "internal/mesh_traffic.go",
+        "ranges": [
+          {
+            "start": 143,
+            "end": 145
+          },
+          {
+            "start": 147,
+            "end": 148
+          },
+          {
+            "start": 150,
+            "end": 173
+          },
+          {
+            "start": 254,
+            "end": 258
+          }
+        ],
+        "before_hash": "eacd345a2489661ea452fe67c42e3f693c81d62d6ea8be459940a60c4f1df3d5",
+        "after_hash": "10ccb961e711a5d1e8054ba765803732b5d8e2cfc67c06eb8259b5febcd05c26"
+      },
+      {
+        "file": "react/src/components/UserGuideSheet.tsx",
+        "ranges": [
+          {
+            "start": 697,
+            "end": 700
+          }
+        ],
+        "before_hash": "28e456c6c72b9c83e81283a9fe3d205c02870edc8efb9a27221ce9844952c523",
+        "after_hash": "9f0574fd254540e3e950da8752b2149547121500dc44e11983e1820190dc92ef"
+      },
+      {
+        "file": "react/src/pages/mesh/MeshPage.tsx",
+        "ranges": [
+          {
+            "start": 31,
+            "end": 31
+          },
+          {
+            "start": 70,
+            "end": 84
+          },
+          {
+            "start": 88,
+            "end": 88
+          },
+          {
+            "start": 90,
+            "end": 90
+          },
+          {
+            "start": 92,
+            "end": 93
+          },
+          {
+            "start": 95,
+            "end": 95
+          },
+          {
+            "start": 186,
+            "end": 194
+          },
+          {
+            "start": 219,
+            "end": 219
+          },
+          {
+            "start": 311,
+            "end": 319
+          },
+          {
+            "start": 392,
+            "end": 413
+          },
+          {
+            "start": 415,
+            "end": 417
+          },
+          {
+            "start": 419,
+            "end": 419
+          },
+          {
+            "start": 428,
+            "end": 430
+          },
+          {
+            "start": 464,
+            "end": 469
+          },
+          {
+            "start": 471,
+            "end": 473
+          },
+          {
+            "start": 475,
+            "end": 475
+          },
+          {
+            "start": 489,
+            "end": 503
+          },
+          {
+            "start": 513,
+            "end": 513
+          },
+          {
+            "start": 522,
+            "end": 524
+          },
+          {
+            "start": 550,
+            "end": 550
+          },
+          {
+            "start": 552,
+            "end": 552
+          },
+          {
+            "start": 559,
+            "end": 563
+          },
+          {
+            "start": 572,
+            "end": 572
+          },
+          {
+            "start": 582,
+            "end": 582
+          },
+          {
+            "start": 590,
+            "end": 707
+          },
+          {
+            "start": 710,
+            "end": 710
+          },
+          {
+            "start": 737,
+            "end": 737
+          },
+          {
+            "start": 742,
+            "end": 742
+          },
+          {
+            "start": 747,
+            "end": 747
+          },
+          {
+            "start": 761,
+            "end": 770
+          },
+          {
+            "start": 793,
+            "end": 793
+          },
+          {
+            "start": 818,
+            "end": 818
+          },
+          {
+            "start": 1064,
+            "end": 1064
+          },
+          {
+            "start": 1066,
+            "end": 1068
+          },
+          {
+            "start": 1075,
+            "end": 1075
+          }
+        ],
+        "before_hash": "bd468d5d23f2d6f079383515c1c060028f7d7eef1bde02f89c6d25c504d23965",
+        "after_hash": "259759b07fd540d355211323a95933c74c622d4e35f0db14240c8241a8683312"
+      },
+      {
+        "file": "react/vite.config.ts",
+        "ranges": [
+          {
+            "start": 27,
+            "end": 28
+          }
+        ],
+        "before_hash": "92b7891a0cb2d574c94ccd90d4c23a6d98d5a1bcde9b6f25fbafb0756381dd47",
+        "after_hash": "54e3e7c7f281c46ebc155acc17626d22b3127e7794afa696a2294dc99640b5d8"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-17T03:22:17.389Z",
+    "completed_at": "2026-09-17T03:22:19.644Z",
+    "duration_ms": 2255,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 2255,
+    "peakMemoryBytes": 217088000,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 6,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T032219644Z-6416-5ba435c3b0b4.json",
+    "latest_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844.json",
+    "history_summary": ".mimosa/history/run-20260917T032219644Z-6416-5ba435c3b0b4.json"
+  }
+}

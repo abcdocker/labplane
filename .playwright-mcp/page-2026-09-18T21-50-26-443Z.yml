@@ -1,0 +1,244 @@
+- generic:
+  - generic:
+    - region "Notifications alt+T"
+    - generic [aria-hidden]:
+      - generic:
+        - complementary:
+          - generic:
+            - generic:
+              - generic:
+                - generic: Kube-BT-Sync
+                - generic: 异地组网
+                - generic: 工作区切换见顶部栏
+          - navigation:
+            - link:
+              - /url: /cluster/mesh
+              - generic: Dashboard
+            - generic:
+              - paragraph: 异地组网
+            - link:
+              - /url: /cluster/mesh/topology
+              - generic: 拓扑总览
+            - link:
+              - /url: /cluster/mesh/nodes
+              - generic: 节点与路由
+            - link:
+              - /url: /cluster/mesh/keys
+              - generic: 预授权密钥
+            - link:
+              - /url: /cluster/mesh/traffic
+              - generic: 流量监控
+            - link:
+              - /url: /cluster/mesh/service
+              - generic: 服务信息
+            - generic:
+              - paragraph: headscale 实例
+              - generic:
+                - link:
+                  - /url: /cluster/mesh/topology?inst=mesh-1789735986499826000
+                  - generic: 腾讯
+                - link:
+                  - /url: /cluster/mesh?new=1
+                  - generic: 添加实例
+          - generic:
+            - generic:
+              - paragraph: 运行状态
+              - generic:
+                - generic: Kubernetes 已连接
+                - generic: vCenter 未配置
+                - generic: Redis 已连接
+                - generic: MySQL 已连接
+                - generic: 宝塔 待检查
+              - paragraph: "DDNS: home.i4t.com"
+              - paragraph: "同步间隔: 30s"
+        - generic:
+          - banner:
+            - link:
+              - /url: /
+              - generic: 工作台
+            - generic:
+              - searchbox
+            - generic:
+              - button:
+                - generic: 异地组网
+              - button
+              - button:
+                - generic:
+                  - generic: admin
+                  - generic: 已登录
+          - main:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - heading [level=1]: 异地组网
+                        - paragraph: Headscale 控制面管理：节点、子网路由（router）、预授权密钥与站点间流量监控；登录用户经 Authentik（OIDC）注册。
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - heading [level=2]: 腾讯
+                            - generic: 健康
+                          - paragraph: https://headscale.frps.cn
+                        - generic:
+                          - button: 测试连接
+                          - button: 自动发现
+                          - button: 编辑
+                          - button
+                      - generic:
+                        - generic:
+                          - tabpanel:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - paragraph: 节点
+                                  - paragraph: "6"
+                                - generic:
+                                  - paragraph: 在线
+                                  - paragraph: "5"
+                                - generic:
+                                  - paragraph: 站点/子网
+                                  - paragraph: "2"
+                                - generic:
+                                  - paragraph: 链路
+                                  - paragraph: "2"
+                                - generic:
+                                  - paragraph: 已识别设备类型
+                                  - paragraph: 6/6
+                              - generic:
+                                - paragraph: 站点（子网路由器）
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic: 192.168.21.0/24
+                                      - generic: 在线
+                                    - paragraph: 路由器 ops100.64.0.1
+                                    - paragraph:
+                                      - generic: 已审批 · 加入 2 小时前
+                                  - generic:
+                                    - generic:
+                                      - generic: 192.168.31.0/24
+                                      - generic: 在线
+                                    - paragraph: 路由器 ukx-nas100.64.0.16
+                                    - paragraph:
+                                      - generic: 已审批 · 加入 4 小时前
+                              - generic:
+                                - generic:
+                                  - paragraph: 站点间链路（来自路由节点侧采集）
+                                  - generic:
+                                    - checkbox [checked]
+                                    - text: 实时模式（每 60s 自动采集）
+                                - generic:
+                                  - table:
+                                    - rowgroup:
+                                      - row:
+                                        - columnheader: 起点
+                                        - columnheader: 对端
+                                        - columnheader: 路径
+                                        - columnheader: 收 ↓ / 发 ↑
+                                        - columnheader: 采样时间
+                                    - rowgroup:
+                                      - row:
+                                        - cell: ops
+                                        - cell: ukx-nas
+                                        - cell:
+                                          - generic: DERP hkg
+                                        - cell: 0 B / 0 B
+                                        - cell: 刚刚
+                                      - row:
+                                        - cell: ukx-nas
+                                        - cell: ops
+                                        - cell:
+                                          - generic: DERP hkg
+                                        - cell: 0 B / 0 B
+                                        - cell: 刚刚
+  - button [aria-hidden] [ref=f1e238]
+  - dialog [ref=f1e240]:
+    - generic [ref=f1e241]:
+      - heading "编辑实例" [level=2] [ref=f1e242]
+      - paragraph [ref=f1e243]: API 地址建议填写控制面可达地址；若公网域名前有 WAF/网关，可改用直连地址。API Key 仅加密存储、不回显。
+    - generic [ref=f1e244]:
+      - generic [ref=f1e245]:
+        - generic [ref=f1e246]: 名称 *
+        - textbox "公网控制面" [active] [ref=f1e247]: 腾讯
+      - generic [ref=f1e248]:
+        - generic [ref=f1e249]: 区域 / 备注（站点）
+        - textbox "腾讯云公网 / 威海 ops / 北京 ukx-nas" [ref=f1e250]: 腾讯云
+      - generic [ref=f1e251]:
+        - generic [ref=f1e252]: API 地址 *（Headscale server_url）
+        - textbox "https://headscale.example.com" [ref=f1e253]: https://headscale.frps.cn
+      - generic [ref=f1e254]:
+        - generic [ref=f1e255]: API Key （已保存，留空保留；填 - 清除）
+        - textbox "hskey-api-…" [ref=f1e256]
+      - group [ref=f1e257]:
+        - generic "高级选项：Metrics / Headplane 地址（留空自动发现，一般无需填写）" [ref=f1e258] [cursor=pointer]
+      - generic [ref=f1e259]:
+        - switch [checked] [ref=f1e260]
+        - generic [ref=f1e261]: 启用该实例（停用后不在 Dashboard 汇总中探测）
+      - generic [ref=f1e262]:
+        - generic [ref=f1e263]: 备注
+        - textbox [ref=f1e264]
+    - generic [ref=f1e265]:
+      - generic [ref=f1e266]:
+        - generic [ref=f1e267]: 流量采集器（SSH 到子网路由节点采集流量）
+        - generic [ref=f1e268]:
+          - button "服务发现" [ref=f1e269]
+          - button "添加采集器" [ref=f1e270]
+      - generic [ref=f1e271]:
+        - generic [ref=f1e272]:
+          - generic [ref=f1e273]:
+            - generic [ref=f1e274]: 名称
+            - textbox "ops 路由节点" [ref=f1e275]: ops（21 网段）
+          - generic [ref=f1e276]:
+            - generic [ref=f1e277]: 主机
+            - textbox "100.64.0.1" [ref=f1e278]: 192.168.21.99
+          - generic [ref=f1e279]:
+            - generic [ref=f1e280]: 端口
+            - spinbutton [ref=f1e281]: "22"
+          - generic [ref=f1e282]:
+            - generic [ref=f1e283]: 用户
+            - textbox "root" [ref=f1e284]: abcdocker
+          - generic [ref=f1e285]:
+            - generic [ref=f1e286]: 密码 （已存）
+            - textbox [ref=f1e287]
+        - generic [ref=f1e288]:
+          - generic [ref=f1e289]:
+            - generic [ref=f1e290]: 采集命令（自动扫描可免填）
+            - button "自动扫描" [ref=f1e291]
+          - textbox "留空，点「自动扫描」探测 tailscale 安装方式（原生/容器/群晖）" [ref=f1e292]: tailscale status --json
+        - button "移除" [ref=f1e294]
+      - generic [ref=f1e295]:
+        - generic [ref=f1e296]:
+          - generic [ref=f1e297]:
+            - generic [ref=f1e298]: 名称
+            - textbox "ops 路由节点" [ref=f1e299]: ukx-nas（31 网段）
+          - generic [ref=f1e300]:
+            - generic [ref=f1e301]: 主机
+            - textbox "100.64.0.1" [ref=f1e302]: 192.168.31.199
+          - generic [ref=f1e303]:
+            - generic [ref=f1e304]: 端口
+            - spinbutton [ref=f1e305]: "22"
+          - generic [ref=f1e306]:
+            - generic [ref=f1e307]: 用户
+            - textbox "root" [ref=f1e308]: ukx
+          - generic [ref=f1e309]:
+            - generic [ref=f1e310]: 密码 （已存）
+            - textbox [ref=f1e311]
+        - generic [ref=f1e312]:
+          - generic [ref=f1e313]:
+            - generic [ref=f1e314]: 采集命令（自动扫描可免填）
+            - button "自动扫描" [ref=f1e315]
+          - textbox "留空，点「自动扫描」探测 tailscale 安装方式（原生/容器/群晖）" [ref=f1e316]: /usr/local/bin/docker exec tailscale-router tailscale status --json
+        - button "移除" [ref=f1e318]
+      - paragraph [ref=f1e319]:
+        - text: 采集器在路由节点上执行采集命令解析
+        - code [ref=f1e320]: tailscale status --json
+        - text: ； 普通执行失败时自动用已存 SSH 密码走
+        - code [ref=f1e321]: sudo -S
+        - text: 重试（群晖等容器化部署适用）。 首次连接自动记录 host key 指纹，之后指纹变化将拒绝连接。
+    - generic [ref=f1e322]:
+      - button "取消" [ref=f1e323]
+      - button "保存" [ref=f1e324]
+    - button "Close" [ref=f1e325]

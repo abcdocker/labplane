@@ -1,0 +1,7 @@
+[  120726ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/app-center/cloud-vm/ssh-security-events:0
+[  121214ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/ops/mesh/instances/mesh-1789735986499826000/discover:0
+[  121498ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/host/egress-notification:0
+[  121520ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/ops/mesh/summary:0
+[  121728ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/app-center/cloud-vm/ssh-security-events:0
+[  122501ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/host/egress-notification:0
+[  122527ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8080/api/ops/mesh/summary:0

@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.25.6"
+          cache: true
+      - name: Go test and vet
+        run: go test -race ./...
+      - name: Static analysis
+        uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.13.1
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: react/package-lock.json
+      - name: Install
+        working-directory: react
+        run: npm ci
+      - name: Lint
+        working-directory: react
+        run: npm run lint
+      - name: Typecheck
+        working-directory: react
+        run: npm run typecheck
+      - name: Build
+        working-directory: react
+        run: npm run build
+
+  deploy-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: azure/setup-helm@v5.0.1
+      - name: Validate local Compose environment
+        run: |
+          bash -n scripts/init-compose-env.sh
+          docker compose --env-file .env.example config --quiet
+      - name: Validate Helm charts
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo add metallb https://metallb.github.io/metallb
+          helm dependency build charts/kube-bt-sync
+          helm lint charts/kube-bt-sync
+          helm template kube-bt-sync charts/kube-bt-sync --namespace kube-bt-sync >/tmp/chart.yaml
+          helm lint helm/kube-bt-sync
+          helm template kube-bt-sync helm/kube-bt-sync --namespace kube-bt-sync >/tmp/legacy-chart.yaml
+      - name: Scan repository
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "1"

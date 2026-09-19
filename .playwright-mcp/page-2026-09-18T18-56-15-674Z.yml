@@ -1,0 +1,144 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - region "Notifications alt+T"
+    - generic [ref=f2e5]:
+      - complementary [ref=f2e6]:
+        - generic [ref=f2e10]:
+          - generic [ref=f2e11]: Kube-BT-Sync
+          - generic [ref=f2e12]: 异地组网
+          - generic [ref=f2e13]: 工作区切换见顶部栏
+        - navigation [ref=f2e14]:
+          - link "Dashboard" [ref=f2e15] [cursor=pointer]:
+            - /url: /cluster/mesh
+          - paragraph [ref=f2e23]: 异地组网
+          - link "拓扑总览" [ref=f2e24] [cursor=pointer]:
+            - /url: /cluster/mesh
+          - link "节点与路由" [active] [ref=f2e31] [cursor=pointer]:
+            - /url: /cluster/mesh/nodes
+          - link "预授权密钥" [ref=f2e36] [cursor=pointer]:
+            - /url: /cluster/mesh/keys
+          - link "流量监控" [ref=f2e41] [cursor=pointer]:
+            - /url: /cluster/mesh/traffic
+          - link "服务信息" [ref=f2e45] [cursor=pointer]:
+            - /url: /cluster/mesh/service
+          - generic [ref=f2e50]:
+            - paragraph [ref=f2e51]: headscale 实例
+            - generic [ref=f2e52]:
+              - link "腾讯" [ref=f2e53] [cursor=pointer]:
+                - /url: /cluster/mesh/nodes?inst=mesh-1789735986499826000
+              - link "添加实例" [ref=f2e56] [cursor=pointer]:
+                - /url: /cluster/mesh?new=1
+        - generic [ref=f2e60]:
+          - paragraph [ref=f2e61]: 运行状态
+          - generic [ref=f2e62]:
+            - generic [ref=f2e63]: Kubernetes 已连接
+            - generic [ref=f2e66]: vCenter 未配置
+            - generic [ref=f2e69]: Redis 已连接
+            - generic [ref=f2e72]: MySQL 已连接
+            - generic [ref=f2e75]: 宝塔 待检查
+          - paragraph [ref=f2e78]: "DDNS: home.i4t.com"
+          - paragraph [ref=f2e79]: "同步间隔: 30s"
+      - generic [ref=f2e80]:
+        - banner [ref=f2e81]:
+          - link "工作台" [ref=f2e82] [cursor=pointer]:
+            - /url: /
+          - searchbox "全局搜索" [ref=f2e90]
+          - generic [ref=f2e91]:
+            - button "切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库" [ref=f2e92]:
+              - generic [ref=f2e99]: 异地组网
+            - button "通知" [ref=f2e102]
+            - button "admin 已登录" [ref=f2e108]:
+              - generic [ref=f2e113]:
+                - generic [ref=f2e114]: admin
+                - generic [ref=f2e115]: 已登录
+        - main [ref=f2e118]:
+          - generic [ref=f2e122]:
+            - generic [ref=f2e124]:
+              - heading "异地组网" [level=1] [ref=f2e125]
+              - paragraph [ref=f2e131]: Headscale 控制面管理：节点、子网路由（router）、预授权密钥与站点间流量监控；登录用户经 Authentik（OIDC）注册。
+            - generic [ref=f2e132]:
+              - generic [ref=f2e133]:
+                - generic [ref=f2e134]:
+                  - generic [ref=f2e135]:
+                    - heading "腾讯" [level=2] [ref=f2e136]
+                    - generic [ref=f2e137]: 健康
+                  - paragraph [ref=f2e141]: https://headscale.frps.cn
+                - generic [ref=f2e142]:
+                  - button "测试连接" [ref=f2e143]
+                  - button "自动发现" [ref=f2e144]
+                  - button "编辑" [ref=f2e145]
+                  - button [ref=f2e146]
+              - tabpanel [ref=f2e149]:
+                - generic [ref=f2e150]:
+                  - generic [ref=f2e151]:
+                    - generic [ref=f2e152]:
+                      - paragraph [ref=f2e153]: 节点
+                      - paragraph [ref=f2e157]: "6"
+                    - generic [ref=f2e158]:
+                      - paragraph [ref=f2e159]: 在线
+                      - paragraph [ref=f2e164]: "5"
+                    - generic [ref=f2e165]:
+                      - paragraph [ref=f2e166]: 站点/子网
+                      - paragraph [ref=f2e171]: "2"
+                    - generic [ref=f2e172]:
+                      - paragraph [ref=f2e173]: 链路
+                      - paragraph [ref=f2e176]: "2"
+                    - generic [ref=f2e177]:
+                      - paragraph [ref=f2e178]: 已识别设备类型
+                      - paragraph [ref=f2e182]: 6/6
+                  - generic [ref=f2e183]:
+                    - paragraph [ref=f2e184]: 站点（子网路由器）
+                    - generic [ref=f2e185]:
+                      - generic [ref=f2e186]:
+                        - generic [ref=f2e187]:
+                          - generic [ref=f2e188]: 192.168.21.0/24
+                          - generic [ref=f2e189]: 在线
+                        - paragraph [ref=f2e194]: 路由器 ops100.64.0.1
+                        - paragraph [ref=f2e195]:
+                          - generic [ref=f2e196]: 已审批 · 加入 11 小时前
+                      - generic [ref=f2e197]:
+                        - generic [ref=f2e198]:
+                          - generic [ref=f2e199]: 192.168.31.0/24
+                          - generic [ref=f2e200]: 在线
+                        - paragraph [ref=f2e205]: 路由器 ukx-nas100.64.0.16
+                        - paragraph [ref=f2e206]:
+                          - generic [ref=f2e207]: 已审批 · 加入 1 小时前
+                  - generic [ref=f2e208]:
+                    - paragraph [ref=f2e209]: 站点间链路（来自路由节点侧采集）
+                    - table [ref=f2e211]:
+                      - rowgroup [ref=f2e212]:
+                        - row [ref=f2e213]:
+                          - columnheader "起点" [ref=f2e214]
+                          - columnheader "对端" [ref=f2e215]
+                          - columnheader "路径" [ref=f2e216]
+                          - columnheader "收 ↓ / 发 ↑" [ref=f2e217]
+                          - columnheader "采样时间" [ref=f2e218]
+                      - rowgroup [ref=f2e219]:
+                        - row [ref=f2e220]:
+                          - cell "ops" [ref=f2e221]
+                          - cell "ukx-nas" [ref=f2e222]
+                          - cell "DERP hkg" [ref=f2e223]
+                          - cell "0 B / 0 B" [ref=f2e225]
+                          - cell "43 分钟前" [ref=f2e226]
+                        - row [ref=f2e227]:
+                          - cell "ukx-nas" [ref=f2e228]
+                          - cell "ops" [ref=f2e229]
+                          - cell "DERP nue" [ref=f2e230]
+                          - cell "0 B / 0 B" [ref=f2e232]
+                          - cell "43 分钟前" [ref=f2e233]
+                  - generic [ref=f2e234]:
+                    - paragraph [ref=f2e235]: 建议添加的流量采集器
+                    - paragraph [ref=f2e236]: 以下子网路由器尚未配置采集节点侧流量的 SSH 采集器：
+                    - list [ref=f2e237]:
+                      - listitem [ref=f2e238]:
+                        - generic [ref=f2e239]:
+                          - text: ops
+                          - generic [ref=f2e240]: 100.64.0.1:22
+                        - button "添加到实例" [ref=f2e241]
+                      - listitem [ref=f2e242]:
+                        - generic [ref=f2e243]:
+                          - text: ukx-nas
+                          - generic [ref=f2e244]: 100.64.0.16:22
+                        - button "添加到实例" [ref=f2e245]
+                    - paragraph [ref=f2e246]: 添加后补一个 SSH 密码即可；若节点是容器化 tailscale（如群晖），在「采集命令」里填 docker exec 形式的命令。
+  - button "打开使用文档" [ref=f2e247]

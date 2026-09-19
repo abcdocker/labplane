@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260918T170401482Z-14805-4c236d6b8dfc",
+  "runStatus": "inconclusive",
+  "errors": [
+    "candidate-select:internal/zz_meshfix_test.go: changed_file_unreadable: observed changed file no longer exists or cannot be read"
+  ],
+  "target": ".",
+  "revision": "525266548beed47794eadf21b192b89b5b9a09c7",
+  "diffHash": "106c3552a5ec5ec18cb2bdb19ee9e8e5b5026eafc07b980aa250e06ca7fd3d6c",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-18T17:04:01.482Z",
+  "timing": {
+    "startedAt": "2026-09-18T17:04:00.613Z",
+    "completedAt": "2026-09-18T17:04:01.482Z",
+    "durationMs": 869
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "changed_file_unreadable": 1,
+      "project_check_failed": 1
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_45560b63-c4a2-4fc4-a403-9d632bf2bad0-20260918T170401482Z-14805-4c236d6b8dfc.json"
+}

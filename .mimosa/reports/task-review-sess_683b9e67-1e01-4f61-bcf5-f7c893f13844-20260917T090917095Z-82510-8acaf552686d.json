@@ -1,0 +1,159 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260917T090917095Z-82510-8acaf552686d",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 675,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 3
+    },
+    "change_tracking": {
+      "touched_observed": 3,
+      "touched_retained": 3,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 3,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 3,
+      "selected_files": 3,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 3,
+      "scanned_files": 3,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-17T09:09:17.095Z",
+  "session_id": "sess_683b9e67-1e01-4f61-bcf5-f7c893f13844",
+  "target": ".",
+  "revision": "2518ed8abc08a9a62f6cf03a8e22ab731143add3",
+  "rules_version": "unavailable",
+  "diff_hash": "fe0dc0d5b50589e421d37f0ac72743f36c2da76c4beb799ac9fe94e2d155573d",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 3,
+    "changed_files": [
+      {
+        "file": "internal/authentik_client_test.go",
+        "ranges": [
+          {
+            "start": 136,
+            "end": 170
+          }
+        ],
+        "before_hash": "663886903fcf5bc187690a1c46b75686a898bd7794cd49d6b2f026c99aa46e1f",
+        "after_hash": "a14c28eddf87ddd4ee632fa97eec394eb1bbd1f7351451683533e20ce450780b"
+      },
+      {
+        "file": "internal/authentik_client.go",
+        "ranges": [
+          {
+            "start": 161,
+            "end": 186
+          },
+          {
+            "start": 188,
+            "end": 194
+          }
+        ],
+        "before_hash": "2f6b1154ddf373784ad54b996a4551c6173dc8949b187fca9749a566bbcc2d62",
+        "after_hash": "5e84b12cfac90a441f431496e7857e02d8b6f10646d07a555562dcc4f9896c48"
+      },
+      {
+        "file": "react/src/pages/authentik/AuthentikPage.tsx",
+        "ranges": [
+          {
+            "start": 38,
+            "end": 39
+          },
+          {
+            "start": 42,
+            "end": 42
+          },
+          {
+            "start": 818,
+            "end": 821
+          }
+        ],
+        "before_hash": "29a17efc61d1a62a1ac0b49bf2aa68afb887f46110e02cd3eb988ee7f54aeeec",
+        "after_hash": "c9b022bab1d1fa082f18c50059b15d22fe0dc4014ffbac6f3d1998d715996b31"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-17T09:09:14.738Z",
+    "completed_at": "2026-09-17T09:09:17.095Z",
+    "duration_ms": 2357,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 2357,
+    "peakMemoryBytes": 218382336,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 3,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844-20260917T090917095Z-82510-8acaf552686d.json",
+    "latest_report": ".mimosa/reports/task-review-sess_683b9e67-1e01-4f61-bcf5-f7c893f13844.json",
+    "history_summary": ".mimosa/history/run-20260917T090917095Z-82510-8acaf552686d.json"
+  }
+}
