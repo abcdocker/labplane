@@ -76,6 +76,8 @@ type fileSSHStore struct {
 
 func (s *fileSSHStore) Backend() SSHSettingsBackend { return SSHBackendFile }
 
+// path 将 moref（不可信输入）映射为 s.dir 内的文件名：替换路径分隔符并剥离
+// ".." 后，产物无法携带分隔符或 ".." 路径元素，读取/写入均不会逃出 s.dir。
 func (s *fileSSHStore) path(moref string) string {
 	safe := strings.ReplaceAll(moref, string(os.PathSeparator), "_")
 	safe = strings.ReplaceAll(safe, "..", "")

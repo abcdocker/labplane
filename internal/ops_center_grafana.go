@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -143,10 +144,14 @@ func applyGrafanaHTTPAuth(req *http.Request, meta *OpsGrafanaMeta, user, plain s
 	}
 }
 
+// grafanaUIDRe 与 Grafana 看板 UID 字符集一致（同步写入的文件名即 <UID>.json）。
+// uid 来自 HTTP 路径参数，读取端必须按同一字符集校验，否则可借 ../ 穿越 dataDir。
+var grafanaUIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
 func readGrafanaDashboardFile(app *ServerApp, uid string) ([]byte, error) {
 	uid = strings.TrimSpace(uid)
-	if uid == "" {
-		return nil, fmt.Errorf("empty uid")
+	if !grafanaUIDRe.MatchString(uid) {
+		return nil, fmt.Errorf("invalid uid")
 	}
 	fp := filepath.Join(app.DataDir(), "ops_grafana", uid+".json")
 	return os.ReadFile(fp)

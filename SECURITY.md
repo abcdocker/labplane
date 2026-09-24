@@ -68,3 +68,21 @@
 - **SSH 私钥**：当前 `SSH_SETTINGS_BACKEND=file` 模式下，私钥以文件形式存储在 PVC 上；请确保 PVC 的访问控制和备份策略符合安全要求。
 - **运行时配置**：`runtime-config.json` 以 0600 权限原子写入，包含数据库凭据与加密密钥（登录密码为 bcrypt 哈希）；请确保其所在卷与快照/备份不被未授权读取。
 - **vCenter / 宝塔凭据**：控制台管理员可查看和修改这些凭据；建议为控制台用户启用强密码或 OIDC，并限制管理员数量。
+
+## 安全扫描已知误报定性
+
+2026-09-24 Mimosa 深度扫描（sealed：`scan-2026-09-24T14-47-19.782Z-3ec0cca3bbb9`，124 条 finding）人工分流结论如下，后续扫描复现同类告警时可直接对照：
+
+**确认为误报，无需修复：**
+
+- `third_party/oss-mirror/`（Excalidraw 前端构建产物）：扫描器把 vendored 的压缩前端 JS 当作服务端代码分析，其中的 code-injection / command-injection / SSRF / mongo-sort-injection 告警全部为误报。建议未来为扫描器配置该目录排除。
+- `internal/baota.go`、`internal/baota_delete.go`：MD5 为宝塔面板 API 规定的签名算法（`request_token = MD5(request_time + MD5(api_key))`），算法由上游厂商指定，替换为强哈希会导致对接失败；代理名截断处的 MD5 仅为生成定长标识，非安全用途。
+- `internal/upyun_cloud_api.go`：又拍云 REST API 协议要求密码以 MD5 摘要参与 Basic Auth，同样为上游厂商协议约束。
+- `internal/k8s_addons_kube_prometheus.go`、`internal/k8s_workload_linked_patch.go`：`exec.CommandContext` 直接分参调用（helm/kubectl），无 shell 字符串拼接，命令注入告警为误报。
+- `internal/mysql_platform.go`：SQL 全部使用 `?` 参数化占位符，HTTP 输入 → SQL 执行的污点告警为误报。
+- `internal/ssh_settings_store.go` `path()`：moref 经路径分隔符替换 + `..` 剥离映射为文件名，无法逃出数据目录。
+- `internal/vm_capture_*`：抓包文件名经 `vmCaptureSafeName` 严格正则白名单 + moref 前缀绑定校验，无路径穿越。
+
+**已修复（2026-09-24）：**
+
+- `internal/ops_center_grafana.go` `readGrafanaDashboardFile`：此前 `uid` 路径参数未做字符集校验，登录用户可借 `../` 穿越读取 dataDir 下任意 `.json`（含 `runtime-config.json`）。现已按 Grafana UID 字符集白名单（`^[A-Za-z0-9_-]{1,64}$`）校验，与同步写入端同源。
