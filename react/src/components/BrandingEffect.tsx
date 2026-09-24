@@ -17,7 +17,7 @@ export default function BrandingEffect() {
 
   useEffect(() => {
     const name = cfg?.platformDisplayName?.trim();
-    document.title = name && name.length > 0 ? name : "Kube-BT-Sync";
+    document.title = name && name.length > 0 ? name : "LabPlane";
   }, [cfg?.platformDisplayName]);
 
   useEffect(() => {

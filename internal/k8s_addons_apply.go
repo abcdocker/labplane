@@ -170,7 +170,7 @@ func applyDynamicYAMLDoc(ctx context.Context, dyn dynamic.Interface, mapper meta
 		return fmt.Errorf("%s 缺少 metadata.name", gvk.Kind)
 	}
 	_, err = dr.Apply(ctx, name, obj, metav1.ApplyOptions{
-		FieldManager: "kube-bt-sync",
+		FieldManager: "labplane",
 		Force:        true,
 	})
 	if err != nil {

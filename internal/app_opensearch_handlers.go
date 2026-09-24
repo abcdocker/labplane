@@ -420,7 +420,7 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 		defer cancel()
 		iname := openSearchInstanceName(ns, base)
 		var existing int64
-		qerr := db.QueryRowContext(ctx2, `SELECT id FROM kubebt_app_opensearch_instances WHERE name=?`, iname).Scan(&existing)
+		qerr := db.QueryRowContext(ctx2, `SELECT id FROM labplane_app_opensearch_instances WHERE name=?`, iname).Scan(&existing)
 		if qerr == sql.ErrNoRows {
 			id, ierr := appOpenSearchInsert(ctx2, db, iname, string(snap), user)
 			if ierr != nil {
@@ -455,7 +455,7 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 		"instancePersistError": nullIfEmptyStr(instanceErr),
 		"hints": []string{
 			"集群内应用与 Vector 采集请使用 internalHttp（ClusterIP）；虚拟机侧采集需 NodePort 或 Ingress 等可路由地址。",
-			"若配置了 indexTemplateJSON，将创建 Job 在集群就绪后注册 composable index template（名称 kubebt-<deploymentName>）。",
+			"若配置了 indexTemplateJSON，将创建 Job 在集群就绪后注册 composable index template（名称 labplane-<deploymentName>）。",
 		},
 	})
 }

@@ -59,7 +59,7 @@ func WriteTempKubeconfigForHelm(app *ServerApp) (path string, cleanup func(), er
 		}
 	}
 
-	f, err := os.CreateTemp("", "kubebt-helm-kubeconfig-*.yaml")
+	f, err := os.CreateTemp("", "labplane-helm-kubeconfig-*.yaml")
 	if err != nil {
 		return "", nop, err
 	}

@@ -203,7 +203,7 @@ export const VmLogShipperAssistant: React.FC = () => {
   const [shipperVmLabel, setShipperVmLabel] = useState("");
   const [shipperVlOverride, setShipperVlOverride] = useState("");
   const [shipperOsUrl, setShipperOsUrl] = useState("");
-  const [shipperOsIndexPrefix, setShipperOsIndexPrefix] = useState("kubebt-vmlog");
+  const [shipperOsIndexPrefix, setShipperOsIndexPrefix] = useState("labplane-vmlog");
   const [shipperOsUser, setShipperOsUser] = useState("");
   const [shipperOsPassword, setShipperOsPassword] = useState("");
   const [shipperLogSrc, setShipperLogSrc] = useState("");
@@ -537,7 +537,7 @@ export const VmLogShipperAssistant: React.FC = () => {
                   <Label className="text-xs">索引前缀</Label>
                   <Input
                     className="font-mono text-xs"
-                    placeholder="kubebt-vmlog"
+                    placeholder="labplane-vmlog"
                     value={shipperOsIndexPrefix}
                     onChange={(e) => setShipperOsIndexPrefix(e.target.value)}
                   />

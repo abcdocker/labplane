@@ -1,10 +1,10 @@
 /** 堡垒机 SSH（xterm）外观仅保存在本机浏览器，不写平台配置 */
 
-import { notifyKubeBtSshAppearanceChanged } from "@/lib/xtermShared";
+import { notifyLabPlaneSshAppearanceChanged } from "@/lib/xtermShared";
 import { DEFAULT_SSH_TERM_THEME_ID, writeSshTerminalThemeIdRaw } from "@/lib/sshTermLocal";
 
-const KEY_SIZE = "kubebt-bastion-ssh-font-size";
-const KEY_FAMILY = "kubebt-bastion-ssh-font-family";
+const KEY_SIZE = "labplane-bastion-ssh-font-size";
+const KEY_FAMILY = "labplane-bastion-ssh-font-family";
 
 export const BASTION_SSH_FONT_PRESETS: { id: string; label: string; css: string }[] = [
   { id: "system", label: "系统默认等宽", css: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
@@ -48,11 +48,11 @@ export function writeBastionSshFontPrefs(size: number, presetId: string) {
   } catch {
     /* ignore */
   }
-  notifyKubeBtSshAppearanceChanged();
+  notifyLabPlaneSshAppearanceChanged();
 }
 
 /** SSH 终端主题（与「SSH 终端」下拉同步） */
 export function persistSshTerminalTheme(themeId: string) {
   writeSshTerminalThemeIdRaw((themeId || DEFAULT_SSH_TERM_THEME_ID).trim());
-  notifyKubeBtSshAppearanceChanged();
+  notifyLabPlaneSshAppearanceChanged();
 }

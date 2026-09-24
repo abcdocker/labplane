@@ -129,30 +129,52 @@ func handleOpsAIConfigPut(app *ServerApp) gin.HandlerFunc {
 
 func handleOpsInspectRun(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var body struct {
+			Domain string `json:"domain"`
+		}
+		if c.Request.ContentLength != 0 {
+			if err := c.ShouldBindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+				return
+			}
+		}
+		domain := normalizeInspectionDomain(body.Domain)
+		if domain == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "不支持的巡检域"})
+			return
+		}
 		cfg := app.Cfg()
 		bundle, err := loadOpsAIInspectBundle(app.PlatformKV())
 		if err != nil {
 			RespondAPIError500(c, err.Error())
 			return
 		}
-		task := newOpsInspectTask()
+		task := newOpsInspectTask(domain)
 		opsInspectTaskStore.Store(task.ID, task)
-		go func(task *opsInspectTask, cfg Config, bundle OpsAIInspectBundle) {
-			rep, err := RunPlatformInspection(app, cfg, bundle, func(progress int, stage, message string) {
+		go func(task *opsInspectTask, cfg Config, bundle OpsAIInspectBundle, domain string) {
+			var rep InspectionReport
+			var err error
+			progress := func(progress int, stage, message string) {
 				task.setProgress(progress, stage, message)
-			})
+			}
+			if domain == "platform" {
+				rep, err = RunPlatformInspection(app, cfg, bundle, progress)
+			} else {
+				rep, err = RunInfrastructureDomainInspection(app, cfg, bundle, domain, progress)
+			}
 			if err != nil {
 				task.finishError(err)
 				return
 			}
 			task.finishSuccess(rep)
-		}(task, cfg, bundle)
+		}(task, cfg, bundle, domain)
 		c.JSON(http.StatusOK, gin.H{
 			"accepted": true,
 			"taskId":   task.ID,
 			"phase":    task.Phase,
 			"progress": task.Progress,
 			"message":  task.Message,
+			"domain":   domain,
 		})
 	}
 }
@@ -163,6 +185,15 @@ func handleOpsInspectReports(app *ServerApp) gin.HandlerFunc {
 		if err != nil {
 			RespondAPIError500(c, err.Error())
 			return
+		}
+		domainRaw := strings.TrimSpace(c.Query("domain"))
+		if domainRaw != "" {
+			domain := normalizeInspectionDomain(domainRaw)
+			if domain == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "不支持的巡检域"})
+				return
+			}
+			list = filterInspectReportsByDomain(list, domain)
 		}
 		total := len(list)
 		if strings.TrimSpace(c.Query("limit")) == "" && strings.TrimSpace(c.Query("offset")) == "" {
@@ -533,7 +564,7 @@ func handleOpsAlertsTestChannel(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		pass, _ := decryptSecret(key, ch.SMTPPassEnc)
-		subj := "[Kube-BT-Sync] 告警通道测试"
+		subj := "[LabPlane] 告警通道测试"
 		msg := "这是一条测试通知。\nlabels: test=1"
 		switch strings.ToLower(strings.TrimSpace(ch.Type)) {
 		case "email":

@@ -11,8 +11,8 @@ func TestNewSetupEnvironmentDefaultsRedactsSecrets(t *testing.T) {
 		PlatformPublicURL: "http://server.example:18081",
 		MySQLHost:         "mysql",
 		MySQLPort:         3306,
-		MySQLDatabase:     "kube_bt_sync",
-		MySQLUser:         "kube_bt_sync",
+		MySQLDatabase:     "labplane_sync",
+		MySQLUser:         "labplane_sync",
 		MySQLPassword:     "mysql-secret",
 		RedisAddr:         "redis:6379",
 		RedisPassword:     "redis-secret",
@@ -42,13 +42,13 @@ func TestApplySetupEnvironmentDefaults(t *testing.T) {
 	env := Config{
 		MySQLHost:      "mysql",
 		MySQLPort:      3306,
-		MySQLDatabase:  "kube_bt_sync",
-		MySQLUser:      "kube_bt_sync",
+		MySQLDatabase:  "labplane_sync",
+		MySQLUser:      "labplane_sync",
 		MySQLPassword:  "mysql-secret",
 		RedisAddr:      "redis:6379",
 		RedisPassword:  "redis-secret",
 		RedisDB:        2,
-		RedisKeyPrefix: "kbts:",
+		RedisKeyPrefix: "labplane:",
 		EncryptionKey:  "0123456789abcdef0123456789abcdef",
 	}
 	body := setupSubmitBody{

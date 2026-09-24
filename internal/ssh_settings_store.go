@@ -164,7 +164,7 @@ func applySSHPatch(prev *SSHVMStored, patch *sshVMPutInput) {
 
 func (s *fileSSHStore) PutVM(ctx context.Context, moref string, patch *sshVMPutInput, encKey []byte) error {
 	if len(encKey) == 0 {
-		return errors.New("未配置 KUBEBT_ENCRYPTION_KEY，无法写入敏感信息")
+		return errors.New("未配置 LABPLANE_ENCRYPTION_KEY，无法写入敏感信息")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -236,7 +236,7 @@ func OpenSSHSettingsStore(cfg Config) (SSHSettingsStore, error) {
 		}
 		return &fileSSHStore{dir: abs}, nil
 	case SSHBackendRedis, SSHBackendMySQL:
-		return nil, fmt.Errorf("SSH_SETTINGS_BACKEND=redis|mysql 尚未在本发行版中启用；K8s 上请使用 file 并将 SSH_SETTINGS_DIR 放在 PVC 上（如 /data/ssh-settings），并配置 KUBEBT_ENCRYPTION_KEY")
+		return nil, fmt.Errorf("SSH_SETTINGS_BACKEND=redis|mysql 尚未在本发行版中启用；K8s 上请使用 file 并将 SSH_SETTINGS_DIR 放在 PVC 上（如 /data/ssh-settings），并配置 LABPLANE_ENCRYPTION_KEY")
 	default:
 		return nil, fmt.Errorf("不支持的 SSH_SETTINGS_BACKEND: %s", be)
 	}

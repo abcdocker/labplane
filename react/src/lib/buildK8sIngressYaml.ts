@@ -41,26 +41,26 @@ spec:
   }
   const ddnsPort =
     opts.customDdnsPort.trim() !== ""
-      ? `    kube-bt-sync.io/ddns-port: "${opts.customDdnsPort.trim()}"\n`
+      ? `    labplane.io/ddns-port: "${opts.customDdnsPort.trim()}"\n`
       : "";
   const ddnsScheme =
     opts.ddnsScheme === "https"
-      ? '    kube-bt-sync.io/ddns-scheme: "https"\n'
+      ? '    labplane.io/ddns-scheme: "https"\n'
       : "";
   const https =
     opts.enableBaotaHttps
-      ? '    kube-bt-sync.io/baota-https: "true"\n'
+      ? '    labplane.io/baota-https: "true"\n'
       : "";
   const certName = opts.baotaSslCertName.trim();
   const useCertName = opts.enableBaotaHttps && certName !== "";
   const cert =
     useCertName
-      ? `    kube-bt-sync.io/baota-ssl-cert-name: "${certName}"\n`
+      ? `    labplane.io/baota-ssl-cert-name: "${certName}"\n`
       : "";
   const tid = (opts.baotaTargetId ?? "").trim().replace(/"/g, "");
   const target =
     tid !== ""
-      ? `    kube-bt-sync.io/baota-target: "${tid}"\n`
+      ? `    labplane.io/baota-target: "${tid}"\n`
       : "";
   return `apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -69,7 +69,7 @@ metadata:
   namespace: ${opts.namespace}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    kube-bt-sync.io/baota-sync: "true"
+    labplane.io/baota-sync: "true"
 ${target}${ddnsPort}${ddnsScheme}${https}${cert}spec:
   ingressClassName: nginx
   rules:
@@ -94,7 +94,7 @@ metadata:
   namespace: ${namespace}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    kube-bt-sync.io/baota-sync: "true"
+    labplane.io/baota-sync: "true"
 spec:
   ingressClassName: nginx
   rules:

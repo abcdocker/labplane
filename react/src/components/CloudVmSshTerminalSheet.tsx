@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSshKubeBtXtermOptions } from "@/hooks/use-ssh-kube-bt-xterm-options";
+import { useSshLabPlaneXtermOptions } from "@/hooks/use-ssh-labplane-xterm-options";
 import { tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { ApiHttpError, apiGetJson, wsUrlForApiPath } from "@/lib/api";
@@ -106,7 +106,7 @@ const CloudVmSshTerminalSheet: React.FC<CloudVmSshTerminalSheetProps> = ({
   onOpenChange,
   instanceId,
 }) => {
-  const xtermOpts = useSshKubeBtXtermOptions();
+  const xtermOpts = useSshLabPlaneXtermOptions();
   const wrapRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 

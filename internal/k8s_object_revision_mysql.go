@@ -14,7 +14,7 @@ import (
 
 const (
 	k8sObjectRevisionRedisMetaTTL = 90 * time.Second
-	k8sObjectRevisionRedisPrefix  = "kubebt:k8s_obj_rev:"
+	k8sObjectRevisionRedisPrefix  = "labplane:k8s_obj_rev:"
 )
 
 func redisK8sObjectRevisionMetaKey(namespace, kind, name string) string {
@@ -56,7 +56,7 @@ func k8sObjectRevisionListMetaMySQL(ctx context.Context, app *ServerApp, namespa
 	}
 
 	rows, err := db.QueryContext(ctx,
-		`SELECT id, ts, user, source FROM kubebt_k8s_object_revisions
+		`SELECT id, ts, user, source FROM labplane_k8s_object_revisions
 		 WHERE namespace=? AND kind=? AND res_name=? ORDER BY id ASC`,
 		ns, k, n,
 	)
@@ -115,7 +115,7 @@ func k8sObjectRevisionGetYAMLMySQL(ctx context.Context, app *ServerApp, namespac
 	var ts time.Time
 	var user, source string
 	err = db.QueryRowContext(ctx,
-		`SELECT yaml, ts, user, source FROM kubebt_k8s_object_revisions
+		`SELECT yaml, ts, user, source FROM labplane_k8s_object_revisions
 		 WHERE id=? AND namespace=? AND kind=? AND res_name=?`,
 		id, ns, k, n,
 	).Scan(&yaml, &ts, &user, &source)
@@ -162,7 +162,7 @@ func k8sObjectRevisionAppendMySQL(ctx context.Context, app *ServerApp, kind, nam
 
 	var lastYAML sql.NullString
 	err = tx.QueryRowContext(ctx,
-		`SELECT yaml FROM kubebt_k8s_object_revisions
+		`SELECT yaml FROM labplane_k8s_object_revisions
 		 WHERE namespace=? AND kind=? AND res_name=? ORDER BY id DESC LIMIT 1`,
 		ns, k, n,
 	).Scan(&lastYAML)
@@ -175,7 +175,7 @@ func k8sObjectRevisionAppendMySQL(ctx context.Context, app *ServerApp, kind, nam
 	}
 
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO kubebt_k8s_object_revisions (namespace, kind, res_name, user, source, yaml) VALUES (?,?,?,?,?,?)`,
+		`INSERT INTO labplane_k8s_object_revisions (namespace, kind, res_name, user, source, yaml) VALUES (?,?,?,?,?,?)`,
 		ns, k, n, user, source, yamlContent,
 	)
 	if err != nil {
@@ -184,7 +184,7 @@ func k8sObjectRevisionAppendMySQL(ctx context.Context, app *ServerApp, kind, nam
 
 	var cnt int
 	err = tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM kubebt_k8s_object_revisions WHERE namespace=? AND kind=? AND res_name=?`,
+		`SELECT COUNT(*) FROM labplane_k8s_object_revisions WHERE namespace=? AND kind=? AND res_name=?`,
 		ns, k, n,
 	).Scan(&cnt)
 	if err != nil {
@@ -193,7 +193,7 @@ func k8sObjectRevisionAppendMySQL(ctx context.Context, app *ServerApp, kind, nam
 	if cnt > maxK8sObjectRevisionsKeep {
 		extra := cnt - maxK8sObjectRevisionsKeep
 		_, err = tx.ExecContext(ctx,
-			`DELETE FROM kubebt_k8s_object_revisions
+			`DELETE FROM labplane_k8s_object_revisions
 			 WHERE namespace=? AND kind=? AND res_name=?
 			 ORDER BY id ASC LIMIT ?`,
 			ns, k, n, extra,

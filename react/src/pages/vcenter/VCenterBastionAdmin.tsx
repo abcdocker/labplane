@@ -438,7 +438,7 @@ const VCenterBastionAdmin: React.FC = () => {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0c0f14] text-slate-200">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        <div className="mx-auto max-w-[min(100%,1120px)] space-y-6 px-4 py-6 pb-[max(1.5rem,var(--kbts-safe-bottom))]">
+        <div className="mx-auto max-w-[min(100%,1120px)] space-y-6 px-4 py-6 pb-[max(1.5rem,var(--labplane-safe-bottom))]">
           <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className="gap-1 text-slate-400" asChild>
             <Link to="/cluster/bastion">
@@ -470,7 +470,7 @@ const VCenterBastionAdmin: React.FC = () => {
               凭据。
             </p>
             <p className="text-[11px] text-amber-600/90">
-              多副本时仅在「后台任务」副本（<code className="font-mono">KUBEBT_ENABLE_BACKGROUND_JOBS=true</code>
+              多副本时仅在「后台任务」副本（<code className="font-mono">LABPLANE_ENABLE_BACKGROUND_JOBS=true</code>
               ）上绑定该端口。请将 Service / Ingress 或 <code className="font-mono">hostPort</code> 暴露到期望的公网或专线 IP，并在防火墙放行对应 TCP。
             </p>
             <div className="flex flex-wrap items-center gap-4">

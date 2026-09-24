@@ -116,7 +116,7 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
           <span className="ml-2 text-slate-500">
             后台每 {st.intervalSec ?? 60}s 自动全量同步
             {!st.backgroundJobsEnabled ? (
-              <span className="text-amber-700">（KUBEBT_ENABLE_BACKGROUND_JOBS=false，定时任务未启用）</span>
+              <span className="text-amber-700">（LABPLANE_ENABLE_BACKGROUND_JOBS=false，定时任务未启用）</span>
             ) : null}
           </span>
         </div>
@@ -193,12 +193,12 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
       <details className="text-[11px] text-slate-500">
         <summary className="cursor-pointer select-none text-slate-600">进程参数（环境变量）</summary>
         <ul className="mt-2 list-inside list-disc space-y-0.5 font-mono text-[10px] leading-relaxed">
-          <li>KUBEBT_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭定时）</li>
-          <li>KUBEBT_HARBOR_INDEX_CRAWL_TIMEOUT_SEC = {st.crawlTimeoutSec ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_PROJECT_CONCURRENCY = {st.projectConcurrency ?? "—"}（按项目并发）</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_PROJECT_PAGES = {st.maxProjectPages ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_REPO_PAGES = {st.maxRepoPages ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_ARTIFACT_PAGES = {st.maxArtifactPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭定时）</li>
+          <li>LABPLANE_HARBOR_INDEX_CRAWL_TIMEOUT_SEC = {st.crawlTimeoutSec ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_PROJECT_CONCURRENCY = {st.projectConcurrency ?? "—"}（按项目并发）</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_PROJECT_PAGES = {st.maxProjectPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_REPO_PAGES = {st.maxRepoPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_ARTIFACT_PAGES = {st.maxArtifactPages ?? "—"}</li>
         </ul>
       </details>
     </div>

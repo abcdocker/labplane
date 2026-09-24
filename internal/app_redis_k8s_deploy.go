@@ -182,7 +182,7 @@ func buildRedisAuthSecret(opts RedisK8sDeployOpts) *corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      redisAuthSecretName(name),
 			Namespace: ns,
-			Labels:    map[string]string{"app": name, "kube-bt-sync.io/redis": "true"},
+			Labels:    map[string]string{"app": name, "labplane.io/redis": "true"},
 		},
 		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{
@@ -560,7 +560,7 @@ func applyRedisStandaloneStack(ctx context.Context, k8s *kubernetes.Clientset, c
 			return fmt.Errorf("StorageClass: %w", err)
 		}
 		pvcName := redisDataPVCName(name)
-		pvc, err := buildRedisPVC(ns, pvcName, sc, size, map[string]string{"app": name, "kube-bt-sync.io/redis-data": "true"})
+		pvc, err := buildRedisPVC(ns, pvcName, sc, size, map[string]string{"app": name, "labplane.io/redis-data": "true"})
 		if err != nil {
 			return fmt.Errorf("PVC: %w", err)
 		}

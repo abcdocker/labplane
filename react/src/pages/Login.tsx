@@ -132,7 +132,7 @@ function LoginOidcOpsCard({ href, showLocalDivider }: { href: string; showLocalD
             </p>
           </div>
           <ChevronRight
-            className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#1a5ec8] dark:group-hover:text-cyan-400"
+            className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#7c3aed] dark:group-hover:text-cyan-400"
             aria-hidden
           />
         </a>
@@ -248,7 +248,7 @@ function LoginLeftStatusPanel({ sc, loading }: { sc: SystemCheck | undefined; lo
         {metrics.map((m) => (
           <div key={m.label} className="flex min-w-0 flex-col gap-1 min-[380px]:max-w-none sm:max-w-[220px]">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-              <span className="text-[var(--login-v2-primary,#1a5ec8)]">{m.icon}</span>
+              <span className="text-[var(--login-v2-primary,#7c3aed)]">{m.icon}</span>
               <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{m.value}</span>
             </div>
             <span className="text-xs text-slate-500 dark:text-slate-400">{m.label}</span>
@@ -572,7 +572,7 @@ const Login: React.FC = () => {
       <div
         className="login-page-v2-scan-line pointer-events-none absolute left-0 right-0 top-0 h-px opacity-20"
         style={{
-          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #1a5ec8), transparent)",
+          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #7c3aed), transparent)",
         }}
       />
       <div
@@ -592,7 +592,15 @@ const Login: React.FC = () => {
         <div className="absolute inset-0 z-0">{shell}</div>
         <div className="relative z-10 flex min-h-[100dvh] min-h-screen w-full items-center justify-center px-4 py-6">
           <div className="login-v2-fade-in-up mx-auto flex w-full max-w-[min(100vw-2rem,400px)] flex-col items-center gap-4 rounded-2xl border border-slate-200/90 bg-white/95 px-6 py-7 shadow-sm sm:px-10 sm:py-8 dark:border-slate-700 dark:bg-slate-900/90">
-            <img src={BRAND_LOGO} alt="" width={200} height={61} className="h-9 w-auto object-contain opacity-90 sm:h-10" />
+            <div className="flex items-center gap-3">
+              <img src={BRAND_LOGO} alt="" width={48} height={48} className="h-11 w-11 object-contain" />
+              <div>
+                <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">LabPlane</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-cyan-300">
+                  Your HomeLab Control Plane
+                </p>
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
               <span className="text-sm text-slate-500">加载中</span>
@@ -612,7 +620,10 @@ const Login: React.FC = () => {
         <div className="absolute inset-0 z-0">{shell}</div>
         <div className="relative z-10 flex min-h-[100dvh] min-h-screen w-full items-center justify-center px-4 py-6">
           <div className="login-v2-fade-in-up mx-auto flex w-full max-w-[min(100vw-2rem,400px)] flex-col items-center gap-4 rounded-2xl border border-slate-200/90 bg-white/95 px-6 py-7 shadow-sm sm:px-10 sm:py-8 dark:border-slate-700 dark:bg-slate-900/90">
-            <img src={BRAND_LOGO} alt="" width={200} height={61} className="h-9 w-auto object-contain opacity-90 sm:h-10" />
+            <div className="flex items-center gap-3">
+              <img src={BRAND_LOGO} alt="" width={48} height={48} className="h-11 w-11 object-contain" />
+              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">LabPlane</span>
+            </div>
             <span className="text-sm text-slate-500">正在跳转</span>
           </div>
         </div>
@@ -628,50 +639,48 @@ const Login: React.FC = () => {
       <div
         className="login-page-v2-scan-line pointer-events-none absolute left-0 right-0 top-0 h-px opacity-15 dark:opacity-25"
         style={{
-          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #1a5ec8), transparent)",
+          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #7c3aed), transparent)",
         }}
       />
       <div
         className="pointer-events-none absolute left-1/4 top-1/4 h-96 w-96 rounded-full blur-3xl opacity-[0.05] dark:opacity-[0.08]"
-        style={{ background: "#326de6" }}
+        style={{ background: "#7c3aed" }}
       />
       <div
         className="pointer-events-none absolute bottom-1/4 right-1/3 h-72 w-72 rounded-full blur-3xl opacity-[0.04] dark:opacity-[0.07]"
-        style={{ background: "#6ab04c" }}
+        style={{ background: "#22d3ee" }}
       />
 
       {loginSuccess && <LoginSuccessOverlay />}
 
-      <div className="relative z-10 mx-auto w-full max-w-[min(100%,92rem)] px-5 pb-[max(1.25rem,var(--kbts-safe-bottom,env(safe-area-inset-bottom)))] pt-[max(0.75rem,var(--kbts-safe-top,env(safe-area-inset-top)))] sm:px-7 md:px-9 lg:px-12 lg:pb-10 lg:pt-8 xl:px-14 xl:pt-10">
+      <div className="relative z-10 mx-auto w-full max-w-[min(100%,92rem)] px-5 pb-[max(1.25rem,var(--labplane-safe-bottom,env(safe-area-inset-bottom)))] pt-[max(0.75rem,var(--labplane-safe-top,env(safe-area-inset-top)))] sm:px-7 md:px-9 lg:px-12 lg:pb-10 lg:pt-8 xl:px-14 xl:pt-10">
         <div className="grid w-full grid-cols-1 content-start gap-y-10 gap-x-0 py-6 sm:gap-y-12 sm:py-8 md:py-10 lg:min-h-[100dvh] lg:grid-cols-[minmax(0,1.14fr)_minmax(0,0.86fr)] lg:content-center lg:items-center lg:gap-x-12 lg:gap-y-0 lg:py-14 xl:gap-x-16 2xl:gap-x-20">
         {/* 左栏：大屏在左；小屏排在登录表单之后 */}
         <div className="order-2 flex min-h-0 w-full flex-col justify-center border-t border-slate-200/80 pt-8 dark:border-slate-800/80 lg:order-none lg:border-t-0 lg:border-r lg:border-b-0 lg:pt-0 lg:pb-0 lg:pr-10 xl:pr-14">
           <div className="mx-auto flex w-full max-w-xl flex-col space-y-7 sm:space-y-8 lg:mx-0 lg:max-w-[min(100%,46rem)] xl:max-w-[50rem]">
-            <div className="login-v2-fade-in-up login-v2-d100 mb-5 flex flex-wrap items-center gap-2 sm:mb-8 sm:gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1a5ec8] shadow-sm">
-                <Shield className="h-5 w-5 text-white" aria-hidden />
+            <div className="login-v2-fade-in-up login-v2-d100 mb-5 flex flex-wrap items-center gap-3 sm:mb-8">
+              <img src={BRAND_LOGO} alt="" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+              <div className="mr-1">
+                <p className="text-2xl font-bold tracking-[-0.035em] text-slate-950 sm:text-3xl dark:text-white">LabPlane</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600 sm:text-[11px] dark:text-cyan-300">
+                  Your HomeLab Control Plane
+                </p>
               </div>
-              <img src={BRAND_LOGO} alt="" className="h-9 w-auto max-w-[200px] object-contain sm:h-10" />
               <span
-                className="rounded-full border px-2 py-0.5 text-xs font-semibold"
-                style={{
-                  borderColor: "rgba(106,176,76,0.35)",
-                  color: "#3d7a2e",
-                  background: "rgba(106,176,76,0.12)",
-                }}
+                className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200"
               >
-                私有云控制台
+                私有部署
               </span>
             </div>
 
             <div className="login-v2-fade-in-up login-v2-d200 mb-3 sm:mb-4">
               <h1 className="mb-2 text-[1.65rem] font-bold leading-[1.2] tracking-tight text-slate-900 sm:mb-3 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] xl:text-5xl dark:text-slate-50">
-                云原生基础设施
+                一个平台，掌控你的
                 <br />
-                <span className="text-[#1a5ec8]">管理平台</span>
+                <span className="login-brand-heading">HomeLab 全栈基础设施</span>
               </h1>
               <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-400">
-                面向 HomeLab 与自建集群的一体化控制台：从 Ingress 自动发布到宝塔，到 vCenter 控制台、SSH 堡垒机、监控与审计，登录后按权限进入各模块。
+                统一管理 Kubernetes、Ingress 发布、异地组网、vCenter、SSH 堡垒机、监控与安全审计。基础设施很复杂，入口不必复杂。
               </p>
             </div>
 
@@ -712,10 +721,10 @@ const Login: React.FC = () => {
             <div className="login-v2-fade-in-up login-v2-d200 login-card-glow-v2 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm sm:rounded-3xl sm:p-8 md:p-10 dark:border-slate-700 dark:bg-slate-900/85">
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center gap-3 sm:gap-3.5">
-                  <Terminal className="h-6 w-6 shrink-0 text-[#1a5ec8] sm:h-7 sm:w-7" aria-hidden />
+                  <Terminal className="h-6 w-6 shrink-0 text-[#7c3aed] sm:h-7 sm:w-7" aria-hidden />
                   <div>
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem] dark:text-slate-50">
-                      登录控制台
+                      登录 LabPlane
                     </h2>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       OIDC 与本地账号可并存，跳转后会回到原访问页面。
@@ -744,9 +753,9 @@ const Login: React.FC = () => {
                   <span
                     className="rounded-md border px-2 py-1 text-xs font-semibold dark:border-slate-600"
                     style={{
-                      background: "#1a5ec814",
-                      color: "#1a5ec8",
-                      borderColor: "#1a5ec833",
+                      background: "#7c3aed14",
+                      color: "#7c3aed",
+                      borderColor: "#7c3aed33",
                     }}
                   >
                     本地密码
@@ -785,7 +794,7 @@ const Login: React.FC = () => {
                       placeholder="用户名"
                       className={cn(
                         "login-v2-input h-12 rounded-xl border bg-white px-4 text-base transition dark:border-slate-600 dark:bg-slate-950 sm:text-sm",
-                        focusedField === "username" ? "border-[#1a5ec8] ring-0" : "border-slate-200"
+                        focusedField === "username" ? "border-[#7c3aed] ring-0" : "border-slate-200"
                       )}
                     />
                   </div>
@@ -806,7 +815,7 @@ const Login: React.FC = () => {
                         onBlur={() => setFocusedField(null)}
                         className={cn(
                           "login-v2-input h-12 rounded-xl border bg-white pr-11 pl-4 text-base transition dark:border-slate-600 dark:bg-slate-950 sm:text-sm",
-                          focusedField === "password" ? "border-[#1a5ec8] ring-0" : "border-slate-200"
+                          focusedField === "password" ? "border-[#7c3aed] ring-0" : "border-slate-200"
                         )}
                       />
                       <button
@@ -842,7 +851,7 @@ const Login: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1a5ec8] to-[#0891b2] text-base font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-60 sm:text-sm"
+                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#0891b2] text-base font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-60 sm:text-sm"
                   >
                     {submitting ? (
                       <>认证中…</>

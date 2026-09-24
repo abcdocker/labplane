@@ -6,7 +6,7 @@
 业务系统日志文件 / stdout
   → Vector（采集、补充来源字段）
   → VictoriaLogs /insert/jsonline
-  → kube-bt-sync /api/ops/vmlog/search
+  → labplane /api/ops/vmlog/search
   → 日志查询页
 ```
 

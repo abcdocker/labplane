@@ -40,10 +40,11 @@ type DeleteIngressRequest struct {
 func StartWebServer(ctx context.Context, app *ServerApp) {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(securityHeadersMiddleware())
 	cfg := app.Cfg()
 	if cfg.PerformanceMode {
 		gin.SetMode(gin.ReleaseMode)
-		log.Printf("config: KUBEBT_PERFORMANCE_MODE 已启用（Gin release；Redis 可用时 /api/namespaces 缓存约 %d 秒）", cfg.NamespacesCacheTTLSec)
+		log.Printf("config: LABPLANE_PERFORMANCE_MODE 已启用（Gin release；Redis 可用时 /api/namespaces 缓存约 %d 秒）", cfg.NamespacesCacheTTLSec)
 	}
 	configureGinTrustedProxies(r, cfg)
 	r.Use(auditAccessLogMiddleware(app))
@@ -92,6 +93,15 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		api.GET("/ingress/raw", func(c *gin.Context) { handleGetIngressRaw(c, app.K8s()) })
 		api.POST("/ingress/yaml", func(c *gin.Context) { handleApplyYaml(c, app.K8s()) })
 		api.POST("/ingress/delete", func(c *gin.Context) { handleDeleteIngress(c, app.K8s(), app.Cfg()) })
+		// 路由管理面板：Gateway API（动态客户端）+ IngressClass
+		api.GET("/k8s/gwapi/status", func(c *gin.Context) { handleK8sGatewayAPIStatus(c, app.K8s(), app.K8sREST()) })
+		api.GET("/k8s/gwapi/list", func(c *gin.Context) { handleK8sGatewayAPIList(c, app.K8s(), app.K8sREST()) })
+		api.GET("/k8s/gwapi/yaml", func(c *gin.Context) { handleK8sGatewayAPIYAML(c, app.K8s(), app.K8sREST()) })
+		api.POST("/k8s/gwapi/apply", AdminOnlyMiddleware(app), func(c *gin.Context) { handleK8sGatewayAPIApply(c, app.K8s(), app.K8sREST()) })
+		api.DELETE("/k8s/gwapi/resource/:type/:namespace/:name", AdminOnlyMiddleware(app), func(c *gin.Context) {
+			handleK8sGatewayAPIDelete(c, app.K8s(), app.K8sREST())
+		})
+		api.GET("/k8s/ingressclasses", func(c *gin.Context) { handleK8sIngressClasses(c, app.K8s()) })
 		api.GET("/baota/ingress-sync/status", func(c *gin.Context) { handleBaotaIngressSyncStatus(app)(c) })
 		api.POST("/baota/ingress-sync/run", func(c *gin.Context) { handleBaotaIngressSyncRun(app)(c) })
 
@@ -217,6 +227,8 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 
 		api.GET("/settings/runtime", handleGetRuntimeSettings(app))
 		api.PUT("/settings/runtime", handlePutRuntimeSettings(app))
+		api.GET("/settings/modules", handleModuleVisibilityGet(app))
+		api.PUT("/settings/modules", AdminOnlyMiddleware(app), handleModuleVisibilityPut(app))
 		api.GET("/audit/logs", AdminOnlyMiddleware(app), handleGetAuditLogs(app))
 		api.GET("/audit/summary", AdminOnlyMiddleware(app), handleGetAuditSummary(app))
 		api.GET("/audit/site-stats", AdminOnlyMiddleware(app), handleGetSiteStats(app))
@@ -269,7 +281,7 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		WriteTimeout:      5 * time.Minute,
 	}
 
-	log.Printf("kube-bt-sync Dashboard 已启动，监听 %s", addr)
+	log.Printf("labplane Dashboard 已启动，监听 %s", addr)
 	errCh := make(chan error, 1)
 	go func() {
 		err := srv.ListenAndServe()
@@ -676,8 +688,8 @@ func buildConfigMapResponse(app *ServerApp, role string, eff *EffectiveDashboard
 		"victoriaLogsConfigured":      strings.TrimSpace(cfg.VictoriaLogsURL) != "",
 		"victoriaLogsUrlHint":         maskPrometheusURL(cfg.VictoriaLogsURL),
 		"prometheusTimeoutSec":        int(cfg.PrometheusTimeout.Seconds()),
-		"kubebtMetricsPath":           "/metrics",
-		"kubebtPrometheusScrapeHint":  "Prometheus 增加 static_configs：targets 为本服务可达地址，metrics_path=/metrics，scheme=http/https 与监听一致；建议仅内网抓取。",
+		"labplaneMetricsPath":           "/metrics",
+		"labplanePrometheusScrapeHint":  "Prometheus 增加 static_configs：targets 为本服务可达地址，metrics_path=/metrics，scheme=http/https 与监听一致；建议仅内网抓取。",
 		"prometheusSkipTls":           cfg.PrometheusSkipTLS,
 		"prometheusHasBearer":         strings.TrimSpace(cfg.PrometheusBearerToken) != "",
 		"vcenterConfigured":           cfg.vCenterConfigured(),

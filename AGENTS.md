@@ -21,20 +21,20 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 golangci-lint run
 
 # 本地构建
-go build -o kube-bt-sync .
+go build -o labplane .
 
 # 本地运行（会先构建 React 再启动 Go）
 ./run.sh
 
 # 构建容器镜像
-docker build -t i4t/kube-bt-sync:latest .
+docker build -t labplane:latest .
 
 # 部署到 K8s
 kubectl apply -f deploy/
-kubectl apply -f deploy/kube-bt-sync-all.yaml  # 一键全量部署
+kubectl apply -f deploy/labplane-all.yaml  # 一键全量部署（NodePort 32080）
 
 # Helm 安装
-helm install kube-bt-sync ./charts/kube-bt-sync
+helm dependency build charts/labplane && helm install labplane ./charts/labplane
 
 # 连通性检查工具（仅本地，不含于 Docker 镜像）
 go run ./cmd/connectivity-check/
@@ -56,27 +56,39 @@ npm run build  # 构建到 react/dist/（由 Docker 复制进镜像）
 ### 模块结构
 
 ```
-kube-bt-sync/
+labplane/
 ├── main.go                    # 入口：初始化 ServerApp，启动后台任务，启动 Gin Web 服务
 ├── cmd/connectivity-check/    # 独立 CLI 工具，验证 K8s/Baota 连通性
-├── internal/                  # 全部 Go 业务逻辑（单一 package: internal，~234 个文件）
+├── internal/                  # 全部 Go 业务逻辑（单一 package: internal，~290 个文件）
+│   └── mesh_joingoing/        # Windows Tailscale 加入工具打包
 ├── react/                     # Vite + React + TypeScript + shadcn/ui 前端
 ├── deploy/                    # K8s 部署清单（RBAC、Deployment、Service、PVC、Kustomize）
-├── charts/                    # Helm Chart
+├── charts/labplane/    # Helm Chart（子依赖 ingress-nginx/metallb 可选，需 helm dependency build）
 ├── templates/                 # Go HTML 模板（无 React 构建产物时的降级方案）
 ├── scripts/                   # 运维辅助脚本
+├── compose.yaml               # MySQL + Redis + 控制台一键本地环境（配 scripts/init-compose-env.sh）
 └── data/                      # 运行时数据目录（gitignored）
 ```
+
+> **前置依赖**：MySQL 8.0+ 与 Redis 为必选（`/setup` 向导强校验）；K8s 连接可选（堡垒机/vCenter 等模块不依赖）。
+>
+> **internal/ 拆分路线**：单 package 已约 290 文件，新增代码应按域聚合成新子 package
+> （先例：`internal/mesh_joingoing`）；存量代码在触及重构时逐步迁移，禁止一次性大规模搬移。
 
 ### 构建流程
 
 Docker 三阶段构建：
 
 1. **frontend** (node:20-alpine)：`npm ci && npm run build` → `react/dist/`
-2. **builder** (golang:1.25.6-alpine)：`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X kube-bt-sync/internal.BuildVersion=${BUILD_VERSION}"` + 复制 React dist
+2. **builder** (golang:1.25.6-alpine)：`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${BUILD_VERSION}"` + 复制 React dist
 3. **final** (distroless/static-debian12:nonroot)：仅含二进制 + helm + 静态资源，无 Shell
 
-最终镜像暴露 `:8080`，健康检查端点 `GET /api/health`。
+最终镜像暴露 `:8080`。探针端点：`GET /readyz`（就绪）、`GET /livez`（存活）、`GET /api/health`（聚合状态）。
+
+> 品牌标识统一约定：Ingress 注解域 `labplane.io/*`、环境变量前缀 `LABPLANE_*`、
+> Cookie 名 `labplane_session`、Prometheus 指标前缀 `labplane_`、K8s 标签
+> `app.kubernetes.io/managed-by: labplane`，以及 leader 锁名、监控 namespace、
+> ServiceAccount 和 server-side apply FieldManager 均使用 `labplane`。
 
 ---
 
@@ -88,15 +100,16 @@ Docker 三阶段构建：
 
 每隔 `SYNC_INTERVAL_SEC`（默认 30 秒）：
 1. 列出所有命名空间的 Ingress
-2. 过滤带有注解 `kube-bt-sync.io/baota-sync=true` 的 Ingress
+2. 过滤带有注解 `labplane.io/baota-sync=true` 的 Ingress
 3. 构建 `ProxyTarget{Domain, TargetURL, BaotaHTTPS, BaotaSSLCert}`
 4. 调用 Baota API 幂等创建站点和反向代理（代理名 `k8s-{domain}`）
 5. 若注解含 `baota-https=true`，追加部署证书和强制 HTTPS
 
 **触发方式 2：事件驱动**（`internal/watcher.go`，`StartIngressWatcher`）
 
-使用 K8s 原生 Watch API（非 SharedInformer），监听 Ingress `ADDED/MODIFIED` 事件立即触发同步。
-> ⚠️ `watcher.go` 代码存在，但当前 `main.go` 中未调用启动，仅 `StartSyncer` 在运行。
+使用 SharedInformer 本地缓存监听 Ingress 变更，并将短时间内的连续变更合并为一次同步。
+由 `internal/background_leader.go` 统一启动：多副本时仅 Leader（锁选举）运行
+`StartSyncer` + `StartIngressWatcher`，其余副本禁用后台任务。
 
 **Baota API 认证**（`internal/baota.go`）
 
@@ -115,10 +128,10 @@ UI 触发删除（`deleteBaota=true`）→ 删除反向代理 → 查站点 ID �
 
 | 注解键 | 说明 |
 |---|---|
-| `kube-bt-sync.io/baota-sync: "true"` | 标记为受管 Ingress（新版，推荐） |
-| `kube-bt-sync.io/baota-https: "true"` | 在 Baota 侧启用 HTTPS |
-| `kube-bt-sync.io/ddns-port: "PORT"` | 覆盖默认后端端口 |
-| `kube-bt-sync.io/baota-ssl-cert-name: "CERT"` | 指定 Baota 证书名 |
+| `labplane.io/baota-sync: "true"` | 标记为受管 Ingress（新版，推荐） |
+| `labplane.io/baota-https: "true"` | 在 Baota 侧启用 HTTPS |
+| `labplane.io/ddns-port: "PORT"` | 覆盖默认后端端口 |
+| `labplane.io/baota-ssl-cert-name: "CERT"` | 指定 Baota 证书名 |
 
 ---
 
@@ -135,7 +148,7 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `KUBEBT_DATA_DIR` | `./data` | 持久化数据目录（挂 PVC） |
+| `LABPLANE_DATA_DIR` | `./data` | 持久化数据目录（挂 PVC） |
 | `BAOTA_URL` | `http://127.0.0.1:8888` | 宝塔面板地址 |
 | `BAOTA_API_KEY` | — | 宝塔 API 密钥 |
 | `DDNS_HOST` | `home.example.com` | 家庭公网 DDNS 域名 |
@@ -145,13 +158,13 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 | `DASHBOARD_HTTP_ADDR` | `:8080` | 监听地址 |
 | `DASHBOARD_PASSWORD` | — | 设置后启用本地密码登录 |
 | `DASHBOARD_SESSION_SECRET` | 随机 | 多副本时必须固定一致 |
-| `KUBEBT_ENCRYPTION_KEY` | — | SSH 凭据 AES 加密密钥 |
+| `LABPLANE_ENCRYPTION_KEY` | — | SSH 凭据 AES 加密密钥 |
 | `REDIS_ADDR` | — | Redis 地址（可选，用于 HA） |
 | `MYSQL_DSN` | — | MySQL DSN（可选，用于多用户/多副本） |
 | `PLATFORM_PUBLIC_URL` | — | 服务公网 URL（必填） |
-| `KUBEBT_ENABLE_BACKGROUND_JOBS` | `true` | 多副本时非主节点设为 false |
-| `KUBEBT_GOMAXPROCS` | OS 默认 | 对齐 K8s CPU limit 时使用 |
-| `KUBEBT_PERFORMANCE_MODE` | `false` | 启用 Gin release 模式 + 命名空间缓存 |
+| `LABPLANE_ENABLE_BACKGROUND_JOBS` | `true` | 多副本时非主节点设为 false |
+| `LABPLANE_GOMAXPROCS` | OS 默认 | 对齐 K8s CPU limit 时使用 |
+| `LABPLANE_PERFORMANCE_MODE` | `false` | 启用 Gin release 模式 + 命名空间缓存 |
 | `VCENTER_URL/USER/PASSWORD` | — | VMware vCenter 连接 |
 | `HARBOR_BASE_URL/USERNAME/PASSWORD` | — | Harbor 镜像仓库 |
 | `OIDC_ISSUER_URL/CLIENT_ID/CLIENT_SECRET/REDIRECT_URL` | — | OIDC 登录（Authentik 等） |
@@ -184,11 +197,29 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 
 ---
 
+## 📡 vCenter VM 抓包 (Packet Capture)
+
+VM 详情页「抓包」标签（`react/src/pages/vcenter/capture/`，demo 见 `reports/packet-capture-demo-20260921/`）。
+
+**后端文件**（均 `internal/vm_capture_*.go`，依赖 `github.com/google/gopacket`）：
+`_engine.go`（SSH + `sudo -n tcpdump -i any -U -s N -w -` 流式回传，TeeReader 同时落盘与旁路解码）、`_analyze.go`（协议识别：RESP/SSH/HTTP/TLS-SNI/DNS/ICMP/ARP）、`_risk.go`（规则风险引擎）、`_decode.go`（pcap → 包列表/协议树/Hex）、`_ai.go`（AI 三件套）、`_handlers.go`（路由）。
+
+**API**（`/api/vcenter/vms/:moref/captures`，全部 AdminOnly + bastion ACL + 审计）：
+`GET ''`（列表/用量）、`GET /preflight`、`POST ''`（开始）、`POST /interpret`（AI 解读 BPF）、`GET|POST|DELETE /file/:name[/stop|/decode|/download|/ai-report|/ai-chat]`。
+
+**限制**（常量在 `_engine.go`）：每 VM 1 并发、全局 3 并发、snaplen ≤1600、单文件 ≤128MiB、时长 ≤300s、保留 7 天 + 总配额 2GiB（`dataDir/captures/`，pcap 0600，sidecar `.meta.json` / `.ai.json`）。
+
+**AI 分层**：统计/风险事实全部由 gopacket 解码 + 规则引擎产生（复用巡检 `OpsAIInspectConfig` 判读模型做文案增强，模型未启用时纯规则降级）；送入模型的上下文只含脱敏统计——**载荷与口令原文永不进入 AI 输入、日志或 finding 文本**（RESP AUTH 只报长度）。BPF 经黑名单字符校验（拒绝引号/反引号/$;/&|<> 等）后以单引号包裹执行，防 shell 注入。
+
+**前端**：`VmCapturePanel.tsx`（预检/表单/实时双栏/历史表，运行态 1s 轮询 status 接口增量拉取预览行）、`PcapViewerDialog.tsx`（源文件三栏 + AI 报告 + 追问，「查看包 #N」可从报告跳回源文件视图并高亮）。
+
+---
+
 ## 🔐 认证体系 (Auth)
 
 ### Session Token
 
-HMAC-SHA256 签名，Cookie 名 `kbts_session`。
+HMAC-SHA256 签名，Cookie 名 `labplane_session`。
 Payload：`user|role|expUnix|nonce|buildVersion`（base64 raw URL）。
 **新部署后 BuildVersion 变更，所有旧 Token 自动失效。**
 
@@ -241,7 +272,7 @@ livenessProbe:
 ### 多副本 HA
 
 - 所有副本设置相同的 `DASHBOARD_SESSION_SECRET`
-- 非主节点设 `KUBEBT_ENABLE_BACKGROUND_JOBS=false`（禁用 Baota 同步、告警等后台任务）
+- 非主节点设 `LABPLANE_ENABLE_BACKGROUND_JOBS=false`（禁用 Baota 同步、告警等后台任务）
 - 配置 MySQL + Redis 实现跨副本配置热同步（每 10 秒检测版本号变化，自动 Reload）
 
 ---
@@ -254,4 +285,4 @@ livenessProbe:
 4. **安全红线**：严禁在代码或日志中明文硬编码/打印 Baota API Key 或 TLS 私钥。
 5. **并发控制**：批量同步任务使用 Goroutines 并发，必须引入 Rate Limiter 避免触发 Baota 限流。
 6. **YAML 规范**：输出的 K8s 部署清单必须包含 `resources.requests` 和 `resources.limits`。
-7. **前端规范**：所有 UI 文本通过 i18n 文件配置，禁止硬编码；使用 `dark:` 前缀支持暗色主题。
+7. **前端规范**：i18n 采用增量迁移策略——新增/重构的模块使用 `react/src/i18n/` 下的 i18n 文件（先例：`i18n/setup.ts`、`i18n/mobile.ts`）；存量页面的硬编码中文在触及重构时迁移，不做一次性全量迁移。所有新组件必须使用 `dark:` 前缀支持暗色主题；路由级页面组件必须 `React.lazy`（先例见 `App.tsx`），防止重库进入首屏 chunk。

@@ -43,6 +43,7 @@ import {
 import { mergeListeningPortsByProtoPort } from "@/lib/listening-ports";
 import VCenterConsolePanel from "./VCenterConsolePanel";
 import VCenterSshTerminal from "./VCenterSshTerminal";
+import VmCapturePanel from "./capture/VmCapturePanel";
 import { VCenterStorageChart, formatBytes } from "./VCenterResourceCharts";
 import { VCenterPerfMonitor } from "./VCenterPerfMonitor";
 import type {
@@ -66,7 +67,7 @@ function formatGiBFromKB(capacityKB: number): string {
 const VCenterVMDetail: React.FC = () => {
   const { moref = "" } = useParams<{ moref: string }>();
   const decoded = decodeURIComponent(moref);
-  const [activeTab, setActiveTab] = useState<"overview" | "metrics" | "ssh" | "console">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "metrics" | "ssh" | "console" | "capture">("overview");
   const queryClient = useQueryClient();
 
   const detailQ = useQuery({
@@ -288,6 +289,7 @@ const VCenterVMDetail: React.FC = () => {
             <TabsTrigger value="metrics" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.metrics}</TabsTrigger>
             <TabsTrigger value="ssh" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.ssh}</TabsTrigger>
             <TabsTrigger value="console" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.console}</TabsTrigger>
+            <TabsTrigger value="capture" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.capture}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-3">
@@ -823,6 +825,10 @@ const VCenterVMDetail: React.FC = () => {
 
           <TabsContent value="console">
             <VCenterConsolePanel moref={decoded} />
+          </TabsContent>
+
+          <TabsContent value="capture" className="space-y-4">
+            <VmCapturePanel moref={decoded} vmName={vmDisplayName} />
           </TabsContent>
         </Tabs>
       )}

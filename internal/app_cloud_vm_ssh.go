@@ -43,9 +43,9 @@ func sshDialRetriable(addr string, sshCfg *ssh.ClientConfig) (*ssh.Client, error
 
 // resolveCloudVMSSHAddr 平台 SSH 默认走「节点 IP + NodePort」；当控制台进程跑在集群内时，该路径常失败（外网 IP hairpin、节点不可达等），而 kubectl exec 仍正常。
 // 若在集群内且可读 Service，则优先使用 ClusterIP:ServicePort（与 Pod 内 sshd 相同，不经 NodePort），与 exec 的网络语义更接近。
-// 设 KUBEBT_CLOUD_VM_SSH_USE_CLUSTERIP=0 可强制始终用 NodeIP:NodePort。
+// 设 LABPLANE_CLOUD_VM_SSH_USE_CLUSTERIP=0 可强制始终用 NodeIP:NodePort。
 func resolveCloudVMSSHAddr(ctx context.Context, k8s *kubernetes.Clientset, ns string, st *CloudVMStored) (addr string, via string, err error) {
-	if k8s != nil && os.Getenv("KUBEBT_CLOUD_VM_SSH_USE_CLUSTERIP") != "0" && strings.TrimSpace(os.Getenv("KUBERNETES_SERVICE_HOST")) != "" && strings.TrimSpace(st.ServiceName) != "" {
+	if k8s != nil && os.Getenv("LABPLANE_CLOUD_VM_SSH_USE_CLUSTERIP") != "0" && strings.TrimSpace(os.Getenv("KUBERNETES_SERVICE_HOST")) != "" && strings.TrimSpace(st.ServiceName) != "" {
 		svc, e := k8s.CoreV1().Services(ns).Get(ctx, st.ServiceName, metav1.GetOptions{})
 		if e == nil && svc.Spec.ClusterIP != "" && svc.Spec.ClusterIP != "None" {
 			port := cloudVMSSHPort
@@ -83,7 +83,7 @@ func handleCloudVMSSHWS(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var cfgj, ns string
-	err = db.QueryRow(`SELECT namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
+	err = db.QueryRow(`SELECT namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return

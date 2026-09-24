@@ -18,7 +18,7 @@ func vcenterCacheTTL(cfg Config) time.Duration {
 func vcenterVMListRedisKey(cfg Config) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		return "kbts:vcenter:vms:snapshot"
+		return "labplane:vcenter:vms:snapshot"
 	}
 	return p + ":vcenter:vms:snapshot"
 }
@@ -43,7 +43,7 @@ func vcenterVMDetailRedisKey(cfg Config, moref string) string {
 	}
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		return "kbts:vcenter:vm:detail:" + moref
+		return "labplane:vcenter:vm:detail:" + moref
 	}
 	return p + ":vcenter:vm:detail:" + moref
 }
@@ -51,7 +51,7 @@ func vcenterVMDetailRedisKey(cfg Config, moref string) string {
 func vcenterHostListRedisKey(cfg Config) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		return "kbts:vcenter:hosts:snapshot"
+		return "labplane:vcenter:hosts:snapshot"
 	}
 	return p + ":vcenter:hosts:snapshot"
 }

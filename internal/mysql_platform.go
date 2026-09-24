@@ -17,11 +17,11 @@ import (
 )
 
 func mysqlPoolMaxOpen() int {
-	return clampMySQLPoolInt(os.Getenv("KUBEBT_MYSQL_MAX_OPEN_CONNS"), 32, 1, 256)
+	return clampMySQLPoolInt(os.Getenv("LABPLANE_MYSQL_MAX_OPEN_CONNS"), 32, 1, 256)
 }
 
 func mysqlPoolMaxIdle() int {
-	return clampMySQLPoolInt(os.Getenv("KUBEBT_MYSQL_MAX_IDLE_CONNS"), 16, 0, 128)
+	return clampMySQLPoolInt(os.Getenv("LABPLANE_MYSQL_MAX_IDLE_CONNS"), 16, 0, 128)
 }
 
 func clampMySQLPoolInt(s string, def, min, max int) int {
@@ -42,10 +42,10 @@ func clampMySQLPoolInt(s string, def, min, max int) int {
 	return n
 }
 
-// mysqlPingTimeout 单次 Ping 超时；过小易导致云库/跨区「context deadline exceeded」。可用 KUBEBT_MYSQL_PING_TIMEOUT_SEC（5～180，默认 30）。
+// mysqlPingTimeout 单次 Ping 超时；过小易导致云库/跨区「context deadline exceeded」。可用 LABPLANE_MYSQL_PING_TIMEOUT_SEC（5～180，默认 30）。
 func mysqlPingTimeout() time.Duration {
 	sec := 30
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_MYSQL_PING_TIMEOUT_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_MYSQL_PING_TIMEOUT_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 5 && n <= 180 {
 			sec = n
 		}
@@ -91,7 +91,7 @@ func openMySQLPoolInternal(dsn string, tryAutoCreateDB bool) (*sql.DB, error) {
 	return db, nil
 }
 
-// OpenMySQLPoolForRuntimeWrite 打开连接并创建/迁移 kubebt_* 表。保存 runtime 写入 platform_kv 前必须调用，否则会出现表不存在（如 1146）。
+// OpenMySQLPoolForRuntimeWrite 打开连接并创建/迁移 labplane_* 表。保存 runtime 写入 platform_kv 前必须调用，否则会出现表不存在（如 1146）。
 func OpenMySQLPoolForRuntimeWrite(dsn string) (*sql.DB, error) {
 	dsn = strings.TrimSpace(dsn)
 	if dsn == "" {
@@ -112,7 +112,7 @@ func OpenMySQLPoolForRuntimeWrite(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-// mysqlEnsureSchema 启动时逐张校验/创建 kubebt_* 表（见 mysql_bootstrap.go）；单表失败不阻断，由 migrate 补列与索引。
+// mysqlEnsureSchema 启动时逐张校验/创建 labplane_* 表（见 mysql_bootstrap.go）；单表失败不阻断，由 migrate 补列与索引。
 func mysqlEnsureSchema(db *sql.DB) error {
 	return mysqlApplyBootstrapDDLs(db)
 }
@@ -120,7 +120,7 @@ func mysqlEnsureSchema(db *sql.DB) error {
 // migratePlatformKVFromFileIfMySQLEmpty 若 MySQL 中无键值，则从本地 platform_kv.json 导入。
 func migratePlatformKVFromFileIfMySQLEmpty(db *sql.DB, dataDir string) error {
 	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM kubebt_platform_kv`).Scan(&n); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM labplane_platform_kv`).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
@@ -143,7 +143,7 @@ func migratePlatformKVFromFileIfMySQLEmpty(db *sql.DB, dataDir string) error {
 
 func migrateRuntimeFromFileIfMySQLEmpty(db *sql.DB, path string) error {
 	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM kubebt_platform_kv WHERE k = ?`, runtimeConfigKVKey).Scan(&n); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM labplane_platform_kv WHERE k = ?`, runtimeConfigKVKey).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
@@ -166,7 +166,7 @@ func migrateRuntimeFromFileIfMySQLEmpty(db *sql.DB, path string) error {
 
 func mysqlUpsertKV(db *sql.DB, k, v string) error {
 	_, err := db.Exec(
-		`INSERT INTO kubebt_platform_kv (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)`,
+		`INSERT INTO labplane_platform_kv (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)`,
 		k, v,
 	)
 	return err
@@ -174,7 +174,7 @@ func mysqlUpsertKV(db *sql.DB, k, v string) error {
 
 func loadRuntimeFromMySQL(db *sql.DB) (*RuntimeSettings, error) {
 	var s sql.NullString
-	err := db.QueryRow(`SELECT v FROM kubebt_platform_kv WHERE k=?`, runtimeConfigKVKey).Scan(&s)
+	err := db.QueryRow(`SELECT v FROM labplane_platform_kv WHERE k=?`, runtimeConfigKVKey).Scan(&s)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -227,7 +227,7 @@ func (p *PlatformKVMySQL) Get(k string) (string, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	var v sql.NullString
-	err := p.db.QueryRow(`SELECT v FROM kubebt_platform_kv WHERE k=?`, k).Scan(&v)
+	err := p.db.QueryRow(`SELECT v FROM labplane_platform_kv WHERE k=?`, k).Scan(&v)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", false
@@ -249,7 +249,7 @@ func (p *PlatformKVMySQL) Set(k, v string) error {
 func (p *PlatformKVMySQL) Snapshot() map[string]string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	rows, err := p.db.Query(`SELECT k,v FROM kubebt_platform_kv`)
+	rows, err := p.db.Query(`SELECT k,v FROM labplane_platform_kv`)
 	if err != nil {
 		return map[string]string{}
 	}

@@ -1,4 +1,5 @@
 # 编译产物
+/labplane
 /kube-bt-sync
 *.exe
 *.dll
@@ -79,3 +80,7 @@ charts/*/charts/
 
 # 本地备份
 *.bak
+
+# 本地代理与浏览器自动化会话残留（日志、截图、快照）
+**/.playwright-mcp/
+**/.mimosa/

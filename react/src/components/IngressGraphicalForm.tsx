@@ -264,7 +264,7 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
       {baotaSyncEnabled ? (
         <>
           <p className="text-xs text-slate-500">
-            同步注解：<code className="rounded bg-slate-100 px-0.5">kube-bt-sync.io/baota-sync</code>
+            同步注解：<code className="rounded bg-slate-100 px-0.5">labplane.io/baota-sync</code>
           </p>
           {multiBaota.length > 1 ? (
             <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-2">

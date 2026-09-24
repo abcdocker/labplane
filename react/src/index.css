@@ -48,10 +48,10 @@
 }
 :root {
   --fontSans: "Inter";
-  --kbts-safe-top: env(safe-area-inset-top, 0px);
-  --kbts-safe-right: env(safe-area-inset-right, 0px);
-  --kbts-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --kbts-safe-left: env(safe-area-inset-left, 0px);
+  --labplane-safe-top: env(safe-area-inset-top, 0px);
+  --labplane-safe-right: env(safe-area-inset-right, 0px);
+  --labplane-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --labplane-safe-left: env(safe-area-inset-left, 0px);
   --background: rgba(255, 255, 255, 1);
   --foreground: rgba(32, 32, 32, 1);
   --card: rgba(255, 255, 255, 1);
@@ -171,16 +171,16 @@
   }
 
   .app-safe-x {
-    padding-left: max(0.75rem, var(--kbts-safe-left));
-    padding-right: max(0.75rem, var(--kbts-safe-right));
+    padding-left: max(0.75rem, var(--labplane-safe-left));
+    padding-right: max(0.75rem, var(--labplane-safe-right));
   }
 
   .app-safe-top {
-    padding-top: var(--kbts-safe-top);
+    padding-top: var(--labplane-safe-top);
   }
 
   .app-safe-bottom {
-    padding-bottom: var(--kbts-safe-bottom);
+    padding-bottom: var(--labplane-safe-bottom);
   }
 
   /** 主内容区右侧：细轨道 + 圆角滑块（贴近系统纵向滚动条观感） */

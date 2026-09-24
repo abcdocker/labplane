@@ -13,59 +13,52 @@ import { AuthProvider } from "@/auth/auth-context";
 import AppLayout from "./components/AppLayout";
 import RequireAuth from "./components/RequireAuth";
 import HomeHub from "./pages/HomeHub";
-import IngressList from "./pages/IngressList";
-import BaotaSync from "./pages/BaotaSync";
-import BaotaLayout from "./pages/baota/BaotaLayout";
-import BaotaSettingsPage from "./pages/baota/BaotaSettingsPage";
-import Settings from "./pages/Settings";
-import AccountSettings from "./pages/account/AccountSettings";
-import AccountPersonalCenter from "./pages/account/AccountPersonalCenter";
-import SiteStats from "./pages/account/SiteStats";
+const Settings = lazy(() => import("./pages/Settings"));
+const AccountSettings = lazy(() => import("./pages/account/AccountSettings"));
+const AccountPersonalCenter = lazy(() => import("./pages/account/AccountPersonalCenter"));
+const SiteStats = lazy(() => import("./pages/account/SiteStats"));
 import ViewerRedirect from "./components/ViewerRedirect";
-import ClusterK8sSettings from "./pages/cluster/ClusterK8sSettings";
-import ClusterLayout from "./pages/cluster/ClusterLayout";
-import ClusterOverview from "./pages/cluster/ClusterOverview";
-import ClusterPods from "./pages/cluster/ClusterPods";
-import ClusterPodsAll from "./pages/cluster/ClusterPodsAll";
-import ClusterServices from "./pages/cluster/ClusterServices";
-import ClusterIngresses from "./pages/cluster/ClusterIngresses";
-import ClusterNamespacePicker from "./pages/cluster/ClusterNamespacePicker";
-import ClusterNamespaceResourcesLayout from "./pages/cluster/ClusterNamespaceResourcesLayout";
-import LegacyPodDetailRedirect from "./pages/cluster/LegacyPodDetailRedirect";
-import {
-  ClusterConfigMapsScoped,
-  ClusterDaemonSetsScoped,
-  ClusterDeploymentsScoped,
-  ClusterPVCsScoped,
-  ClusterSecretsScoped,
-  ClusterStatefulSetsScoped,
-} from "./pages/cluster/ClusterWorkloadPages";
-import ClusterNodes from "./pages/cluster/ClusterNodes";
-import ClusterEtcdPage from "./pages/cluster/ClusterEtcdPage";
-import ClusterRBAC from "./pages/cluster/ClusterRBAC";
-import ClusterRBACServiceAccountDetail from "./pages/cluster/ClusterRBACServiceAccountDetail";
-import ClusterCustomResourcesLayout, {
-  ClusterCustomResourceCrdList,
-  ClusterCustomResourceDetail,
-  ClusterCustomResourceInstances,
-} from "./pages/cluster/ClusterCustomResources";
-import ToolNetworkIpScan from "./pages/cluster/ToolNetworkIpScan";
-import VCenterHubDashboard from "./pages/vcenter/VCenterHubDashboard";
-import VCenterList from "./pages/vcenter/VCenterList";
-import VCenterIkuaiRouterPage from "./pages/vcenter/VCenterIkuaiRouterPage";
-import VCenterGpuDashboard from "./pages/vcenter/VCenterGpuDashboard";
-import VCenterHosts from "./pages/vcenter/VCenterHosts";
-import VCenterHostDetail from "./pages/vcenter/VCenterHostDetail";
-import VCenterSettings from "./pages/vcenter/VCenterSettings";
-import CloudHosts from "./pages/vcenter/CloudHosts";
-import CloudHostSshPage from "./pages/vcenter/CloudHostSshPage";
-import BastionConsoleHome from "./pages/bastion/BastionConsoleHome";
-import VCenterBastionAdmin from "./pages/vcenter/VCenterBastionAdmin";
-import VCenterBastionConsoleEmbed from "./pages/vcenter/VCenterBastionConsoleEmbed";
-import AppCenterLayout from "./pages/AppCenterLayout";
-import BastionLayout from "./pages/bastion/BastionLayout";
-import AppCenterDashboard from "./pages/AppCenterDashboard";
-import DocsMedia from "./pages/docs/DocsMedia";
+const ClusterK8sSettings = lazy(() => import("./pages/cluster/ClusterK8sSettings"));
+const ClusterLayout = lazy(() => import("./pages/cluster/ClusterLayout"));
+const ClusterOverview = lazy(() => import("./pages/cluster/ClusterOverview"));
+const ClusterPods = lazy(() => import("./pages/cluster/ClusterPods"));
+const ClusterPodsAll = lazy(() => import("./pages/cluster/ClusterPodsAll"));
+const ClusterServices = lazy(() => import("./pages/cluster/ClusterServices"));
+const ClusterIngresses = lazy(() => import("./pages/cluster/ClusterIngresses"));
+const ClusterNamespacePicker = lazy(() => import("./pages/cluster/ClusterNamespacePicker"));
+const ClusterNamespaceResourcesLayout = lazy(() => import("./pages/cluster/ClusterNamespaceResourcesLayout"));
+const LegacyPodDetailRedirect = lazy(() => import("./pages/cluster/LegacyPodDetailRedirect"));
+const ClusterConfigMapsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterConfigMapsScoped })));
+const ClusterDaemonSetsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterDaemonSetsScoped })));
+const ClusterDeploymentsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterDeploymentsScoped })));
+const ClusterPVCsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterPVCsScoped })));
+const ClusterSecretsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterSecretsScoped })));
+const ClusterStatefulSetsScoped = lazy(() => import("./pages/cluster/ClusterWorkloadPages").then((m) => ({ default: m.ClusterStatefulSetsScoped })));
+const ClusterNodes = lazy(() => import("./pages/cluster/ClusterNodes"));
+const ClusterEtcdPage = lazy(() => import("./pages/cluster/ClusterEtcdPage"));
+const ClusterRBAC = lazy(() => import("./pages/cluster/ClusterRBAC"));
+const ClusterRBACServiceAccountDetail = lazy(() => import("./pages/cluster/ClusterRBACServiceAccountDetail"));
+const ClusterCustomResourcesLayout = lazy(() => import("./pages/cluster/ClusterCustomResources"));
+const ClusterCustomResourceCrdList = lazy(() => import("./pages/cluster/ClusterCustomResources").then((m) => ({ default: m.ClusterCustomResourceCrdList })));
+const ClusterCustomResourceDetail = lazy(() => import("./pages/cluster/ClusterCustomResources").then((m) => ({ default: m.ClusterCustomResourceDetail })));
+const ClusterCustomResourceInstances = lazy(() => import("./pages/cluster/ClusterCustomResources").then((m) => ({ default: m.ClusterCustomResourceInstances })));
+const ToolNetworkIpScan = lazy(() => import("./pages/cluster/ToolNetworkIpScan"));
+const VCenterHubDashboard = lazy(() => import("./pages/vcenter/VCenterHubDashboard"));
+const VCenterList = lazy(() => import("./pages/vcenter/VCenterList"));
+const VCenterIkuaiRouterPage = lazy(() => import("./pages/vcenter/VCenterIkuaiRouterPage"));
+const VCenterGpuDashboard = lazy(() => import("./pages/vcenter/VCenterGpuDashboard"));
+const VCenterHosts = lazy(() => import("./pages/vcenter/VCenterHosts"));
+const VCenterHostDetail = lazy(() => import("./pages/vcenter/VCenterHostDetail"));
+const VCenterSettings = lazy(() => import("./pages/vcenter/VCenterSettings"));
+const CloudHosts = lazy(() => import("./pages/vcenter/CloudHosts"));
+const CloudHostSshPage = lazy(() => import("./pages/vcenter/CloudHostSshPage"));
+const BastionConsoleHome = lazy(() => import("./pages/bastion/BastionConsoleHome"));
+const VCenterBastionAdmin = lazy(() => import("./pages/vcenter/VCenterBastionAdmin"));
+const VCenterBastionConsoleEmbed = lazy(() => import("./pages/vcenter/VCenterBastionConsoleEmbed"));
+const AppCenterLayout = lazy(() => import("./pages/AppCenterLayout"));
+const BastionLayout = lazy(() => import("./pages/bastion/BastionLayout"));
+const AppCenterDashboard = lazy(() => import("./pages/AppCenterDashboard"));
+const DocsMedia = lazy(() => import("./pages/docs/DocsMedia"));
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Setup from "./pages/Setup";
@@ -94,6 +87,7 @@ const QiniuCloudPage = lazy(() => import("./pages/qiniu-cloud/QiniuCloudPage"));
 const UpyunCloudPage = lazy(() => import("./pages/upyun-cloud/UpyunCloudPage"));
 
 const AppCenterCloudVm = lazy(() => import("./pages/AppCenterCloudVm"));
+const RouteManagerPage = lazy(() => import("./pages/cluster/RouteManager"));
 const AppCenterCloudVmBootstrap = lazy(() => import("./pages/AppCenterCloudVmBootstrap"));
 const AppCenterCloudVmDetail = lazy(() => import("./pages/AppCenterCloudVmDetail"));
 const VCenterBastionSession = lazy(() => import("./pages/vcenter/VCenterBastion"));
@@ -195,8 +189,8 @@ const App = () => {
               <Route element={<RequireAuth />}>
               <Route element={<AuthedAppShell />}>
                 <Route index element={<HomeHub />} />
-                <Route path="ingress" element={<Navigate to="/cluster/baota/ingress" replace />} />
-                <Route path="baota" element={<Navigate to="/cluster/baota/sync" replace />} />
+                <Route path="ingress" element={<Navigate to="/cluster/routes" replace />} />
+                <Route path="baota" element={<Navigate to="/cluster/routes" replace />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="account/settings" element={<AccountSettings />} />
                 <Route path="account/personal" element={<AccountPersonalCenter />} />
@@ -223,19 +217,7 @@ const App = () => {
                 <Route path="docs/doc/:docId" element={<DocsEditorLazy />} />
                 <Route path="docs" element={<DocsEditorLazy />} />
                 <Route path="cluster" element={<Outlet />}>
-                  <Route
-                    path="baota"
-                    element={
-                      <ViewerRedirect to="/cluster">
-                        <BaotaLayout />
-                      </ViewerRedirect>
-                    }
-                  >
-                    <Route index element={<Navigate to="sync" replace />} />
-                    <Route path="ingress" element={<IngressList />} />
-                    <Route path="sync" element={<BaotaSync />} />
-                    <Route path="settings" element={<BaotaSettingsPage />} />
-                  </Route>
+                  <Route path="baota/*" element={<Navigate to="/cluster/routes" replace />} />
                   {/* 独占全屏：不经 ClusterLayout / 命名空间侧栏 / AppLayout 侧栏 */}
                   <Route
                     path="ns/:namespace/pods/:podName/terminal"
@@ -247,6 +229,14 @@ const App = () => {
                   />
                   <Route element={<ClusterLayout />}>
                   <Route index element={<ClusterOverview />} />
+                  <Route
+                    path="routes"
+                    element={
+                      <RouteSuspense>
+                        <RouteManagerPage />
+                      </RouteSuspense>
+                    }
+                  />
                   <Route path="ns" element={<ClusterNamespacePicker />} />
                   <Route path="ns/:namespace" element={<ClusterNamespaceResourcesLayout />}>
                     <Route index element={<Navigate to="pods" replace />} />
@@ -694,7 +684,39 @@ const App = () => {
                     path="authentik"
                     element={
                       <RouteSuspense>
-                        <AuthentikPage />
+                        <AuthentikPage initialTab="dashboard" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="authentik/users"
+                    element={
+                      <RouteSuspense>
+                        <AuthentikPage initialTab="users" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="authentik/apps"
+                    element={
+                      <RouteSuspense>
+                        <AuthentikPage initialTab="apps" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="authentik/providers"
+                    element={
+                      <RouteSuspense>
+                        <AuthentikPage initialTab="providers" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
+                    path="authentik/events"
+                    element={
+                      <RouteSuspense>
+                        <AuthentikPage initialTab="events" />
                       </RouteSuspense>
                     }
                   />

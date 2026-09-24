@@ -1,4 +1,4 @@
-const CACHE_PREFIX = "kube-bt-sync-";
+const CACHE_PREFIX = "labplane-";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

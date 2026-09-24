@@ -5,6 +5,6 @@ export const setupText = {
   environmentMySQLDsn: "MySQL 已通过 MYSQL_DSN 配置，敏感内容不在页面显示。",
   environmentSecretPlaceholder: "已由环境变量提供，留空沿用",
   manualSecretPlaceholder: "请输入密码",
-  environmentEncryptionKey: "使用环境变量 KUBEBT_ENCRYPTION_KEY",
+  environmentEncryptionKey: "使用环境变量 LABPLANE_ENCRYPTION_KEY",
   environmentEncryptionKeyDescription: "密钥不会发送到浏览器，保存时由服务端安全沿用。",
 } as const;

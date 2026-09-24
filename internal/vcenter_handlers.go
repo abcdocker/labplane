@@ -988,6 +988,7 @@ func registerVCenterRoutes(api *gin.RouterGroup, app *ServerApp) {
 	api.GET("/vcenter/vms/:moref/netperf", func(c *gin.Context) { handleVCenterVMNetPerf(c, app) })
 	api.GET("/vcenter/vms/:moref/listening-ports", func(c *gin.Context) { handleVCenterVMListeningPorts(c, app) })
 	api.GET("/vcenter/vms/:moref/tcp-established", func(c *gin.Context) { handleVCenterVMTcpEstablished(c, app) })
+	registerVCenterVMCaptureRoutes(api, app)
 	api.GET("/vcenter/vms/:moref/metrics", func(c *gin.Context) { handleVCenterVMMetrics(c, app.VCenter()) })
 	api.GET("/vcenter/vms/:moref/webmks", func(c *gin.Context) { handleVCenterVMWebmks(c, app.VCenter(), app) })
 	api.GET("/vcenter/vms/:moref/console-ws", func(c *gin.Context) { handleVCenterConsoleWS(c, app.VCenter(), app) })

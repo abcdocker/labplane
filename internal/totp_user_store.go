@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	runtimeTotpKVKey = "kubebt_runtime_totp_v1"
+	runtimeTotpKVKey = "labplane_runtime_totp_v1"
 )
 
 type runtimeTotpPayload struct {
@@ -27,7 +27,7 @@ func dashboardUserTotpMeta(db *sql.DB, username string) (enabled bool, secretEnc
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 	e := db.QueryRowContext(ctx,
-		`SELECT totp_enabled, COALESCE(totp_secret_enc,'') FROM kubebt_dashboard_users WHERE username=? LIMIT 1`,
+		`SELECT totp_enabled, COALESCE(totp_secret_enc,'') FROM labplane_dashboard_users WHERE username=? LIMIT 1`,
 		u,
 	).Scan(&enabled, &secretEnc)
 	if errors.Is(e, sql.ErrNoRows) {
@@ -46,7 +46,7 @@ func dashboardUserSaveTotpSecret(ctx context.Context, db *sql.DB, username, secr
 		en = 1
 	}
 	_, err := db.ExecContext(ctx,
-		`UPDATE kubebt_dashboard_users SET totp_secret_enc=?, totp_enabled=? WHERE username=?`,
+		`UPDATE labplane_dashboard_users SET totp_secret_enc=?, totp_enabled=? WHERE username=?`,
 		secretEnc, en, u,
 	)
 	return err

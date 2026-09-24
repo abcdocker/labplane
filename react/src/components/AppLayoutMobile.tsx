@@ -28,6 +28,7 @@ import PwaInstallHint from "./PwaInstallHint";
 import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
 import { menuItemVisible, moduleVisible } from "@/lib/platform-permissions";
 import HeaderNotificationsSheet from "@/components/HeaderNotificationsSheet";
+import AiAssistantPopup from "@/components/AiAssistantPopup";
 import { mobileNavText } from "@/i18n/mobile";
 import { workspaceFromPathname } from "@/lib/workspace";
 
@@ -92,7 +93,7 @@ function MobileBottomNav() {
     <nav
       aria-label={mobileNavText.ariaLabel}
       className="relative z-50 shrink-0 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
-      style={{ paddingBottom: "var(--kbts-safe-bottom)" }}
+      style={{ paddingBottom: "var(--labplane-safe-bottom)" }}
     >
       <div
         className="app-safe-x grid"
@@ -132,6 +133,8 @@ function MobileHeader() {
   const { status } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const runtimeQ = useRuntimeStatusQuery();
+  const platformName = runtimeQ.data?.config?.platformDisplayName?.trim() || "LabPlane";
 
   const logoutMut = useMutation({
     mutationFn: () => apiPostJson("/api/auth/logout", {}),
@@ -142,18 +145,18 @@ function MobileHeader() {
   });
 
   return (
-    <header className="app-safe-x app-safe-top flex min-h-[calc(3rem+var(--kbts-safe-top))] shrink-0 items-center justify-between border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <header className="app-safe-x app-safe-top flex min-h-[calc(3rem+var(--labplane-safe-top))] shrink-0 items-center justify-between border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950">
       {/* Brand */}
       <Link to="/" className="flex items-center gap-2">
         <img
           src="/brand-logo.svg"
-          alt="Kube-BT-Sync"
+          alt={platformName}
           className="h-6 w-auto object-contain"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
         />
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Kube-BT-Sync</span>
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{platformName}</span>
       </Link>
 
       {/* Right actions */}
@@ -249,6 +252,7 @@ const AppLayoutMobile: React.FC = () => {
 
       <MobileBottomNav />
       <PwaInstallHint />
+      <AiAssistantPopup />
     </div>
   );
 };

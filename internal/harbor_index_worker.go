@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-// StartHarborImageIndexWorker 周期性将 Harbor 镜像（到 tag）全量索引写入 Redis；间隔 KUBEBT_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭）。
+// StartHarborImageIndexWorker 周期性将 Harbor 镜像（到 tag）全量索引写入 Redis；间隔 LABPLANE_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭）。
 func StartHarborImageIndexWorker(app *ServerApp) {
 	if !app.Cfg().EnableBackgroundJobs {
 		return
 	}
 	sec := harborIndexIntervalSec()
 	if sec <= 0 {
-		log.Println(">>> KUBEBT_HARBOR_INDEX_INTERVAL_SEC=0：Harbor 镜像 Redis 索引后台任务已关闭")
+		log.Println(">>> LABPLANE_HARBOR_INDEX_INTERVAL_SEC=0：Harbor 镜像 Redis 索引后台任务已关闭")
 		return
 	}
 	go func() {

@@ -112,7 +112,7 @@ func totpSecretPlainForUser(app *ServerApp, cfg Config, encKey []byte, username 
 		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 		defer cancel()
 		err := db.QueryRowContext(ctx,
-			`SELECT COALESCE(totp_secret_enc,'') FROM kubebt_dashboard_users WHERE username=? LIMIT 1`,
+			`SELECT COALESCE(totp_secret_enc,'') FROM labplane_dashboard_users WHERE username=? LIMIT 1`,
 			u,
 		).Scan(&enc)
 		if err != nil {
@@ -235,7 +235,7 @@ func handleTotpSetupVerify(app *ServerApp) gin.HandlerFunc {
 		defer cancel()
 		if db := app.MySQLDB(); db != nil {
 			var n int
-			if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kubebt_dashboard_users WHERE username=?`, user).Scan(&n); err != nil {
+			if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labplane_dashboard_users WHERE username=?`, user).Scan(&n); err != nil {
 				RespondAPIError500(c, err.Error())
 				return
 			}

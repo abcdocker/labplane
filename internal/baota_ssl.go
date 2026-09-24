@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const baotaSSLMaterialKVKey = "kubebt_baota_ssl_material_v1"
+const baotaSSLMaterialKVKey = "labplane_baota_ssl_material_v1"
 
 type baotaSSLStoredMaterial struct {
 	PEMEnc string `json:"pemEnc,omitempty"`

@@ -25,7 +25,7 @@ func BuildWindowsJoinScript(server, authkey, hostname, platform, instanceID, use
 	args = append(args, `$tail += "--accept-dns=true"`)
 
 	t := `# ============================================================
-#  Tailscale 一键加入工具（kube-bt-sync 平台生成）
+#  Tailscale 一键加入工具（labplane 平台生成）
 #  服务器: __SERVER__    主机名: __HOSTNAME__    模式: __MODE__
 #  归属用户: __USER__
 #  注意: 首次加入模式脚本内含加入密钥，请勿外传

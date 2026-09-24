@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DNS 迁移脚本：dnsmgr → kube-bt-sync 平台
+# DNS 迁移脚本：dnsmgr → labplane 平台
 #
 # 源库真实表结构（已实测）：
 #   dnsmgr_account:    id, type, ak, sk, ext, proxy, remark, addtime

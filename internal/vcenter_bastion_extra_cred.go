@@ -149,7 +149,7 @@ func bastionPersistLinuxExtraSSH(ctx context.Context, app *ServerApp, id string,
 	store := app.SSHStore()
 	key, err := sshEncryptionKey(app.Cfg())
 	if store == nil || err != nil || len(key) == 0 {
-		return errors.New("未配置 SSH_SETTINGS 与 KUBEBT_ENCRYPTION_KEY，无法保存密码")
+		return errors.New("未配置 SSH_SETTINGS 与 LABPLANE_ENCRYPTION_KEY，无法保存密码")
 	}
 	user := strings.TrimSpace(h.SSHUser)
 	if user == "" {
@@ -178,7 +178,7 @@ func bastionPersistWindowsExtraRDPSecret(ctx context.Context, app *ServerApp, id
 	store := app.SSHStore()
 	key, err := sshEncryptionKey(app.Cfg())
 	if store == nil || err != nil || len(key) == 0 {
-		return errors.New("未配置 SSH_SETTINGS 与 KUBEBT_ENCRYPTION_KEY，无法保存 RDP 密码")
+		return errors.New("未配置 SSH_SETTINGS 与 LABPLANE_ENCRYPTION_KEY，无法保存 RDP 密码")
 	}
 	user := strings.TrimSpace(h.RDPUser)
 	port := h.RDPPort

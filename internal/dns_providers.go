@@ -787,7 +787,7 @@ func (p *dnspodTokenProvider) dpRequest(ctx context.Context, action string, para
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "kube-bt-sync/1.0 (admin@example.com)")
+	req.Header.Set("User-Agent", "labplane/1.0 (admin@example.com)")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err

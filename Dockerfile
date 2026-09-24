@@ -42,8 +42,8 @@ COPY . .
 COPY --from=frontend /app/dist ./react/dist
 ARG BUILD_VERSION=dev
 RUN GOARCH=${TARGETARCH} GOOS=${TARGETOS} go build -trimpath \
-    -ldflags="-s -w -X kube-bt-sync/internal.BuildVersion=${BUILD_VERSION}" \
-    -o kube-bt-sync . && mkdir -p /build/runtime-data
+    -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${BUILD_VERSION}" \
+    -o labplane . && mkdir -p /build/runtime-data
 
 # ------------------------------------------------------------------------------
 # 阶段 3：最小运行时镜像（无 shell、无包管理器，攻击面小）
@@ -53,10 +53,10 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 # 供 Go time.LoadLocation 使用（日志/展示本地时区）
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /build/kube-bt-sync /app/kube-bt-sync
+COPY --from=builder /build/labplane /app/labplane
 COPY --from=builder /build/react/dist /app/react/dist
 COPY --from=builder --chown=nonroot:nonroot /build/runtime-data /app/data
 COPY templates /app/templates/
 EXPOSE 8080
 USER nonroot:nonroot
-ENTRYPOINT ["/app/kube-bt-sync"]
+ENTRYPOINT ["/app/labplane"]

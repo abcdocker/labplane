@@ -124,7 +124,7 @@ const AiInspectLogCollection: React.FC = () => {
             <CardTitle className="text-base">Vector 安装包下载源</CardTitle>
             <CardDescription className="text-xs leading-relaxed">
               若 GitHub / 公共代理在目标机网络不稳定，请在本页填写<strong>目录基址</strong>（如{" "}
-              <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">https://d.example.com/file/kube-bt-sync</code>
+              <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">https://d.example.com/file/labplane</code>
               ，无尾斜杠）；若粘贴了完整{" "}
               <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">vector-版本-架构.tar.gz</code>
               链接，保存时会自动去掉文件名。安装脚本会<strong>优先</strong>从该地址拉取{" "}

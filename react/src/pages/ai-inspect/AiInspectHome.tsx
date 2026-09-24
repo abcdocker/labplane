@@ -28,6 +28,7 @@ type OpenClawK8sStatusBatch = { statuses?: Record<string, OpenClawK8sStatus> };
 import { useAuth } from "@/auth/auth-context";
 import { toast } from "sonner";
 import type { InspectReportFull } from "./InspectReportRich";
+import { INSPECTION_DOMAINS, type InspectionRunDomain } from "./inspectionDomains";
 
 /** 判读模型服务商模版：点选后自动填入 Base URL 与默认模型，仅需再填 API Key（模型名可自由修改） */
 const JUDGE_PROVIDER_TEMPLATES: { id: string; name: string; baseUrl: string; models: string[]; keyHint: string }[] = [
@@ -75,6 +76,9 @@ type AiConfigGet = {
     inspectRedis: boolean;
     inspectSSH: boolean;
     inspectCloudVm: boolean;
+    inspectBastion: boolean;
+    inspectHeadscale: boolean;
+    inspectAuthentik: boolean;
     judgeModel?: {
       enabled: boolean;
       baseUrl: string;
@@ -104,6 +108,7 @@ type InspectRunTask = {
   /** 列表接口为减轻体积可能只返回 id，不含完整 report */
   reportId?: string;
   report?: InspectReportFull;
+  domain?: InspectionRunDomain;
 };
 
 function inspectTaskPhaseStyle(phase: InspectRunTask["phase"]) {
@@ -168,10 +173,10 @@ const AiInspectHome: React.FC = () => {
   const [judgeApiKey, setJudgeApiKey] = useState("");
 
   const openInspectReport = useCallback(
-    (reportId: string) => {
+    (reportId: string, domain: InspectionRunDomain = "platform") => {
       const id = reportId.trim();
       if (!id) return;
-      navigate(`/cluster/ai-inspect/reports/platform?highlight=${encodeURIComponent(id)}`);
+      navigate(`/cluster/ai-inspect/reports/${domain}?highlight=${encodeURIComponent(id)}`);
     },
     [navigate]
   );
@@ -186,6 +191,9 @@ const AiInspectHome: React.FC = () => {
         inspectPrometheusK8s: q.data.ai.inspectPrometheusK8s ?? q.data.ai.inspectPrometheus ?? false,
         inspectPrometheusVcenter: q.data.ai.inspectPrometheusVcenter ?? q.data.ai.inspectPrometheus ?? false,
         inspectVmLog: q.data.ai.inspectVmLog ?? false,
+        inspectBastion: q.data.ai.inspectBastion ?? false,
+        inspectHeadscale: q.data.ai.inspectHeadscale ?? false,
+        inspectAuthentik: q.data.ai.inspectAuthentik ?? false,
         judgeModel: {
           enabled: false,
           baseUrl: "",
@@ -214,7 +222,11 @@ const AiInspectHome: React.FC = () => {
   });
 
   const runMut = useMutation({
-    mutationFn: () => apiPostJson<{ accepted?: boolean; taskId?: string; phase?: string; progress?: number; message?: string }>("/api/ops/inspect/run", {}),
+    mutationFn: (domain: InspectionRunDomain = "platform") =>
+      apiPostJson<{ accepted?: boolean; taskId?: string; phase?: string; progress?: number; message?: string }>(
+        "/api/ops/inspect/run",
+        { domain }
+      ),
     onSuccess: (res) => {
       if (!res.taskId) {
         toast.error(res.message || "巡检任务创建失败");
@@ -462,6 +474,9 @@ const AiInspectHome: React.FC = () => {
               ["inspectRedis", "应用中心 Redis 实例表"],
               ["inspectSSH", "SSH 凭据存储"],
               ["inspectCloudVm", "云主机实例表"],
+              ["inspectBastion", "堡垒机"],
+              ["inspectHeadscale", "Headscale"],
+              ["inspectAuthentik", "Authentik"],
             ] as const
           ).map(([k, label]) => (
             <div key={k} className="flex items-center gap-3">
@@ -492,7 +507,27 @@ const AiInspectHome: React.FC = () => {
             <li>VictoriaLogs / VM 日志：查询可达性、近 24 小时日志量、最近日志样本、已开启采集目标概览</li>
             <li>剧本化巡检（VM 层 / 服务层）：宿主机内存、数据存储、OOM/崩溃事件、Redis/MySQL exporter 指标与服务日志，异常项进入判读模型</li>
             <li>应用中心 Redis、云主机、SSH 凭据存储</li>
+            <li>堡垒机、Headscale、Authentik：安全策略、节点与身份认证事件巡检</li>
           </ul>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {INSPECTION_DOMAINS.map((domain) => (
+            <div
+              key={domain.id}
+              className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/50"
+            >
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{domain.label}</p>
+              <p className="mt-1 flex-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{domain.description}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="secondary" disabled={runMut.isPending} onClick={() => runMut.mutate(domain.id)}>
+                  立即巡检
+                </Button>
+                <Button type="button" size="sm" variant="outline" asChild>
+                  <Link to={`/cluster/ai-inspect/reports/${domain.id}`}>历史报告</Link>
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="mt-6 flex flex-wrap items-end gap-4">
           <div className="space-y-2">
@@ -543,7 +578,7 @@ const AiInspectHome: React.FC = () => {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => runMut.mutate()}
+            onClick={() => runMut.mutate("platform")}
             disabled={runMut.isPending}
           >
             立即执行巡检
@@ -608,7 +643,10 @@ const AiInspectHome: React.FC = () => {
                     size="sm"
                     className="h-7 border-emerald-300 bg-white text-[11px] text-emerald-900 hover:bg-emerald-50"
                     onClick={() =>
-                      openInspectReport(inspectTaskQ.data!.reportId || inspectTaskQ.data!.report!.id)
+                      openInspectReport(
+                        inspectTaskQ.data!.reportId || inspectTaskQ.data!.report!.id,
+                        inspectTaskQ.data!.domain || (inspectTaskQ.data!.report?.domain as InspectionRunDomain) || "platform"
+                      )
                     }
                   >
                     <ScrollText className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -674,7 +712,9 @@ const AiInspectHome: React.FC = () => {
                           variant="outline"
                           size="sm"
                           className="h-8 shrink-0 border-emerald-300 bg-white text-[11px] text-emerald-900 hover:bg-emerald-50 sm:self-center"
-                          onClick={() => openInspectReport(rid)}
+                          onClick={() =>
+                            openInspectReport(rid, task.domain || (task.report?.domain as InspectionRunDomain) || "platform")
+                          }
                         >
                           <ScrollText className="mr-1 h-3.5 w-3.5" aria-hidden />
                           定位报告

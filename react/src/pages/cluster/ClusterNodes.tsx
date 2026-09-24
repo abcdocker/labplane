@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import ResponsiveTableShell from "@/components/ResponsiveTableShell";
 import { apiGetJson } from "@/lib/api";
 import type { K8sNodesListResponse, NodeRow, PodRow } from "./types";
 import { parseAge } from "./parseAge";
@@ -339,9 +340,6 @@ const ClusterNodes: React.FC = () => {
         </p>
       </div>
 
-      {nodesQ.isLoading && <p className="text-sm text-slate-500">加载中…</p>}
-      {nodesQ.error && <p className="text-sm text-red-600">{(nodesQ.error as Error).message}</p>}
-
       {nodesQ.data && !promOk && list.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-slate-200/90 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
           未配置 <code className="rounded-md bg-white px-1.5 py-0.5 font-mono text-xs">prometheusUrlK8s</code>{" "}
@@ -354,9 +352,77 @@ const ClusterNodes: React.FC = () => {
         </div>
       ) : null}
 
-      {nodesQ.data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
-          <div className="overflow-x-auto">
+      <ResponsiveTableShell
+        loading={nodesQ.isLoading}
+        error={nodesQ.error ? (nodesQ.error as Error).message : null}
+        onRetry={() => void nodesQ.refetch()}
+        emptyHint={nodesQ.data && list.length === 0 ? "暂无节点" : undefined}
+        cards={
+          <>
+            {list.map((n) => (
+              <article
+                key={n.name}
+                className="min-w-0 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.04]"
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="break-all font-mono text-sm font-semibold text-slate-900">
+                      {n.name}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-500">{parseAge(n.age)}</p>
+                  </div>
+                  <NodeReadyBadge ready={n.ready} />
+                </div>
+
+                <dl className="mt-3 grid min-w-0 gap-2 text-xs">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">内网 IP</dt>
+                    <dd className="min-w-0 break-all text-right font-mono text-slate-700">
+                      {n.internalIP || "—"}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">角色</dt>
+                    <dd className="flex min-w-0 justify-end">
+                      <NodeRoleBadges roles={n.roles} />
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">Kubelet</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-700">{n.kubelet}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">Pod 数</dt>
+                    <dd className="min-w-0 text-right font-semibold tabular-nums text-slate-900">
+                      {typeof n.podCount === "number" ? n.podCount : "—"}
+                    </dd>
+                  </div>
+                </dl>
+
+                {promOk ? (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <p className="mb-1.5 text-[11px] font-medium text-slate-400">资源（可分配）</p>
+                    <NodeResourceCell n={n} promOk={promOk} />
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 border-slate-200 bg-white px-2 text-xs font-medium shadow-sm hover:bg-slate-50"
+                    onClick={() => openDetail(n)}
+                  >
+                    节点与 Pod
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </>
+        }
+        table={
+          <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-slate-200/90 bg-slate-50/95 hover:bg-slate-50/95">
@@ -375,13 +441,13 @@ const ClusterNodes: React.FC = () => {
                   <TableHead className="h-12 min-w-[260px] text-xs font-semibold uppercase tracking-wide text-slate-600 lg:min-w-[300px]">
                     资源（可分配）
                   </TableHead>
-                  <TableHead className="h-12 min-w-[100px] text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <TableHead className="hidden h-12 min-w-[100px] text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">
                     Kubelet
                   </TableHead>
-                  <TableHead className="h-12 w-[72px] text-right text-xs font-semibold uppercase tracking-wide text-slate-600 tabular-nums">
+                  <TableHead className="hidden h-12 w-[72px] text-right text-xs font-semibold uppercase tracking-wide text-slate-600 tabular-nums lg:table-cell">
                     Pod
                   </TableHead>
-                  <TableHead className="h-12 min-w-[100px] text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <TableHead className="hidden h-12 min-w-[100px] text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">
                     Age
                   </TableHead>
                   <TableHead className="h-12 w-[104px] text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -415,11 +481,11 @@ const ClusterNodes: React.FC = () => {
                     <TableCell className="align-top py-3">
                       <NodeResourceCell n={n} promOk={promOk} />
                     </TableCell>
-                    <TableCell className="align-middle py-3 text-xs text-slate-700">{n.kubelet}</TableCell>
-                    <TableCell className="align-middle py-3 text-right text-sm font-semibold tabular-nums text-slate-900">
+                    <TableCell className="hidden align-middle py-3 text-xs text-slate-700 lg:table-cell">{n.kubelet}</TableCell>
+                    <TableCell className="hidden align-middle py-3 text-right text-sm font-semibold tabular-nums text-slate-900 lg:table-cell">
                       {typeof n.podCount === "number" ? n.podCount : "—"}
                     </TableCell>
-                    <TableCell className="align-middle whitespace-nowrap py-3 text-xs text-slate-600">
+                    <TableCell className="hidden align-middle whitespace-nowrap py-3 text-xs text-slate-600 lg:table-cell">
                       {parseAge(n.age)}
                     </TableCell>
                     <TableCell className="align-middle py-3 text-right" onClick={(e) => e.stopPropagation()}>
@@ -438,8 +504,8 @@ const ClusterNodes: React.FC = () => {
               </TableBody>
             </Table>
           </div>
-        </div>
-      )}
+        }
+      />
     </>
   );
 };

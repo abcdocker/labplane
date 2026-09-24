@@ -6,7 +6,7 @@
 
 - 示例：`https://cdn.example.com/cmdb`（**无尾斜杠**；路径须与你在 OSS/桶里部署的前缀一致）。
 - **留空**：文档公开分享页、边缘网关 HTML、堡垒机 WMKS 前置 jQuery 等仍使用内置默认公网地址（jsdelivr / esm.sh / code.jquery.com 等）。
-- 环境变量（可选）：`KUBEBT_ASSETS_CDN_BASE`，运行时里若填写了 `assetsCdnBaseUrl` 则**以运行时为准**。
+- 环境变量（可选）：`LABPLANE_ASSETS_CDN_BASE`，运行时里若填写了 `assetsCdnBaseUrl` 则**以运行时为准**。
 
 ## 目录结构（上传 OSS 时保留 `cmdb/` 下层级）
 

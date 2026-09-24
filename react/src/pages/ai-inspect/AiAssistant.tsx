@@ -127,7 +127,7 @@ const AiAssistant: React.FC = () => {
     });
     if (!resp.ok || !resp.body) {
       let msg = `HTTP ${resp.status}`;
-      try { const j = await resp.json(); if (j?.error) msg = j.error; } catch {}
+      try { const j = await resp.json(); if (j?.error) msg = j.error; } catch { /* 非 JSON 错误响应，保留默认消息 */ }
       throw new Error(msg);
     }
     const reader = resp.body.getReader(); const decoder = new TextDecoder();
@@ -259,7 +259,7 @@ const AiAssistant: React.FC = () => {
     restoredRef.current = true;
     const latest = sessionsQ.data?.sessions?.[0];
     if (latest) void loadSession(latest.id, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [sessionsQ.isSuccess, sessionsQ.data]);
 
   /** 用户点击确认后，以 confirm=true 重发同一问题 */

@@ -20,7 +20,7 @@ func mysqlInsertAuditLog(ctx context.Context, db *sql.DB, rec AuditRecord) error
 		detail = detail[:655350] + "…"
 	}
 	_, err := db.ExecContext(ctx,
-		`INSERT INTO kubebt_audit_log (ts, action, ip, user, method, path, status, duration_ms, detail) VALUES (?,?,?,?,?,?,?,?,?)`,
+		`INSERT INTO labplane_audit_log (ts, action, ip, user, method, path, status, duration_ms, detail) VALUES (?,?,?,?,?,?,?,?,?)`,
 		rec.Ts, rec.Action, rec.IP, rec.User, rec.Method, rec.Path, rec.Status, rec.DurationMs, detail,
 	)
 	return err
@@ -37,7 +37,7 @@ func mysqlSelectAuditLogsRecent(ctx context.Context, db *sql.DB, fetchCap int) (
 		fetchCap = 10000
 	}
 	rows, err := db.QueryContext(ctx,
-		`SELECT ts, action, ip, user, method, path, status, duration_ms, detail FROM kubebt_audit_log ORDER BY id DESC LIMIT ?`,
+		`SELECT ts, action, ip, user, method, path, status, duration_ms, detail FROM labplane_audit_log ORDER BY id DESC LIMIT ?`,
 		fetchCap,
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func mysqlPruneAuditLogOlderThan(ctx context.Context, db *sql.DB, cutoff time.Ti
 	if db == nil {
 		return 0, nil
 	}
-	res, err := db.ExecContext(ctx, `DELETE FROM kubebt_audit_log WHERE created_at < ?`, cutoff)
+	res, err := db.ExecContext(ctx, `DELETE FROM labplane_audit_log WHERE created_at < ?`, cutoff)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +75,7 @@ func mysqlAuditLogRowCount(ctx context.Context, db *sql.DB) (int64, error) {
 		return 0, nil
 	}
 	var n int64
-	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kubebt_audit_log`).Scan(&n)
+	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labplane_audit_log`).Scan(&n)
 	return n, err
 }
 

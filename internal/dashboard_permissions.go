@@ -26,7 +26,7 @@ const (
 	AppCenterRedisScopeManagedOnly = "managed_only"
 )
 
-// DashboardPermissionsJSON 存于 kubebt_dashboard_users.permissions_json。
+// DashboardPermissionsJSON 存于 labplane_dashboard_users.permissions_json。
 type DashboardPermissionsJSON struct {
 	K8s       string `json:"k8s"`
 	VCenter   string `json:"vcenter"`
@@ -192,7 +192,7 @@ func LoadEffectiveDashboardPermissions(db *sql.DB, username, role string) *Effec
 	var raw sql.NullString
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	err := db.QueryRowContext(ctx, `SELECT permissions_json FROM kubebt_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&raw)
+	err := db.QueryRowContext(ctx, `SELECT permissions_json FROM labplane_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&raw)
 	if err != nil || !raw.Valid || strings.TrimSpace(raw.String) == "" {
 		return defaultEffectiveLegacyViewer()
 	}

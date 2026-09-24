@@ -63,7 +63,7 @@ export default function AppCenterCloudVmBootstrap() {
     enabled: isAdmin,
   });
 
-  const [ns, setNs] = useState("kube-bt-cloud-vm");
+  const [ns, setNs] = useState("labplane-cloud-vm");
   const [rows, setRows] = useState<ImageRow[]>([]);
   const [accessNode, setAccessNode] = useState<string>("");
   const [hyAmd64Url, setHyAmd64Url] = useState("");
@@ -71,7 +71,7 @@ export default function AppCenterCloudVmBootstrap() {
 
   useEffect(() => {
     if (!bootQ.data) return;
-    setNs(bootQ.data.defaultNamespace || "kube-bt-cloud-vm");
+    setNs(bootQ.data.defaultNamespace || "labplane-cloud-vm");
     setAccessNode(bootQ.data.defaultAccessNodeName?.trim() ?? "");
     setHyAmd64Url(bootQ.data.hysteria2LinuxAmd64Url?.trim() ?? "");
     setHyArm64Url(bootQ.data.hysteria2LinuxArm64Url?.trim() ?? "");
@@ -86,7 +86,7 @@ export default function AppCenterCloudVmBootstrap() {
     mutationFn: () =>
       apiPutJson("/api/app-center/cloud-vm/bootstrap", {
         bootstrapComplete: true,
-        defaultNamespace: ns.trim() || "kube-bt-cloud-vm",
+        defaultNamespace: ns.trim() || "labplane-cloud-vm",
         defaultAccessNodeName: accessNode.trim(),
         hysteria2LinuxAmd64Url: hyAmd64Url.trim(),
         hysteria2LinuxArm64Url: hyArm64Url.trim(),

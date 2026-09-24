@@ -60,7 +60,7 @@ if %ERRORLEVEL% neq 0 (
 `
 
 const joinPS = `# ============================================================
-#  Tailscale 一键加入工具（kube-bt-sync 平台生成）
+#  Tailscale 一键加入工具（labplane 平台生成）
 #  从同目录 tsjoin.json 读取配置
 # ============================================================
 $ErrorActionPreference = "SilentlyContinue"
@@ -159,7 +159,7 @@ Log "工具加载完成，点击「加入网络」开始"
 `
 
 func readme(server, hostname string) string {
-	return fmt.Sprintf(`Tailscale 一键加入工具（由 kube-bt-sync 平台生成）
+	return fmt.Sprintf(`Tailscale 一键加入工具（由 labplane 平台生成）
 
 服务器地址: %s
 本机主机名: %s

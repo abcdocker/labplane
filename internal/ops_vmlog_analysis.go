@@ -16,7 +16,7 @@ import (
 
 const (
 	// kvKeyVmLogAIAnalysis 存储已登记问题；沿用历史 KV key（含 openclaw 字样）保证旧数据兼容。
-	kvKeyVmLogAIAnalysis      = "kubebt_ops_vmlog_openclaw_analysis_v1"
+	kvKeyVmLogAIAnalysis      = "labplane_ops_vmlog_openclaw_analysis_v1"
 	vmlogAnalysisMaxIssues    = 160
 	vmlogAnalysisMaxScopes    = 80
 	vmlogAnalysisMaxSample    = 100

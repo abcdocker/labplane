@@ -11,7 +11,7 @@ type ProxyTarget struct {
 	TargetURL        string
 	BaotaHTTPS       bool
 	BaotaHTTPSConfig BaotaHTTPSConfig
-	// BaotaTargetID 对应多宝塔实例 id（Ingress 注解 kube-bt-sync.io/baota-target）；空则默认实例。
+	// BaotaTargetID 对应多宝塔实例 id（Ingress 注解 labplane.io/baota-target）；空则默认实例。
 	BaotaTargetID    string
 	IngressNamespace string
 	IngressName      string

@@ -37,8 +37,8 @@ import type {
 /** 概览「工作负载 Pod」表仅展示需关注的异常样本的最大行数 */
 const DASHBOARD_ATTENTION_PODS_MAX = 10;
 
-const LS_ADVISOR_OPEN = "kbts.clusterOverview.advisorOpen";
-const LS_ATTENTION_PODS_OPEN = "kbts.clusterOverview.attentionPodsOpen";
+const LS_ADVISOR_OPEN = "labplane.clusterOverview.advisorOpen";
+const LS_ATTENTION_PODS_OPEN = "labplane.clusterOverview.attentionPodsOpen";
 
 function readPanelOpen(key: string): boolean {
   try {

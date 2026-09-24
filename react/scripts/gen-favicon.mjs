@@ -10,8 +10,9 @@ import toIco from "to-ico";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const svgPath = path.join(root, "public", "brand-logo.svg");
+const svgPath = path.join(root, "public", "favicon.svg");
 const appIconSvgPath = path.join(root, "public", "app-icon.svg");
+const ogImageSvgPath = path.join(root, "public", "og-image.svg");
 const outPath = path.join(root, "public", "favicon.ico");
 
 async function main() {
@@ -21,6 +22,10 @@ async function main() {
   }
   if (!fs.existsSync(appIconSvgPath)) {
     console.error("Missing:", appIconSvgPath);
+    process.exit(1);
+  }
+  if (!fs.existsSync(ogImageSvgPath)) {
+    console.error("Missing:", ogImageSvgPath);
     process.exit(1);
   }
   const base = sharp(svgPath).flatten({ background: "#ffffff" });
@@ -50,7 +55,12 @@ async function main() {
       .toFile(path.join(root, "public", filename));
   }
 
-  console.log("Wrote favicon and PWA icons");
+  await sharp(ogImageSvgPath)
+    .resize(1200, 630)
+    .png()
+    .toFile(path.join(root, "public", "og-image.png"));
+
+  console.log("Wrote favicon, PWA icons, and social preview");
 }
 
 main().catch((e) => {

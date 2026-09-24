@@ -14,9 +14,9 @@ const (
 	lastLoginIPFileName   = "login-last-ip.json"
 	remoteLoginAlertFile  = "remote-login-alert.json"
 	adminIpBanAlertFile   = "admin-ip-ban-alert.json"
-	kvKeyLastLoginIP      = "kubebt_login_last_ip_v1"
-	kvKeyRemoteLoginAlert = "kubebt_remote_login_alert"
-	kvKeyAdminIpBanAlert  = "kubebt_admin_ip_ban_alert"
+	kvKeyLastLoginIP      = "labplane_login_last_ip_v1"
+	kvKeyRemoteLoginAlert = "labplane_remote_login_alert"
+	kvKeyAdminIpBanAlert  = "labplane_admin_ip_ban_alert"
 )
 
 // LastLoginIPMap 用户名 → 上次成功登录 IP（用于异地登录提示）。

@@ -83,9 +83,38 @@ const StatCard: React.FC<{
 
 type DetailEntry = { inst: MeshSummaryInstance; data: DiscoverData };
 
+const MODULES = [
+  { id: "kubernetes", label: "Kubernetes 集群" },
+  { id: "vcenter", label: "vCenter 虚拟化" },
+  { id: "appcenter", label: "应用中心" },
+  { id: "bastion", label: "堡垒机" },
+  { id: "aiinspect", label: "AI 巡检" },
+  { id: "mesh", label: "异地组网" },
+  { id: "authentik", label: "Authentik SSO" },
+] as const;
+
 const MeshDashboard: React.FC = () => {
   const { status } = useAuth();
   const isAdmin = status?.role === "admin";
+
+  // 模块显隐配置
+  const modVisQ = useQuery({
+    queryKey: ["module-visibility-admin"],
+    queryFn: () => apiGetJson<{ modules: Record<string, boolean> }>("/api/settings/modules"),
+    enabled: isAdmin,
+  });
+  const modVis = modVisQ.data?.modules ?? {};
+
+  const toggleModule = async (mod: string, visible: boolean) => {
+    const next = { ...modVis, [mod]: visible };
+    await fetch("/api/settings/modules", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(next),
+    });
+    modVisQ.refetch();
+  };
 
   const q = useQuery({
     queryKey: ["mesh-summary-dashboard"],

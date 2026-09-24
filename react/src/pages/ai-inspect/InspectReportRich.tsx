@@ -6,6 +6,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { inspectionDomainLabel } from "./inspectionDomains";
 
 export type InspectReportLLMProbe = {
   ok: boolean;
@@ -25,6 +26,7 @@ export type InspectReportSection = {
 
 export type InspectReportFull = {
   id: string;
+  domain?: string;
   createdAt: string;
   summary: string;
   items: { target: string; status: string; detail: string }[];
@@ -141,7 +143,12 @@ export function InspectReportRich({ report }: { report: InspectReportFull }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="font-mono text-xs text-slate-500">{report.createdAt}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="font-normal dark:border-slate-700 dark:text-slate-300">
+          {inspectionDomainLabel(report.domain)}
+        </Badge>
+        <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{report.createdAt}</p>
+      </div>
       <p className="mt-1 text-sm font-semibold text-slate-900">{report.summary}</p>
 
       {report.aiSummaryError ? (

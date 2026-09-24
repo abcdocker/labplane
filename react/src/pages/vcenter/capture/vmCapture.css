@@ -1,0 +1,71 @@
+/* 抓包面板：终端预览、AI 呼出框与风险流动画（demo-v2 视觉还原） */
+
+.vmcap-term {
+  background: #0b0e14;
+  border: 1px solid #22293a;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.vmcap-term-body {
+  height: 300px;
+  overflow-y: auto;
+  padding: 10px 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c9d1d9;
+}
+
+.vmcap-term-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.vmcap-line-in {
+  opacity: 0;
+  transform: translateY(3px);
+  animation: vmcap-line-show 0.3s forwards;
+}
+
+@keyframes vmcap-line-show {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vmcap-finding-in {
+  animation: vmcap-finding-show 0.3s ease-out;
+}
+
+@keyframes vmcap-finding-show {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vmcap-row-flash {
+  animation: vmcap-row-flash 1.2s;
+}
+
+@keyframes vmcap-row-flash {
+  0%,
+  60% {
+    background: rgba(245, 158, 11, 0.3);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.vmcap-dial-arc {
+  transition: stroke-dashoffset 0.6s, stroke 0.6s;
+}

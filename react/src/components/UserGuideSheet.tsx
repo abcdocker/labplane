@@ -136,8 +136,8 @@ function DocBody() {
 
       <H>〇、平台架构（典型：控制台运行在 Kubernetes Pod 内）</H>
       <P>
-        <strong className="text-slate-800">kube-bt-sync</strong> 通常以 <strong>Deployment + Service</strong> 部署在目标集群命名空间（如{" "}
-        <Code>kube-bt-sync</Code>），容器监听 <Code>:8080</Code>，健康检查 <Code>GET /api/health</Code>；数据目录挂载{" "}
+        <strong className="text-slate-800">labplane</strong> 通常以 <strong>Deployment + Service</strong> 部署在目标集群命名空间（如{" "}
+        <Code>labplane</Code>），容器监听 <Code>:8080</Code>，健康检查 <Code>GET /api/health</Code>；数据目录挂载{" "}
         <strong>PVC</strong> 到 <Code>/data</Code>（含 <Code>runtime-config.json</Code>、审计日志、SSH 凭据目录等）。浏览器通过集群{" "}
         <strong>Ingress</strong> 或 <strong>NodePort</strong> 访问控制台；进程使用 <strong>client-go</strong> 以 in-cluster ServiceAccount 或粘贴的{" "}
         <Code>kubeconfig</Code> 访问 <strong>API Server</strong>，<strong>不</strong>在 Pod 内执行 <Code>kubectl</Code> 子进程。
@@ -148,10 +148,10 @@ function DocBody() {
           <strong>ingress-nginx（hostNetwork）</strong>：集群设置页可一键安装官方 bare metal 清单，并将控制器设为 <strong>hostNetwork</strong>，在节点上监听配置的 HTTP/HTTPS 端口（默认 <Code>80</Code> / <Code>443</Code>）；可选将控制器<strong>固定到指定 Node</strong>（<Code>nodeSelector</Code> / <Code>kubernetes.io/hostname</Code>）。<strong>安装、升级、仅应用端口、应用调度节点、卸载</strong>均会在执行前弹出<strong>二次确认</strong>，避免误触。宝塔反代目标为<strong>节点 IP + HTTP 端口</strong>；运行时 <Code>ingressNginxHostHttpPort</Code> / <Code>ingressNginxHostHttpsPort</Code> / <Code>ingressNginxControllerNodeName</Code> 供默认值。
         </Li>
         <Li>
-          <strong>kube-prometheus-stack（推荐）</strong>：集群设置页可<strong>一键安装</strong> Prometheus Operator、Prometheus、kube-state-metrics、node-exporter 及默认 ServiceMonitor（命名空间 <Code>kube-bt-sync-monitoring</Code>）；镜像经 DaoCloud 前缀改写；默认<strong>自动写入</strong> <Code>prometheusUrlK8s</Code> 并可选清空 <Code>vmSelectUrlK8s</Code>。进程在集群外时若无法解析 <Code>*.svc</Code>，需手动改为 Ingress/NodePort 等可达地址。详见 <Code>docs/kubernetes-dashboard-prometheus.md</Code> 第 1.2 节。
+          <strong>kube-prometheus-stack（推荐）</strong>：集群设置页可<strong>一键安装</strong> Prometheus Operator、Prometheus、kube-state-metrics、node-exporter 及默认 ServiceMonitor（命名空间 <Code>labplane-monitoring</Code>）；镜像经 DaoCloud 前缀改写；默认<strong>自动写入</strong> <Code>prometheusUrlK8s</Code> 并可选清空 <Code>vmSelectUrlK8s</Code>。进程在集群外时若无法解析 <Code>*.svc</Code>，需手动改为 Ingress/NodePort 等可达地址。详见 <Code>docs/kubernetes-dashboard-prometheus.md</Code> 第 1.2 节。
         </Li>
         <Li>
-          <strong>Kubernetes Dashboard + metrics-server（可选 Web UI）</strong>：集群设置页独立卡片可<strong>一键安装</strong> metrics-server v0.7.2 与 Dashboard 2.7（<Code>recommended</Code> 清单）；YAML 下载策略与 ingress 相同（jsDelivr / ghproxy）；容器镜像默认改写为 <Code>m.daocloud.io</Code> 前缀（与 ingress 共用「跳过 K8s 镜像改写」开关）。默认可为 metrics-server 注入 <Code>--kubelet-insecure-tls</Code>；安装后自动轮询 Deployment 就绪，并支持「深度自检」接口。会创建 <Code>kube-bt-sync-dashboard-admin</Code>（cluster-admin，生产请改最小权限）。<strong>不</strong>自动填写 <Code>prometheusUrlK8s</Code>（平台图表请用上一项 kube-prometheus-stack）。详细见仓库 <Code>docs/kubernetes-dashboard-prometheus.md</Code> 第 1.1 节。
+          <strong>Kubernetes Dashboard + metrics-server（可选 Web UI）</strong>：集群设置页独立卡片可<strong>一键安装</strong> metrics-server v0.7.2 与 Dashboard 2.7（<Code>recommended</Code> 清单）；YAML 下载策略与 ingress 相同（jsDelivr / ghproxy）；容器镜像默认改写为 <Code>m.daocloud.io</Code> 前缀（与 ingress 共用「跳过 K8s 镜像改写」开关）。默认可为 metrics-server 注入 <Code>--kubelet-insecure-tls</Code>；安装后自动轮询 Deployment 就绪，并支持「深度自检」接口。会创建 <Code>labplane-dashboard-admin</Code>（cluster-admin，生产请改最小权限）。<strong>不</strong>自动填写 <Code>prometheusUrlK8s</Code>（平台图表请用上一项 kube-prometheus-stack）。详细见仓库 <Code>docs/kubernetes-dashboard-prometheus.md</Code> 第 1.1 节。
         </Li>
         <Li>
           <strong>出站依赖</strong>：宝塔、Prometheus/vmselect、MySQL、Redis、vCenter、云主机 SSH 等均为<strong>可选</strong> TCP 出站；未配置则对应功能不可用或降级为本地存储。
@@ -201,8 +201,8 @@ function DocBody() {
           「仅纳管」类子域要求应用中心为 rw，且云主机/Redis 部分写能力会按后端策略限制（见接口返回）。
         </Li>
         <Li>
-          <strong className="text-slate-800">platform_kv 与 Redis 镜像</strong>：验证码与失败次数、云主机镜像引导等键值写入 MySQL 表 <Code>kubebt_platform_kv</Code>（无
-          MySQL 时落盘）；在开启 <Code>KUBEBT_RUNTIME_DUAL_WRITE_REDIS</Code> 时将<strong>全量</strong> platform_kv 镜像到 Redis，便于多副本与灾备恢复。
+          <strong className="text-slate-800">platform_kv 与 Redis 镜像</strong>：验证码与失败次数、云主机镜像引导等键值写入 MySQL 表 <Code>labplane_platform_kv</Code>（无
+          MySQL 时落盘）；在开启 <Code>LABPLANE_RUNTIME_DUAL_WRITE_REDIS</Code> 时将<strong>全量</strong> platform_kv 镜像到 Redis，便于多副本与灾备恢复。
           平台 Redis 短暂不可用时进程会周期性<strong>自动重连</strong>，恢复后无需重启控制台服务。
         </Li>
       </Ul>
@@ -404,7 +404,7 @@ function DocBody() {
         <Code>/cluster/apps/cloud-vm/bootstrap</Code>（列表页管理员可见「打开配置页 / 复制完整地址」）。
       </P>
       <P>
-        将 Ubuntu 等镜像以 Deployment 运行，<strong>仅</strong> <Code>/data</Code> 挂 PVC；根文件系统随 Pod 重建而重置。SSH 对外暴露为 Service <strong>NodePort</strong>（集群外可用<strong>节点 IP + 端口</strong>），<Code>root</Code> 与创建时密码登录（凭据加密存库）。控制台「SSH 终端」经 WebSocket，服务端在<strong>集群内</strong>部署时会优先经 Service <strong>ClusterIP</strong> 连接 SSH，避免 NodePort 回环等问题；环境变量 <Code>KUBEBT_CLOUD_VM_SSH_USE_CLUSTERIP=0</Code> 可强制仅用节点 IP:NodePort（调试用）。旧版只读账号不可用 WebSocket 终端。
+        将 Ubuntu 等镜像以 Deployment 运行，<strong>仅</strong> <Code>/data</Code> 挂 PVC；根文件系统随 Pod 重建而重置。SSH 对外暴露为 Service <strong>NodePort</strong>（集群外可用<strong>节点 IP + 端口</strong>），<Code>root</Code> 与创建时密码登录（凭据加密存库）。控制台「SSH 终端」经 WebSocket，服务端在<strong>集群内</strong>部署时会优先经 Service <strong>ClusterIP</strong> 连接 SSH，避免 NodePort 回环等问题；环境变量 <Code>LABPLANE_CLOUD_VM_SSH_USE_CLUSTERIP=0</Code> 可强制仅用节点 IP:NodePort（调试用）。旧版只读账号不可用 WebSocket 终端。
       </P>
       <P>
         <strong className="text-slate-800">创建流程</strong>：与 Redis 类似在本页分 Tab，四步——① 基础（名称、镜像、root 密码）→ ② 规格与数据盘 → ③ 网络与高级（初始化脚本、NodePort、环境变量、自定义
@@ -429,14 +429,14 @@ function DocBody() {
       <Ul>
         <Li>
           <strong className="text-slate-800">合并顺序与持久化</strong>：向导勾选的 bash 块在前，用户初始化脚本在后（中间有注释分隔）。<Code>apt</Code> 缓存与列表可指向 PVC 下的{" "}
-          <Code>/data/.kubebt/…</Code>；Ubuntu 官方源会尝试替换为阿里云镜像以加速。勾选任意需 apt 的软件时会执行 <Code>apt-get update</Code>。
+          <Code>/data/.labplane/…</Code>；Ubuntu 官方源会尝试替换为阿里云镜像以加速。勾选任意需 apt 的软件时会执行 <Code>apt-get update</Code>。
         </Li>
         <Li>
           <strong className="text-slate-800">常用 CLI 包</strong>：仅允许白名单内包名；<Code>apt-get install</Code> 在非零退出时因 <Code>set -e</Code> 直接失败，SSH 不会就绪。
         </Li>
         <Li>
           <strong className="text-slate-800">Docker</strong>：安装 <Code>docker.io</Code>，数据目录与 <Code>daemon.json</Code> 指向 <Code>/data/docker</Code>（可配镜像加速）。创建 Deployment 时若勾选 Docker，容器会设 <Code>securityContext.privileged=true</Code>，否则嵌套的{" "}
-          <Code>dockerd</Code> 常因 cgroup/权限无法启动。每次启动若 <Code>docker info</Code> 不可用，则后台执行 <Code>dockerd --iptables=false</Code>（避免改宿主机 iptables），日志 <Code>/data/.kubebt/dockerd.log</Code>，超时内仍无法{" "}
+          <Code>dockerd</Code> 常因 cgroup/权限无法启动。每次启动若 <Code>docker info</Code> 不可用，则后台执行 <Code>dockerd --iptables=false</Code>（避免改宿主机 iptables），日志 <Code>/data/.labplane/dockerd.log</Code>，超时内仍无法{" "}
           <Code>docker info</Code> 则退出。已有实例若曾勾选 Docker，需通过更新 Secret/滚动 Deployment 等方式使清单带上特权，集群准入策略须允许。
         </Li>
         <Li>
@@ -444,13 +444,13 @@ function DocBody() {
           <Code>nginx -t</Code>，已运行则 <Code>nginx -s reload</Code>，否则 <Code>nginx</Code>；再用本机 <Code>curl</Code> 访问 <Code>http://127.0.0.1/</Code> 验证 80 端口，失败则退出。
         </Li>
         <Li>
-          <strong className="text-slate-800">宝塔</strong>：首次成功安装后写入标记文件 <Code>/data/bt-panel/.kubebt-baota-ok</Code>；安装过程要求 <Code>wget</Code> 脚本非空、安装脚本成功、且能解析到{" "}
+          <strong className="text-slate-800">宝塔</strong>：首次成功安装后写入标记文件 <Code>/data/bt-panel/.labplane-baota-ok</Code>；安装过程要求 <Code>wget</Code> 脚本非空、安装脚本成功、且能解析到{" "}
           <Code>bt</Code> 命令。每次启动会尝试 <Code>/etc/init.d/bt start</Code> 与 <Code>bt start</Code>（已运行时返回码可能非 0，故不以此作为唯一判据），随后在约两分钟内轮询本机{" "}
           <Code>http://127.0.0.1:8888/</Code> 或 <Code>https://127.0.0.1:8888/</Code>（跳过证书校验）是否可访问；仍不可达则退出。日志见 <Code>/data/bt-panel/install.log</Code>、<Code>/data/bt-panel/runtime.log</Code>。面板在容器内仍可能受限于无 systemd 的运行环境，但「装不好 / 起不来」不会放行 SSH。
         </Li>
         <Li>
           <strong className="text-slate-800">Hysteria2 客户端</strong>：勾选后可粘贴整行 <Code>hysteria2://</Code>/<Code>hy2://</Code> 分享链接或手写客户端 YAML（写入 Secret <Code>hysteria2.yaml</Code>）；启动命令为 <Code>hysteria client -c</Code>，并将 YAML 中回环{" "}
-          <Code>listen</Code> 改为 <Code>0.0.0.0</Code> 以便集群内访问本地代理端口。二进制按<strong>镜像引导模板</strong>中配置的 amd64/arm64 下载地址（及镜像站回退）自动拉取；<strong>下载失败不会阻塞 SSH 就绪</strong>。若仍拉取不到，可在引导页改为自建可访问 URL，或为 Deployment 配置 <Code>HTTP_PROXY</Code>/<Code>HTTPS_PROXY</Code> 后滚动重启。勾选 Hysteria2 时，容器启动会向 <Code>/etc/profile.d/51-kube-bt-hysteria-proxy.sh</Code> 写入本机 HTTP(S) 代理环境变量（及 YAML 中含 <Code>socks5</Code> 时的 <Code>ALL_PROXY</Code>），登录 SSH 交互 shell 即可 <Code>curl</Code> 外网。管理页在勾选客户端时展示基于 Prometheus 的<strong>客户端相关 Pod 网卡流量</strong>；与 OpenClaw 联用时可登记<strong>出站云主机</strong>并填写网关代理。
+          <Code>listen</Code> 改为 <Code>0.0.0.0</Code> 以便集群内访问本地代理端口。二进制按<strong>镜像引导模板</strong>中配置的 amd64/arm64 下载地址（及镜像站回退）自动拉取；<strong>下载失败不会阻塞 SSH 就绪</strong>。若仍拉取不到，可在引导页改为自建可访问 URL，或为 Deployment 配置 <Code>HTTP_PROXY</Code>/<Code>HTTPS_PROXY</Code> 后滚动重启。勾选 Hysteria2 时，容器启动会向 <Code>/etc/profile.d/51-labplane-hysteria-proxy.sh</Code> 写入本机 HTTP(S) 代理环境变量（及 YAML 中含 <Code>socks5</Code> 时的 <Code>ALL_PROXY</Code>），登录 SSH 交互 shell 即可 <Code>curl</Code> 外网。管理页在勾选客户端时展示基于 Prometheus 的<strong>客户端相关 Pod 网卡流量</strong>；与 OpenClaw 联用时可登记<strong>出站云主机</strong>并填写网关代理。
         </Li>
         <Li>
           <strong className="text-slate-800">与 SSH 就绪探针的关系</strong>：默认入口在 <Code>user-init.sh</Code> 成功结束后才 <Code>exec sshd -D</Code>；Service 就绪探针检测 NodePort 上 SSH 端口。故预选软件或用户脚本的失败会表现为<strong>长时间未就绪</strong>，而非「能连上但环境半残」。
@@ -483,11 +483,11 @@ function DocBody() {
       <P>
         <strong className="text-slate-800">列表「对话」（不经 Control Web UI）</strong>：实例列表每行有<strong>「对话」</strong>，侧栏内多轮消息由<strong>本平台后端</strong>转发到登记中的<strong>集群内</strong> Base（形如{" "}
         <Code>http://&lt;svc&gt;.&lt;ns&gt;.svc.cluster.local:18789/v1</Code>
-        ）的 OpenAI 兼容接口 <Code>POST /v1/chat/completions</Code>，请求头 <Code>Authorization: Bearer</Code> 为平台保存的<strong>网关 Token</strong>。浏览器只访问本平台域名，因此<strong>不会触发</strong>网关在浏览器里对 Control UI 做的 <Code>origin</Code> 校验（即不必为浏览器单独配 <Code>allowedOrigins</Code> 也能在本页对话）。前提与「AI 巡检」选用应用中心 OpenClaw 相同：<strong>运行 kube-bt-sync 的进程</strong>须能解析 <Code>*.svc.cluster.local</Code> 并访问该 Service（通常要求控制台部署在集群内或网络打通）。单实例详情 <Code>/cluster/apps/openclaw/&lt;id&gt;</Code> 可编辑 PVC 上 <Code>openclaw.json</Code>（若仍要打开网关上的 Control UI，请在 <Code>gateway.controlUi.allowedOrigins</Code> 中配置可信来源）。
+        ）的 OpenAI 兼容接口 <Code>POST /v1/chat/completions</Code>，请求头 <Code>Authorization: Bearer</Code> 为平台保存的<strong>网关 Token</strong>。浏览器只访问本平台域名，因此<strong>不会触发</strong>网关在浏览器里对 Control UI 做的 <Code>origin</Code> 校验（即不必为浏览器单独配 <Code>allowedOrigins</Code> 也能在本页对话）。前提与「AI 巡检」选用应用中心 OpenClaw 相同：<strong>运行 labplane 的进程</strong>须能解析 <Code>*.svc.cluster.local</Code> 并访问该 Service（通常要求控制台部署在集群内或网络打通）。单实例详情 <Code>/cluster/apps/openclaw/&lt;id&gt;</Code> 可编辑 PVC 上 <Code>openclaw.json</Code>（若仍要打开网关上的 Control UI，请在 <Code>gateway.controlUi.allowedOrigins</Code> 中配置可信来源）。
       </P>
       <P>
         <strong className="text-slate-800">对外访问</strong>：① <strong>NodePort</strong>——不指定固定端口，由集群在 30000–32767 内<strong>随机分配</strong>，列表展示节点 IP + 端口形式的示例 URL。② <strong>Ingress + 宝塔</strong>——填写域名并选择{" "}
-        <Code>kube-bt-sync.io/baota-sync</Code>（与宝塔工作区「发布 Ingress」一致），Service 为 ClusterIP，由 Ingress 反代到网关端口 18789；登记中的对外 Base 为 <Code>https|http://域名/v1</Code>。
+        <Code>labplane.io/baota-sync</Code>（与宝塔工作区「发布 Ingress」一致），Service 为 ClusterIP，由 Ingress 反代到网关端口 18789；登记中的对外 Base 为 <Code>https|http://域名/v1</Code>。
       </P>
       <P>
         资源包含 PVC、ConfigMap、Secret（固定键名如 <Code>OPENAI_API_KEY</Code> 等）、Deployment、Service、可选 Ingress，以及<strong>集群只读</strong> ClusterRole/Binding；部署时创建 <Code>openclaw-&lt;Deployment&gt;</Code> ServiceAccount 并绑定只读 ClusterRole。可<strong>同步到 AI 巡检</strong>（集群内 <Code>…svc.cluster.local:18789/v1</Code> + 网关 Token）。平台界面时间统一按<strong>东八区</strong>展示。
@@ -497,7 +497,7 @@ function DocBody() {
         <Code>openclaw-home-&lt;Deployment&gt;</Code>，以及同前缀的 Secret / ConfigMap / ServiceAccount（<Code>openclaw-secrets-…</Code>、<Code>openclaw-config-…</Code>、<Code>openclaw-…</Code>），同一命名空间内多套 OpenClaw <strong>互不共用</strong>家目录与密钥。Deployment 仍为<strong>副本数 1</strong>、<strong>ReadWriteOnce</strong>、策略 <strong>Recreate</strong>。平台登记中会保存卷名等字段；<strong>旧登记</strong>（字段为空）删除时仍按历史固定名 <Code>openclaw-home-pvc</Code> 等处理，若曾与同命名空间其他实例共用卷，建议删除后按当前版本重建以彻底隔离。
       </P>
       <P>
-        <strong className="text-slate-800">删除 OpenClaw 实例</strong>：删除平台登记时会删除 Ingress（若创建时填写了 Ingress 资源名，或暴露方式为 Ingress 时的默认名）、Service、Deployment（前台级联）、实例专属的 ClusterRoleBinding（并尝试删除同名 RoleBinding 以免历史残留）；当<strong>同一命名空间内没有其他 OpenClaw 登记</strong>时，还会删除共享的 PVC、ConfigMap、Secret 与 ServiceAccount，避免残留卷与密钥。<strong>管理员</strong>预设通过 ClusterRoleBinding 绑定 <Code>kube-bt-openclaw-admin</Code>，可对<strong>全集群</strong>执行匹配 RBAC 的操作（与 <Code>tools.profile: full</Code> 是否允许工具为不同一层）。
+        <strong className="text-slate-800">删除 OpenClaw 实例</strong>：删除平台登记时会删除 Ingress（若创建时填写了 Ingress 资源名，或暴露方式为 Ingress 时的默认名）、Service、Deployment（前台级联）、实例专属的 ClusterRoleBinding（并尝试删除同名 RoleBinding 以免历史残留）；当<strong>同一命名空间内没有其他 OpenClaw 登记</strong>时，还会删除共享的 PVC、ConfigMap、Secret 与 ServiceAccount，避免残留卷与密钥。<strong>管理员</strong>预设通过 ClusterRoleBinding 绑定 <Code>labplane-openclaw-admin</Code>，可对<strong>全集群</strong>执行匹配 RBAC 的操作（与 <Code>tools.profile: full</Code> 是否允许工具为不同一层）。
       </P>
       <P>
         <strong className="text-slate-800">删除云主机实例</strong>：删除时会依次删除 Deployment（前台级联）、Service、<strong>PVC</strong>（数据盘）与实例 Secret，再移除数据库记录。
@@ -537,7 +537,7 @@ function DocBody() {
       <Ul>
         <Li>
           <strong>账户与平台</strong>：<Code>/account/settings</Code>（平台 URL、MySQL、平台 Redis、应用中心 Redis K8s 持久化默认值、控制台与
-          OIDC 等；Redis 镜像在应用中心模版配置）。旧地址 <Code>/settings</Code> 会<strong>重定向</strong>到本页。页顶在已连接 MySQL 时提供<strong>我的资料</strong>：登录用户可自行修改<strong>邮箱</strong>与<strong>登录密码</strong>（已有密码时需填当前密码；仅 OIDC 用户可先设置本地密码以备启用密码登录）。工作台侧栏在「Dashboard」下可进入<strong>平台审计</strong>（管理员）。「外观与名称」中的<strong>平台显示名称</strong>与 <strong>Logo URL</strong> 会替换侧栏默认「Kube-BT-Sync」与内置 Logo；名称带有轻微呼吸动效；Logo 字段旁有推荐尺寸说明。
+          OIDC 等；Redis 镜像在应用中心模版配置）。旧地址 <Code>/settings</Code> 会<strong>重定向</strong>到本页。页顶在已连接 MySQL 时提供<strong>我的资料</strong>：登录用户可自行修改<strong>邮箱</strong>与<strong>登录密码</strong>（已有密码时需填当前密码；仅 OIDC 用户可先设置本地密码以备启用密码登录）。工作台侧栏在「Dashboard」下可进入<strong>平台审计</strong>（管理员）。「外观与名称」中的<strong>平台显示名称</strong>与 <strong>Logo URL</strong> 会替换侧栏默认「LabPlane」与内置 Logo；名称带有轻微呼吸动效；Logo 字段旁有推荐尺寸说明。
         </Li>
         <Li>
           <strong>平台审计</strong>：<Code>/account/audit</Code>。汇总登录、API 变更与资源操作（按模块筛选）；含时间、用户、来源 IP 与可读说明。服务端 <Code>audit.jsonl</Code> 默认<strong>保留约 30 天</strong>并定时裁剪；<strong>Prometheus 查询</strong>（图表/监控用的 <Code>query</Code> / <Code>query_range</Code>）不写入审计、也不出现在顶部小铃铛，避免刷屏。
@@ -567,12 +567,12 @@ function DocBody() {
 
       <H>十一、运维与仓库说明</H>
       <P>
-        控制台探活一般为 <Code>/api/health</Code>；生产环境请为控制台 Deployment 配置 HTTP 探针。镜像构建、Helm、PVC 与数据目录、<Code>KUBEBT_DATA_DIR</Code>、Redis 双写、出口 IP 探测、<Code>DASHBOARD_TRUSTED_PROXIES</Code> 与登录安全相关说明等，以仓库根目录{" "}
+        控制台探活一般为 <Code>/api/health</Code>；生产环境请为控制台 Deployment 配置 HTTP 探针。镜像构建、Helm、PVC 与数据目录、<Code>LABPLANE_DATA_DIR</Code>、Redis 双写、出口 IP 探测、<Code>DASHBOARD_TRUSTED_PROXIES</Code> 与登录安全相关说明等，以仓库根目录{" "}
         <Code>README.md</Code> 为准（镜像内无 shell 时勿用 <Code>wget</Code>/<Code>curl</Code> 做探针）。
       </P>
       <P>
-        <strong className="text-slate-800">性能模式</strong>：环境变量 <Code>KUBEBT_PERFORMANCE_MODE=1</Code> 时 Gin 使用 release 模式，并对 <Code>GET /api/namespaces</Code> 等热点接口启用 Redis 短缓存（TTL 可用{" "}
-        <Code>KUBEBT_NAMESPACES_CACHE_TTL_SEC</Code> 调整）。与多进程水平扩展、连接池调优等组合使用时，请以 <Code>internal/config.go</Code> 与部署说明为准。
+        <strong className="text-slate-800">性能模式</strong>：环境变量 <Code>LABPLANE_PERFORMANCE_MODE=1</Code> 时 Gin 使用 release 模式，并对 <Code>GET /api/namespaces</Code> 等热点接口启用 Redis 短缓存（TTL 可用{" "}
+        <Code>LABPLANE_NAMESPACES_CACHE_TTL_SEC</Code> 调整）。与多进程水平扩展、连接池调优等组合使用时，请以 <Code>internal/config.go</Code> 与部署说明为准。
       </P>
       <P className="text-xs text-slate-500">
         本文档侧重界面路由与操作；部署参数与运维细节请结合 <Code>README.md</Code> 与 <Code>internal/config.go</Code> 中的环境变量说明。
@@ -586,12 +586,12 @@ function DocBody() {
       </P>
       <P className="font-medium text-slate-800">平台「AI 巡检」在服务端如何工作（原理）</P>
       <P className="text-xs text-slate-600">
-        全部在 <strong className="text-slate-800">kube-bt-sync 进程内</strong>执行，不依赖浏览器连集群。① 按配置勾选范围，先做<strong>快速检查项</strong>（如能否调
+        全部在 <strong className="text-slate-800">labplane 进程内</strong>执行，不依赖浏览器连集群。① 按配置勾选范围，先做<strong>快速检查项</strong>（如能否调
         Kubernetes API、vCenter 是否初始化、Prometheus 即时查询、MySQL 中 Redis/云主机登记数量、SSH 存储是否就绪等）。② 再并行拉取<strong>深度分项</strong>，各模块写成{" "}
         <strong>Markdown 段落</strong>（含表格、事件、<strong>异常 Pod 日志摘录</strong>等）。③ 可选：对 OpenClaw / OpenAI 兼容地址做一次<strong>大模型连通探针</strong>（短请求）。④
         若巡检配置里<strong>启用 OpenClaw</strong> 且填写了 Base URL，服务端将<strong>精简后的巡检 JSON</strong>（摘要、检查项、各分项 id/标题/状态，不含整段 Markdown 正文）连同你在配置页写的<strong>系统提示词与用户模板</strong>，通过{" "}
         <Code>POST …/v1/chat/completions</Code> 发给模型，得到<strong>中文摘要 Markdown</strong> 写入报告。⑤ 完整报告（检查项、分项 Markdown、可选 AI 摘要、探针结果）写入{" "}
-        <strong>platform_kv</strong>（并可能双写 Redis），控制台仅<strong>读取展示</strong>。API Key / 网关 Token 依赖 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储。
+        <strong>platform_kv</strong>（并可能双写 Redis），控制台仅<strong>读取展示</strong>。API Key / 网关 Token 依赖 <Code>LABPLANE_ENCRYPTION_KEY</Code> 加密存储。
       </P>
       <pre
         className="mb-3 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-[10px] leading-snug text-slate-700 shadow-inner sm:text-[11px]"
@@ -640,7 +640,7 @@ function DocBody() {
       </P>
       <Ul>
         <Li>
-          <strong>AI 巡检（管理员）</strong>：可选择<strong>手动填写</strong> OpenAI 兼容 <Code>Base URL</Code>，或选用<strong>应用中心已登记的 OpenClaw</strong>（集群内地址 + 网关 Token，无需在表单重复填 Key）。配置模型与提示词；勾选巡检对象（Kubernetes、vCenter、Prometheus 探活、Redis 实例表、SSH 存储、云主机表等）。可「立即执行」或按所设<strong>每日时刻</strong>自动生成报告；若启用大模型，会将巡检 JSON 送入对话接口生成摘要（需 <Code>KUBEBT_ENCRYPTION_KEY</Code> 以保存 API Key）。
+          <strong>AI 巡检（管理员）</strong>：可选择<strong>手动填写</strong> OpenAI 兼容 <Code>Base URL</Code>，或选用<strong>应用中心已登记的 OpenClaw</strong>（集群内地址 + 网关 Token，无需在表单重复填 Key）。配置模型与提示词；勾选巡检对象（Kubernetes、vCenter、Prometheus 探活、Redis 实例表、SSH 存储、云主机表等）。可「立即执行」或按所设<strong>每日时刻</strong>自动生成报告；若启用大模型，会将巡检 JSON 送入对话接口生成摘要（需 <Code>LABPLANE_ENCRYPTION_KEY</Code> 以保存 API Key）。
         </Li>
         <Li>
           <strong className="text-slate-800">AI 运维助手</strong>（<Code>/cluster/ai-inspect/assistant</Code>，管理员）：复用巡检配置中的<strong>判读模型</strong>直连对话，可搭配平台内置运维工具（查 Pod/事件/日志、执行剧本等）。默认<strong>只读模式</strong>；切换右上角开关进入<strong>运维模式</strong>后，模型提出的写操作会先展示调用详情并<strong>暂缓</strong>，需点击「确认执行」才真正下发。每轮对话的<strong>工具调用过程</strong>可在消息内展开查看；「服务发现」可让 AI 汇总集群内服务并给出<strong>巡检剧本建议</strong>（可一键采纳为 YAML）。会话<strong>自动保存</strong>（最近 50 个），顶栏「历史会话」支持切换 / 删除，右上角显示当日调用次数与 token 用量；可在巡检配置中设置<strong>每日 token 预算</strong>，当日累计首次越线时写入告警中心「最近通知」。
@@ -666,7 +666,7 @@ function DocBody() {
           <strong className="text-slate-800">Markdown 编辑与上传</strong>：编辑区支持分栏预览；粘贴或拖拽<strong>图片</strong>会调用 <Code>POST /api/docs/upload</Code> 上传并插入 <Code>![]()</Code>，其它文件插入 <Code>[]()</Code>。若已打开某篇文档，可在表单中附带 <Code>docId</Code> 便于媒体表关联；未打开时亦可上传至附件库。
         </Li>
         <Li>
-          <strong className="text-slate-800">媒体与附件页</strong>（<Code>/docs/media</Code>）：① <strong>附件存储</strong>——可在页面内填写<strong>腾讯云 COS</strong>（SecretId、SecretKey、Bucket 含 APPID、Region、可选前缀与 CDN 公网根）并<strong>测试连接</strong>、<strong>保存配置</strong>；凭据写入 <strong>platform_kv</strong>（键 <Code>kubebt_docs_cos_settings_v1</Code>），与双写策略一致时同步 Redis。保存后<strong>优先于</strong>环境变量 <Code>KUBEBT_COS_*</Code>；可<strong>清除控制台 COS</strong> 回退到环境变量或未配置时的<strong>本地目录</strong>（<Code>data/doc-uploads</Code>）。② <strong>上传到附件库</strong>——拖拽或选择文件，成功后<strong>自动将 Markdown 引用复制到剪贴板</strong>，粘贴到正文即可。③ 列表中可对每条记录<strong>复制 MD</strong> 或删除（同步删 COS 对象或本地文件）。
+          <strong className="text-slate-800">媒体与附件页</strong>（<Code>/docs/media</Code>）：① <strong>附件存储</strong>——可在页面内填写<strong>腾讯云 COS</strong>（SecretId、SecretKey、Bucket 含 APPID、Region、可选前缀与 CDN 公网根）并<strong>测试连接</strong>、<strong>保存配置</strong>；凭据写入 <strong>platform_kv</strong>（键 <Code>labplane_docs_cos_settings_v1</Code>），与双写策略一致时同步 Redis。保存后<strong>优先于</strong>环境变量 <Code>LABPLANE_COS_*</Code>；可<strong>清除控制台 COS</strong> 回退到环境变量或未配置时的<strong>本地目录</strong>（<Code>data/doc-uploads</Code>）。② <strong>上传到附件库</strong>——拖拽或选择文件，成功后<strong>自动将 Markdown 引用复制到剪贴板</strong>，粘贴到正文即可。③ 列表中可对每条记录<strong>复制 MD</strong> 或删除（同步删 COS 对象或本地文件）。
         </Li>
         <Li>
           <strong className="text-slate-800">工具条提示</strong>：编辑器下方一行会标明当前附件走 <strong>腾讯云 COS（控制台 / 环境变量）</strong> 或 <strong>本地存储</strong>，与接口 <Code>GET /api/docs/attachment-storage</Code> 一致。
@@ -686,7 +686,7 @@ function DocBody() {
       </P>
       <Ul>
         <Li>
-          <strong>实例管理（管理员）</strong>：填写名称、区域、API 地址与 API Key。API 地址建议用控制面<strong>直连地址</strong>——若公网域名前有 WAF（如宝塔/雷池反代 headscale.frps.cn），网关可能拦截 <Code>/api/v1/*</Code> 的 API 请求，此时改直连地址或为 WAF 加白名单。API Key 用 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储（AES-GCM），界面只回显「已保存」；填 <Code>-</Code> 可清除。
+          <strong>实例管理（管理员）</strong>：填写名称、区域、API 地址与 API Key。API 地址建议用控制面<strong>直连地址</strong>——若公网域名前有 WAF（如宝塔/雷池反代 headscale.frps.cn），网关可能拦截 <Code>/api/v1/*</Code> 的 API 请求，此时改直连地址或为 WAF 加白名单。API Key 用 <Code>LABPLANE_ENCRYPTION_KEY</Code> 加密存储（AES-GCM），界面只回显「已保存」；填 <Code>-</Code> 可清除。
         </Li>
         <Li>
           <strong>节点与路由（router 管理）</strong>：节点表展示 Tailscale IP、所属用户、在线状态、最近在线与子网路由。子网路由器（如 ops 宣告 <Code>192.168.21.0/24</Code>、ukx-nas 宣告 <Code>192.168.31.0/24</Code>）可点「路由」进行<strong>覆盖式审批</strong>：每行一条 CIDR，不在列表中的已宣告路由将被取消。管理员可对节点「过期密钥 / 删除」。
@@ -715,7 +715,7 @@ function DocBody() {
       </P>
       <Ul>
         <Li>
-          <strong>实例管理（管理员）</strong>：填写名称、Base URL 与 <strong>API Token</strong>（Authentik 管理后台 → Directory → Tokens &amp; passwords 创建）。Token 用 <Code>KUBEBT_ENCRYPTION_KEY</Code> 加密存储，界面只回显「已保存」；填 <Code>-</Code> 可清除。
+          <strong>实例管理（管理员）</strong>：填写名称、Base URL 与 <strong>API Token</strong>（Authentik 管理后台 → Directory → Tokens &amp; passwords 创建）。Token 用 <Code>LABPLANE_ENCRYPTION_KEY</Code> 加密存储，界面只回显「已保存」；填 <Code>-</Code> 可清除。
         </Li>
         <Li>
           <strong>用户管理</strong>：搜索、创建（用户名/姓名/邮箱/初始密码可选/<strong>多选组</strong>）、编辑（姓名/邮箱/<strong>重新关联组</strong>）、启用停用、重置密码、删除。创建或编辑用户时勾选组即完成「认证信息下发」；初始密码留空则由用户走找回流程或 OIDC。

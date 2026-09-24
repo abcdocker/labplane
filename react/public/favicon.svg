@@ -1,4 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#ffffff"/>
-  <image href="/brand-logo.svg" x="4" y="22" width="56" height="20" preserveAspectRatio="xMidYMid meet"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LabPlane">
+  <rect width="64" height="64" rx="14" fill="#0F172A"/>
+  <path d="M32 9 54 21 32 33 10 21 32 9Z" fill="#7C3AED"/>
+  <path d="m10 30 22 12 22-12v8L32 50 10 38v-8Z" fill="#5B21B6"/>
+  <path d="M17 34v8m30-8v8M32 41v7" fill="none" stroke="#22D3EE" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="17" cy="45" r="4" fill="#22D3EE"/>
+  <circle cx="32" cy="51" r="4" fill="#22D3EE"/>
+  <circle cx="47" cy="45" r="4" fill="#22D3EE"/>
 </svg>

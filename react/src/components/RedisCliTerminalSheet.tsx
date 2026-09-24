@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useKubeBtXtermOptions } from "@/hooks/use-kube-bt-xterm-options";
+import { useLabPlaneXtermOptions } from "@/hooks/use-labplane-xterm-options";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { wsUrlForApiPath } from "@/lib/api";
 
@@ -44,7 +44,7 @@ export type RedisCliTerminalSheetProps = {
 
 /** 应用中心 Redis：服务端在 Pod 内执行 redis-cli，通过 REDISCLI_AUTH 注入密码，浏览器不展示明文 */
 const RedisCliTerminalSheet: React.FC<RedisCliTerminalSheetProps> = ({ open, onOpenChange, instanceId }) => {
-  const xtermOpts = useKubeBtXtermOptions();
+  const xtermOpts = useLabPlaneXtermOptions();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"idle" | "connecting" | "open" | "closed" | "error">("idle");
   const [errMsg, setErrMsg] = useState<string | null>(null);

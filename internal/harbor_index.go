@@ -69,7 +69,7 @@ func harborIndexRedisProgressKey(cfg Config) string {
 
 func harborIndexProjectConcurrency() int {
 	n := 4
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_PROJECT_CONCURRENCY")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_PROJECT_CONCURRENCY")); s != "" {
 		if x, err := strconv.Atoi(s); err == nil && x >= 1 && x <= 32 {
 			n = x
 		}
@@ -79,7 +79,7 @@ func harborIndexProjectConcurrency() int {
 
 func harborIndexIntervalSec() int {
 	sec := 60
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_INTERVAL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_INTERVAL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 0 {
 			sec = n
 		}
@@ -89,7 +89,7 @@ func harborIndexIntervalSec() int {
 
 func harborIndexCrawlTimeoutSec() int {
 	sec := 900
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_CRAWL_TIMEOUT_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_CRAWL_TIMEOUT_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 60 && n <= 7200 {
 			sec = n
 		}
@@ -99,7 +99,7 @@ func harborIndexCrawlTimeoutSec() int {
 
 func harborIndexMaxRepoPages() int {
 	n := 100
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_MAX_REPO_PAGES")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_MAX_REPO_PAGES")); s != "" {
 		if x, err := strconv.Atoi(s); err == nil && x >= 1 && x <= 500 {
 			n = x
 		}
@@ -109,7 +109,7 @@ func harborIndexMaxRepoPages() int {
 
 func harborIndexMaxArtifactPages() int {
 	n := 50
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_MAX_ARTIFACT_PAGES")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_MAX_ARTIFACT_PAGES")); s != "" {
 		if x, err := strconv.Atoi(s); err == nil && x >= 1 && x <= 200 {
 			n = x
 		}
@@ -119,7 +119,7 @@ func harborIndexMaxArtifactPages() int {
 
 func harborIndexMaxProjectPages() int {
 	n := 100
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_INDEX_MAX_PROJECT_PAGES")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_INDEX_MAX_PROJECT_PAGES")); s != "" {
 		if x, err := strconv.Atoi(s); err == nil && x >= 1 && x <= 500 {
 			n = x
 		}

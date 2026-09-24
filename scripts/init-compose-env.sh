@@ -20,18 +20,18 @@ random_hex() {
 
 umask 077
 {
-  printf 'KUBEBT_PORT=18081\n'
-  printf 'KUBEBT_BIND_ADDRESS=127.0.0.1\n'
+  printf 'LABPLANE_PORT=18081\n'
+  printf 'LABPLANE_BIND_ADDRESS=127.0.0.1\n'
   printf 'PLATFORM_PUBLIC_URL=http://127.0.0.1:18081\n'
-  printf 'MYSQL_DATABASE=kube_bt_sync\n'
-  printf 'MYSQL_USER=kube_bt_sync\n'
+  printf 'MYSQL_DATABASE=labplane\n'
+  printf 'MYSQL_USER=labplane\n'
   printf 'MYSQL_ROOT_PASSWORD=%s\n' "$(random_hex 24)"
   printf 'MYSQL_PASSWORD=%s\n' "$(random_hex 24)"
   printf 'REDIS_PASSWORD=%s\n' "$(random_hex 24)"
   printf 'DASHBOARD_USER=admin\n'
   printf 'DASHBOARD_PASSWORD=%s\n' "$(random_hex 18)"
   printf 'DASHBOARD_SESSION_SECRET=%s\n' "$(random_hex 32)"
-  printf 'KUBEBT_ENCRYPTION_KEY=%s\n' "$(random_hex 32)"
+  printf 'LABPLANE_ENCRYPTION_KEY=%s\n' "$(random_hex 32)"
 } >"${ENV_FILE}"
 
 echo "Created ${ENV_FILE} with mode 0600-compatible permissions."

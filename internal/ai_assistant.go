@@ -325,7 +325,9 @@ func aiAssistantToolRegistry(operate bool) []aiAssistantTool {
 		},
 	}
 	tools = append(tools, aiAssistantPlatformTools()...)
+	tools = append(tools, aiAssistantUserIdentityTools()...)
 	if operate {
+		tools = append(tools, aiAssistantUserWriteTools()...)
 		tools = append(tools,
 			aiAssistantTool{
 				Name: "k8s_restart_deployment", Write: true,
@@ -426,14 +428,15 @@ const aiAssistantSystemPrompt = `你是平台的内置全功能 AI 运维助手�
 - K8s 全资源：Pod/Deployment/Service/ConfigMap/StatefulSet/DaemonSet 的增删改查、YAML 应用、滚动重启、扩缩容
 - 虚拟机：CVM/轻量云（开机/关机/重启）、vCenter 虚拟机（电源 on/off/suspend/reset/重启/磁盘查看）
 - 应用中心：Redis/OpenSearch/云主机实例概览
-- 监控：Prometheus 即时与区间查询；日志：VictoriaLogs 查询
+- 监控：Prometheus 即时与区间查询；日志：VictoriaLogs 查询` + aiUserToolsSystemPromptSection + `
 要求：
 1) 分析问题前必须先用工具查实际数据：查 Pod 日志（k8s_get_pod_logs）、查最近事件（k8s_list_events）、查资源用量（prom_instant_query）。至少调用 2 个不同工具交叉验证后才能下结论。
 2) 禁止猜测原因。每个结论必须引用具体工具返回的证据（如"日志显示 OOMKilled"或"事件显示 BackOff"）。如果数据不足以确定原因，明确说"根据当前数据无法确定，建议检查 XXX"，不要列举"可能原因"。
 3) 确定需要执行写操作时，必须调用对应的写工具。工具返回 [操作已暂缓] 表示等待用户确认，此时告知用户操作已准备就绪。
-4) 回复使用中文 Markdown，简洁、可执行；涉及风险的变更必须提示影响面。
-5) 只处理与本平台运维相关的请求；无关问题礼貌拒绝，说明你是平台运维助手，不调用工具。
-6) 如果工具结果以 [操作已暂缓] 开头，如实告知用户操作已准备好但等待确认，不要声称操作已成功。`
+4) 创建用户前必须先用对应的 list 工具查重（headscale_list_users / authentik_list_users）；用户缺少用户名等必填信息时先追问，不要编造。工具返回的初始密码/预授权密钥必须原样完整告知用户，并提醒妥善保管。
+5) 回复使用中文 Markdown，简洁、可执行；涉及风险的变更必须提示影响面。
+6) 只处理与本平台运维相关的请求；无关问题礼貌拒绝，说明你是平台运维助手，不调用工具。
+7) 如果工具结果以 [操作已暂缓] 开头，如实告知用户操作已准备好但等待确认，不要声称操作已成功。`
 
 func aiAssistantStrPtr(s string) *string { return &s }
 
@@ -585,7 +588,7 @@ func aiAssistantExecuteTool(app *ServerApp, c *gin.Context, tools []aiAssistantT
 			Method: "POST",
 			Path:   "/api/ops/ai-assistant/chat",
 			Status: http.StatusOK,
-			Detail: fmt.Sprintf("AI助手执行 %s %s → %s", tool.Name, tc.Function.Arguments, res),
+			Detail: aiAssistantMaskAuditSecrets(fmt.Sprintf("AI助手执行 %s %s → %s", tool.Name, tc.Function.Arguments, res)),
 		})
 	}
 	return out

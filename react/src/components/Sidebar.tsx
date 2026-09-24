@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
+  Loader2,
   LogIn,
   Plus,
   Server,
@@ -40,6 +41,7 @@ import {
   Gauge,
   Network,
   Fingerprint,
+  Waypoints,
 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
 import { useQuery } from "@tanstack/react-query";
@@ -136,9 +138,8 @@ function isDashboardActive(pathname: string, ws: SidebarWorkspace): boolean {
       pathname === "/cluster/ai-inspect/"
     );
   }
-  if (ws === "mesh" || ws === "authentik") {
-    // 这两个工作区的 Dashboard 槽位与组内首项指向同一路径；
-    // 高亮交给组内菜单按路径处理，Dashboard 不再重复点亮，避免同色无法区分。
+  if (ws === "mesh") {
+    // 异地组网的 Dashboard 槽位与组内首项指向同一路径。
     return false;
   }
   return pathname === p || pathname === `${p}/`;
@@ -217,6 +218,8 @@ type K8sNavItem = {
   customResourcesPage?: boolean;
   /** /cluster/etcd */
   etcdPage?: boolean;
+  /** /cluster/routes — Ingress + Gateway API 路由管理面板 */
+  routeManagerPage?: boolean;
 };
 
 const DEFAULT_K8S_SIDEBAR_MENU: K8sSidebarMenuItem[] = [
@@ -225,6 +228,7 @@ const DEFAULT_K8S_SIDEBAR_MENU: K8sSidebarMenuItem[] = [
   { key: "nodes", label: "Nodes", order: 30 },
   { key: "etcd", label: "etcd", order: 35 },
   { key: "rbac", label: "RBAC", order: 40 },
+  { key: "routeManager", label: "路由管理", order: 45 },
   { key: "harbor", label: "Harbor 仓库", order: 50 },
   { key: "customResources", label: "自定义资源", order: 60 },
 ];
@@ -247,6 +251,13 @@ const k8sNavItems: K8sNavItem[] = [
   { id: "nodes", to: "/cluster/nodes", label: "Nodes", icon: NodeActivityIcon },
   { id: "etcd", to: "/cluster/etcd", label: "etcd", icon: Database, etcdPage: true },
   { id: "rbac", to: "/cluster/rbac", label: "RBAC", icon: Shield, rbacPage: true },
+  {
+    id: "routeManager",
+    to: "/cluster/routes",
+    label: "路由管理",
+    icon: Waypoints,
+    routeManagerPage: true,
+  },
   { id: "harbor", to: "/cluster/harbor", label: "Harbor 仓库", icon: Ship, harborPage: true },
   {
     id: "customResources",
@@ -327,6 +338,9 @@ function k8sItemActive(
   if (item.etcdPage) {
     return pathname === "/cluster/etcd" || pathname.startsWith("/cluster/etcd/");
   }
+  if (item.routeManagerPage) {
+    return pathname === "/cluster/routes" || pathname.startsWith("/cluster/routes/");
+  }
   if (item.nsResource) {
     return isWorkspaceResourceActive(item.nsResource, pathname, search);
   }
@@ -379,6 +393,17 @@ const Sidebar: React.FC = () => {
     refetchOnWindowFocus: false,
   });
   const meshInstances = meshInstancesQ.data?.instances ?? [];
+  const authentikInstancesQ = useQuery({
+    queryKey: ["authentik-instances"],
+    queryFn: () =>
+      apiGetJson<{ instances: { id: string; name: string; enabled: boolean }[] }>(
+        "/api/ops/authentik/instances",
+      ),
+    enabled: location.pathname.startsWith("/cluster/authentik"),
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  const authentikInstances = authentikInstancesQ.data?.instances ?? [];
   const [workspace, setWorkspace] = useState<SidebarWorkspace>(() => readWorkspace());
 
   useEffect(() => {
@@ -421,12 +446,22 @@ const Sidebar: React.FC = () => {
   const check = runtimeQ.data?.systemCheck;
   const cfg = runtimeQ.data?.config;
   const perm = cfg?.permissions;
-  const showK8sNav = menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
-  const showVcNav = menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
-  const showAppCenterNav = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
-  const showAiInspectNav = menuItemVisible(perm, "aiInspect", navRole, true);
-  const showMeshNav = menuItemVisible(perm, "mesh", navRole, true);
-  const showAuthentikNav = menuItemVisible(perm, "authentik", navRole, true);
+
+  // 全局模块显隐：管理员可在平台控制哪些模块对所有人可见
+  const moduleVisQ = useQuery({
+    queryKey: ["module-visibility"],
+    queryFn: () => apiGetJson<{ modules: Record<string, boolean> }>("/api/settings/modules"),
+    staleTime: 30_000,
+  });
+  const moduleVis = moduleVisQ.data?.modules ?? {};
+  const globVisible = (mod: string) => moduleVis[mod] !== false;
+
+  const showK8sNav = globVisible("kubernetes") && menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
+  const showVcNav = globVisible("vcenter") && menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
+  const showAppCenterNav = globVisible("appcenter") && menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
+  const showAiInspectNav = globVisible("aiinspect") && menuItemVisible(perm, "aiInspect", navRole, true);
+  const showMeshNav = globVisible("mesh") && menuItemVisible(perm, "mesh", navRole, true);
+  const showAuthentikNav = globVisible("authentik") && menuItemVisible(perm, "authentik", navRole, true);
   const showBastionNav = menuItemVisible(
     perm,
     "vcenter_bastion",
@@ -669,7 +704,7 @@ const Sidebar: React.FC = () => {
                 cfg?.platformDisplayName?.trim() ? "platform-display-name-breathe" : undefined
               )}
             >
-              {cfg?.platformDisplayName?.trim() || "HomeLab Console"}
+              {cfg?.platformDisplayName?.trim() || "LabPlane"}
             </span>
             <span
               className={cn(
@@ -1147,12 +1182,73 @@ const Sidebar: React.FC = () => {
               </p>
             </div>
             <Link
-              to="/cluster/authentik"
-              className={navLinkTint(location.pathname === "/cluster/authentik", "slate")}
+              to={{ pathname: "/cluster/authentik/users", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/users"), "slate")}
             >
-              <Fingerprint size={20} className={iconTint(location.pathname === "/cluster/authentik", "slate")} />
-              <span>SSO 管理台</span>
+              <Fingerprint size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/users"), "slate")} />
+              <span>用户管理</span>
             </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/apps", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/apps"), "slate")}
+            >
+              <ShieldCheck size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/apps"), "slate")} />
+              <span>应用对接</span>
+            </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/providers", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/providers"), "slate")}
+            >
+              <KeyRound size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/providers"), "slate")} />
+              <span>提供程序</span>
+            </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/events", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/events"), "slate")}
+            >
+              <RefreshCw size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/events"), "slate")} />
+              <span>事件</span>
+            </Link>
+            <div className="mx-3 mt-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/80">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300 dark:text-slate-500">
+                Authentik 实例
+              </p>
+              <div className="space-y-0.5">
+                {authentikInstances.map((inst) => {
+                  const active = instParam === inst.id;
+                  return (
+                    <Link
+                      key={inst.id}
+                      to={{ pathname: location.pathname, search: `?inst=${encodeURIComponent(inst.id)}` }}
+                      title={inst.name}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] transition-colors",
+                        active
+                          ? "bg-fuchsia-500/10 font-medium text-fuchsia-800 dark:bg-fuchsia-400/10 dark:text-fuchsia-200"
+                          : "text-slate-500 hover:bg-slate-900/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100",
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", inst.enabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")} />
+                      <span className="truncate">{inst.name}</span>
+                    </Link>
+                  );
+                })}
+                {authentikInstancesQ.isLoading ? (
+                  <span className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-slate-400 dark:text-slate-500">
+                    <Loader2 size={13} className="animate-spin" /> 加载实例…
+                  </span>
+                ) : null}
+                {navRole === "admin" ? (
+                  <Link
+                    to={{ pathname: "/cluster/authentik", search: "?new=1" }}
+                    className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] text-slate-400 transition-colors hover:bg-fuchsia-500/5 hover:text-fuchsia-700 dark:text-slate-500 dark:hover:bg-fuchsia-400/10 dark:hover:text-fuchsia-200"
+                  >
+                    <Plus size={14} />
+                    <span>添加实例</span>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
           </>
         ) : null}
 

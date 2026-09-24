@@ -302,7 +302,7 @@ const AiInspectAlerts: React.FC = () => {
               <code className="rounded bg-white px-1">AlertmanagerConfig</code> CR），在{" "}
               <code className="rounded bg-white px-1">receivers</code> 下增加一项：
               <pre className="mt-2 max-h-48 overflow-auto rounded border border-slate-200 bg-white p-2 text-[10px] leading-relaxed">
-{`- name: kube-bt-sync-platform
+{`- name: labplane-platform
   webhook_configs:
     - url: '<粘贴本页 Webhook 完整 URL>'
       send_resolved: true`}

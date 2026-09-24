@@ -41,6 +41,7 @@ const DEFAULT_K8S_SIDEBAR_MENU: K8sSidebarMenuItem[] = [
   { key: "nodes", label: "Nodes", order: 30 },
   { key: "etcd", label: "etcd", order: 35 },
   { key: "rbac", label: "RBAC", order: 40 },
+  { key: "routeManager", label: "路由管理", order: 45 },
   { key: "harbor", label: "Harbor 仓库", order: 50 },
   { key: "customResources", label: "自定义资源", order: 60 },
 ];
@@ -340,8 +341,8 @@ const SettingsRuntimeSection: React.FC<SettingsRuntimeSectionProps> = ({
             <div className="space-y-3 rounded-lg border border-amber-100 bg-amber-50/50 p-4">
               <p className="text-sm font-semibold text-amber-950">多宝塔实例（企业版 / 多节点）</p>
               <p className="text-[11px] leading-relaxed text-slate-600">
-                非空时以本列表为准；Ingress 可加注解 <code className="rounded bg-white px-0.5 font-mono text-[10px]">kube-bt-sync.io/baota-target</code> 或{" "}
-                <code className="rounded bg-white px-0.5 font-mono text-[10px]">kube-bt-sync.io/baota-target</code> 指定实例 id。未注解则同步到「默认」实例。留空本列表则只用下方{" "}
+                非空时以本列表为准；Ingress 可加注解 <code className="rounded bg-white px-0.5 font-mono text-[10px]">labplane.io/baota-target</code> 或{" "}
+                <code className="rounded bg-white px-0.5 font-mono text-[10px]">labplane.io/baota-target</code> 指定实例 id。未注解则同步到「默认」实例。留空本列表则只用下方{" "}
                 <span className="font-mono">baotaUrl</span> / <span className="font-mono">baotaApiKey</span>。
               </p>
               {btTargets.map((row, idx) => (
@@ -852,7 +853,7 @@ const SettingsRuntimeSection: React.FC<SettingsRuntimeSectionProps> = ({
                 <Input
                   value={String(form.oidcIssuerUrl ?? "")}
                   onChange={(e) => setField("oidcIssuerUrl", e.target.value)}
-                  placeholder="https://idp.example.com/application/o/kube-bt-sync/"
+                  placeholder="https://idp.example.com/application/o/labplane/"
                 />
               </div>
               <div className="space-y-2">

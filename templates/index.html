@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kube-BT-Sync 边缘网关控制台</title>
+    <title>LabPlane 控制台</title>
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link href="[[.BootstrapCSS]]" rel="stylesheet">
@@ -28,7 +28,7 @@
 
 <nav class="navbar navbar-dark mb-4 shadow-sm">
     <div class="container">
-        <a class="navbar-brand" href="#"><i class="fas fa-network-wired me-2"></i>Kube-BT-Sync 边缘网关</a>
+        <a class="navbar-brand" href="#"><i class="fas fa-network-wired me-2"></i>LabPlane</a>
         <button class="btn btn-outline-light btn-sm" id="refreshBtn" onclick="refreshAll()">
             <i class="fas fa-sync-alt"></i> 手动刷新
         </button>
@@ -155,7 +155,7 @@ metadata:
   name: demo-ingress
   namespace: default
   annotations:
-    kube-bt-sync.io/baota-sync: "true"
+    labplane.io/baota-sync: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
@@ -372,7 +372,7 @@ metadata:
   name: ${svc}-ingress
   namespace: ${ns}
   annotations:
-    kube-bt-sync.io/baota-sync: "true"
+    labplane.io/baota-sync: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx${tlsBlock}

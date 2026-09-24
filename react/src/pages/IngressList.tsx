@@ -135,7 +135,7 @@ const IngressList: React.FC = () => {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">Ingress Rules</h1>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            集群内全部 Ingress；「托管」表示已打 README 中的同步注解并由 kube-bt-sync 处理。回源列展示当前宝塔代理使用的 HTTP/HTTPS、域名与端口。
+            集群内全部 Ingress；「托管」表示已打 README 中的同步注解并由 labplane 处理。回源列展示当前宝塔代理使用的 HTTP/HTTPS、域名与端口。
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

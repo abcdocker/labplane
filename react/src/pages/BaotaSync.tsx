@@ -117,7 +117,7 @@ const BaotaSync: React.FC = () => {
             在「Ingress Rules」表单向导中勾选<strong>同步到宝塔</strong>并下发的资源，与集群里已带同步注解的 Ingress 一样，会由本页「立即同步」或定时任务下发到宝塔。
             报告含每步 <strong>最多 4 次</strong> 指数退避重试，持久化在平台 KV。定时同步需{" "}
             <strong className="font-mono">ingressBaotaSyncEnabled</strong> 为开且 Pod 上{" "}
-            <strong className="font-mono">KUBEBT_ENABLE_BACKGROUND_JOBS=true</strong>。
+            <strong className="font-mono">LABPLANE_ENABLE_BACKGROUND_JOBS=true</strong>。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">

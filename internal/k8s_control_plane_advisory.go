@@ -20,7 +20,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const kvKeyK8sControlPlaneAdvisory = "kubebt_k8s_control_plane_advisory_v1"
+const kvKeyK8sControlPlaneAdvisory = "labplane_k8s_control_plane_advisory_v1"
 
 // k8sControlPlaneAdvisoryState 周期分析结果（PlatformKV）；铃铛用 bellDismissedRunId 与 runId 比较。
 type k8sControlPlaneAdvisoryState struct {
@@ -37,7 +37,7 @@ type k8sControlPlaneAdvisoryState struct {
 
 func k8sControlPlaneAdvisoryInterval() time.Duration {
 	sec := 1800
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 300 && n <= 86400 {
 			sec = n
 		}
@@ -46,7 +46,7 @@ func k8sControlPlaneAdvisoryInterval() time.Duration {
 }
 
 func k8sControlPlaneAdvisoryDisabled() bool {
-	return strings.TrimSpace(os.Getenv("KUBEBT_K8S_CONTROL_PLANE_ADVISORY")) == "0"
+	return strings.TrimSpace(os.Getenv("LABPLANE_K8S_CONTROL_PLANE_ADVISORY")) == "0"
 }
 
 func loadK8sControlPlaneAdvisory(kv PlatformKV) (k8sControlPlaneAdvisoryState, error) {
@@ -372,7 +372,7 @@ func StartK8sControlPlaneAdvisoryWorker(ctx context.Context, app *ServerApp) {
 				}
 			}
 		}()
-		log.Printf("k8s-control-plane-advisory: 后台已启动，间隔 %v（KUBEBT_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC 可调）", d)
+		log.Printf("k8s-control-plane-advisory: 后台已启动，间隔 %v（LABPLANE_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC 可调）", d)
 	})
 }
 

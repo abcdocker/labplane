@@ -11,10 +11,10 @@ import (
 )
 
 // harborListCacheMaxBodyMB 单条 Harbor 列表/统计 JSON 写入 Redis 的最大体积（MB）。
-// KUBEBT_HARBOR_LIST_CACHE_MAX_BODY_MB：默认 16，范围 1～128（原硬编码 2MB，大制品列表易超出导致不落库）。
+// LABPLANE_HARBOR_LIST_CACHE_MAX_BODY_MB：默认 16，范围 1～128（原硬编码 2MB，大制品列表易超出导致不落库）。
 func harborListCacheMaxBodyMB() int {
 	mb := 16
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_LIST_CACHE_MAX_BODY_MB")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_LIST_CACHE_MAX_BODY_MB")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil {
 			if n < 1 {
 				n = 1
@@ -32,10 +32,10 @@ func harborListCacheMaxBodyBytes() int {
 	return harborListCacheMaxBodyMB() * 1024 * 1024
 }
 
-// harborListCacheTTLSec GET 项目/仓库/制品/统计 在 Redis 中的 TTL；KUBEBT_HARBOR_LIST_CACHE_TTL_SEC=0 关闭，默认 45，最大 86400（24h）。
+// harborListCacheTTLSec GET 项目/仓库/制品/统计 在 Redis 中的 TTL；LABPLANE_HARBOR_LIST_CACHE_TTL_SEC=0 关闭，默认 45，最大 86400（24h）。
 func harborListCacheTTLSec() int {
 	sec := 45
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_HARBOR_LIST_CACHE_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_HARBOR_LIST_CACHE_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 0 && n <= 86400 {
 			sec = n
 		}

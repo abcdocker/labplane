@@ -971,7 +971,7 @@ func handleAppRedisK8sDeploy(c *gin.Context, app *ServerApp) {
 				ctx2, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 				defer cancel()
 				var existing int64
-				qerr := db.QueryRowContext(ctx2, `SELECT id FROM kubebt_app_redis_instances WHERE name=?`, name).Scan(&existing)
+				qerr := db.QueryRowContext(ctx2, `SELECT id FROM labplane_app_redis_instances WHERE name=?`, name).Scan(&existing)
 				if qerr == sql.ErrNoRows {
 					id, ierr := appRedisInsert(ctx2, db, name, string(st.Mode), string(b), createdBy)
 					if ierr != nil {

@@ -37,7 +37,7 @@ func handleLoginPublicStatus(app *ServerApp) gin.HandlerFunc {
 func handleLiveness(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"ok":           true,
-		"service":      "kube-bt-sync",
+		"service":      "labplane",
 		"buildVersion": sessionBuildVersionSegment(),
 	})
 }
@@ -60,7 +60,7 @@ func readinessPayload(ctx context.Context, app *ServerApp) (gin.H, bool) {
 	return gin.H{
 		"ok":                         ready,
 		"ready":                      ready,
-		"service":                    "kube-bt-sync",
+		"service":                    "labplane",
 		"buildVersion":               sessionBuildVersionSegment(),
 		"mysqlSchemaVersionExpected": AppMySQLSchemaVersion,
 		"mysql":                      mysql,

@@ -16,13 +16,13 @@ func openMySQLPoolWithRetry(dsn string) (*sql.DB, error) {
 		return nil, nil
 	}
 	attempts := 6
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_MYSQL_OPEN_ATTEMPTS")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_MYSQL_OPEN_ATTEMPTS")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= 30 {
 			attempts = n
 		}
 	}
 	base := 400 * time.Millisecond
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_MYSQL_OPEN_BACKOFF_MS")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_MYSQL_OPEN_BACKOFF_MS")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 100 && n <= 30000 {
 			base = time.Duration(n) * time.Millisecond
 		}

@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * 典型部署：kube-bt-sync 以 Pod 跑在集群内，浏览器经 Ingress/NodePort 访问；进程经 client-go 调 API，
+ * 典型部署：labplane 以 Pod 跑在集群内，浏览器经 Ingress/NodePort 访问；进程经 client-go 调 API，
  * 并出站访问宝塔、Prometheus/VM、MySQL、Redis、vCenter、云主机 SSH 等（以运行时配置为准）。
  */
 export function PlatformArchitectureDiagram() {
@@ -14,7 +14,7 @@ export function PlatformArchitectureDiagram() {
         viewBox="0 0 720 448"
         className="mx-auto h-auto w-full max-w-[720px]"
         role="img"
-        aria-label="kube-bt-sync 运行在 Kubernetes Pod 内，经 Ingress 或 NodePort 对外提供 Web；Pod 访问 API Server 与 PVC，并连接宝塔、监控、数据库与 vCenter 等"
+        aria-label="labplane 运行在 Kubernetes Pod 内，经 Ingress 或 NodePort 对外提供 Web；Pod 访问 API Server 与 PVC，并连接宝塔、监控、数据库与 vCenter 等"
       >
         <defs>
           <marker id="pa-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
@@ -61,7 +61,7 @@ export function PlatformArchitectureDiagram() {
 
         <rect x="220" y="164" width="280" height="100" rx="10" fill="#ecfdf5" stroke="#059669" strokeWidth="2" />
         <text x="360" y="188" textAnchor="middle" fill="#065f46" fontSize="13" fontWeight="700">
-          Pod：kube-bt-sync
+          Pod：labplane
         </text>
         <text x="360" y="208" textAnchor="middle" fill="#047857" fontSize="10">
           Gin API、嵌入前端、WebSocket（终端 / 日志）

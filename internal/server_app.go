@@ -34,9 +34,9 @@ type ServerApp struct {
 	runtime         *RuntimeSettings
 }
 
-// DataDirFromEnv 仅数据目录可走环境变量（K8s 挂载 PVC 时常用 KUBEBT_DATA_DIR=/data）。
+// DataDirFromEnv 仅数据目录可走环境变量（K8s 挂载 PVC 时常用 LABPLANE_DATA_DIR=/data）。
 func DataDirFromEnv() string {
-	d := strings.TrimSpace(os.Getenv("KUBEBT_DATA_DIR"))
+	d := strings.TrimSpace(os.Getenv("LABPLANE_DATA_DIR"))
 	if d == "" {
 		return "./data"
 	}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 import { pwaText } from "@/i18n/pwa";
 
-const DISMISSED_KEY = "kbts:pwa-install-hint-dismissed";
+const DISMISSED_KEY = "labplane:pwa-install-hint-dismissed";
 
 type StandaloneNavigator = Navigator & {
   standalone?: boolean;
@@ -76,7 +76,7 @@ const PwaInstallHint: React.FC = () => {
   const Icon = isIOS ? Share : Download;
 
   return (
-    <aside className="fixed bottom-[calc(3.75rem+var(--kbts-safe-bottom))] left-[max(0.75rem,var(--kbts-safe-left))] right-[max(0.75rem,var(--kbts-safe-right))] z-40 rounded-2xl border border-blue-200 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-blue-900 dark:bg-slate-950/95">
+    <aside className="fixed bottom-[calc(3.75rem+var(--labplane-safe-bottom))] left-[max(0.75rem,var(--labplane-safe-left))] right-[max(0.75rem,var(--labplane-safe-right))] z-40 rounded-2xl border border-blue-200 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-blue-900 dark:bg-slate-950/95">
       <div className="flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
           <Icon className="size-5" aria-hidden />

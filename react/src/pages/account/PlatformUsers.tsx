@@ -558,7 +558,143 @@ const PlatformUsers: React.FC = () => {
       {listQ.error && <p className="text-red-600">{(listQ.error as Error).message}</p>}
 
       {listQ.data && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <>
+          <div className="grid gap-3 md:hidden">
+            {(listQ.data.users ?? []).length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                暂无用户，点击「新建用户」添加。
+              </div>
+            ) : (
+              (listQ.data.users ?? []).map((u) => (
+                <article
+                  key={u.virtual ? `v-${u.username}` : u.id}
+                  className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="break-all font-mono text-sm font-bold text-slate-900">{u.username}</h3>
+                      <p className="mt-0.5 break-all text-xs text-slate-500">{u.email || "—"}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                        {u.role}
+                      </span>
+                      <span className={`text-xs ${u.disabled ? "text-red-600" : "text-emerald-700"}`}>
+                        {u.disabled ? "已禁用" : "正常"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">OIDC 绑定</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {u.virtual ? "—" : u.oidcBound ? "已绑定" : "未绑定"}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">两步验证</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {u.totpEnabled ? "已开启" : u.totpConfigured ? "未启用" : "未配置"}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">登录限制</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {(u.allowedLoginIps ?? "").trim() ? "IP 白名单" : "IP 不限"}
+                        <span className="text-slate-400"> · </span>
+                        {u.allowMultiIpLogin ? "可多 IP 在线" : "单会话"}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    {!u.virtual && status?.oidcLogin ? (
+                      u.oidcBound ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 border-amber-200 text-xs text-amber-950"
+                          disabled={!usersMgmtOk}
+                          onClick={() => {
+                            setOidcUnbindRow(u);
+                            setOidcUnbindPwd("");
+                          }}
+                        >
+                          取消绑定
+                        </Button>
+                      ) : (
+                        <a
+                          href={`${API_BASE}/api/admin/users/oidc/bind/start?username=${encodeURIComponent(u.username)}`}
+                          className="inline-flex h-7 items-center text-xs font-medium text-sky-700 underline"
+                        >
+                          绑定 OIDC
+                        </a>
+                      )
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!usersMgmtOk || totpProvisionMut.isPending}
+                      onClick={() => {
+                        setTotpPwdTarget(u);
+                        setOperatorPassword("");
+                        setTotpPwdOpen(true);
+                      }}
+                    >
+                      {u.totpConfigured ? "重新生成二维码" : "生成二维码"}
+                    </Button>
+                    {u.totpEnabled ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-red-600"
+                        disabled={!usersMgmtOk || totpDisableMut.isPending}
+                        onClick={() => {
+                          setTotpDisableTarget(u);
+                          setOperatorPasswordDisable("");
+                          setTotpDisableOpen(true);
+                        }}
+                      >
+                        关闭
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      disabled={!!u.virtual}
+                      title={u.virtual ? "内置账号请在运行时配置中管理；可在此配置二次验证" : undefined}
+                      onClick={() => openEdit(u)}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-red-600"
+                      disabled={!!u.virtual}
+                      onClick={() => {
+                        if (u.virtual) return;
+                        setDeleteTarget(u);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -708,7 +844,8 @@ const PlatformUsers: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

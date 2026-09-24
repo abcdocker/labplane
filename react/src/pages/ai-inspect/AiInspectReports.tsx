@@ -11,13 +11,14 @@ import { JsonSnippetWithCopy } from "@/components/JsonSnippetWithCopy";
 import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
 import { InspectReportRich, type InspectReportFull } from "./InspectReportRich";
 import { cn } from "@/lib/utils";
+import { INSPECTION_DOMAINS, inspectionDomainReportURL, type InfrastructureInspectionDomain } from "./inspectionDomains";
 
 const PAGE_SIZE_DEFAULT = 15;
 
 /** 与 App.tsx 中 `path="reports/*"` 一致；勿用相对嵌套 `<Routes>`（会按整段 URL 匹配导致 Outlet 空白） */
 const AI_INSPECT_REPORTS_BASE = "/cluster/ai-inspect/reports";
 
-const REPORT_TABS = ["platform", "k8s", "pod", "workload"] as const;
+const REPORT_TABS = ["platform", "vcenter", "bastion", "headscale", "authentik", "k8s", "pod", "workload"] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
 
 function parseReportTab(pathname: string): ReportTab | null {
@@ -124,6 +125,11 @@ function ReportsNav() {
       <NavLink to={`${AI_INSPECT_REPORTS_BASE}/platform`} className={tabClass} end>
         平台级
       </NavLink>
+      {INSPECTION_DOMAINS.map((domain) => (
+        <NavLink key={domain.id} to={`${AI_INSPECT_REPORTS_BASE}/${domain.id}`} className={tabClass}>
+          {domain.label}
+        </NavLink>
+      ))}
       <NavLink to={`${AI_INSPECT_REPORTS_BASE}/k8s`} className={tabClass}>
         Kubernetes 集群级
       </NavLink>
@@ -178,7 +184,7 @@ function AiInspectReportsLayout(props: { children: React.ReactNode }) {
   );
 }
 
-function AiInspectReportsPlatform() {
+function AiInspectReportsPlatform({ domain = "platform" }: { domain?: "platform" | InfrastructureInspectionDomain }) {
   const { status } = useAuth();
   const isAdmin = status?.role === "admin";
   const [searchParams] = useSearchParams();
@@ -188,10 +194,10 @@ function AiInspectReportsPlatform() {
   const limit = PAGE_SIZE_DEFAULT;
 
   const repQ = useQuery({
-    queryKey: ["ops-inspect-reports", offset, limit],
+    queryKey: ["ops-inspect-reports", domain, offset, limit],
     queryFn: ({ signal }) =>
       apiGetJson<{ reports: InspectReportFull[]; total?: number; offset?: number; limit?: number }>(
-        `/api/ops/inspect/reports?offset=${offset}&limit=${limit}`,
+        inspectionDomainReportURL(domain, offset, limit),
         { signal }
       ),
     enabled: isAdmin,
@@ -217,9 +223,13 @@ function AiInspectReportsPlatform() {
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/30">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">平台级巡检报告</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {domain === "platform" ? "平台级巡检报告" : `${INSPECTION_DOMAINS.find((item) => item.id === domain)?.label ?? domain} 巡检报告`}
+        </h2>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          全集群与多数据源汇总（K8s、vCenter、Prometheus、日志、Redis、SSH、云主机、OpenClaw 探针等）；由「巡检配置」页的定时或立即执行生成。
+          {domain === "platform"
+            ? "全集群与多数据源汇总；由巡检配置页的定时或立即执行生成。"
+            : `${INSPECTION_DOMAINS.find((item) => item.id === domain)?.description ?? "独立基础设施域巡检"}；由巡检配置页独立执行生成。`}
         </p>
       </div>
       {repQ.isLoading ? (
@@ -627,6 +637,10 @@ const AiInspectReportsShell: React.FC = () => {
   return (
     <AiInspectReportsLayout>
       {tab === "platform" ? <AiInspectReportsPlatform /> : null}
+      {tab === "vcenter" ? <AiInspectReportsPlatform domain="vcenter" /> : null}
+      {tab === "bastion" ? <AiInspectReportsPlatform domain="bastion" /> : null}
+      {tab === "headscale" ? <AiInspectReportsPlatform domain="headscale" /> : null}
+      {tab === "authentik" ? <AiInspectReportsPlatform domain="authentik" /> : null}
       {tab === "k8s" ? <AiInspectReportsK8s /> : null}
       {tab === "pod" ? <AiInspectReportsPod /> : null}
       {tab === "workload" ? <AiInspectReportsWorkload /> : null}

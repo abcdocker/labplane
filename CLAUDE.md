@@ -21,20 +21,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 golangci-lint run
 
 # 本地构建
-go build -o kube-bt-sync .
+go build -o labplane .
 
 # 本地运行（会先构建 React 再启动 Go）
 ./run.sh
 
 # 构建容器镜像
-docker build -t i4t/kube-bt-sync:latest .
+docker build -t i4t/labplane:latest .
 
 # 部署到 K8s
 kubectl apply -f deploy/
-kubectl apply -f deploy/kube-bt-sync-all.yaml  # 一键全量部署
+kubectl apply -f deploy/labplane-all.yaml  # 一键全量部署
 
 # Helm 安装
-helm install kube-bt-sync ./charts/kube-bt-sync
+helm install labplane ./charts/labplane
 
 # 连通性检查工具（仅本地，不含于 Docker 镜像）
 go run ./cmd/connectivity-check/
@@ -56,7 +56,7 @@ npm run build  # 构建到 react/dist/（由 Docker 复制进镜像）
 ### 模块结构
 
 ```
-kube-bt-sync/
+labplane/
 ├── main.go                    # 入口：初始化 ServerApp，启动后台任务，启动 Gin Web 服务
 ├── cmd/connectivity-check/    # 独立 CLI 工具，验证 K8s/Baota 连通性
 ├── internal/                  # 全部 Go 业务逻辑（单一 package: internal，~234 个文件）
@@ -73,7 +73,7 @@ kube-bt-sync/
 Docker 三阶段构建：
 
 1. **frontend** (node:20-alpine)：`npm ci && npm run build` → `react/dist/`
-2. **builder** (golang:1.25.6-alpine)：`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X kube-bt-sync/internal.BuildVersion=${BUILD_VERSION}"` + 复制 React dist
+2. **builder** (golang:1.25.6-alpine)：`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${BUILD_VERSION}"` + 复制 React dist
 3. **final** (distroless/static-debian12:nonroot)：仅含二进制 + helm + 静态资源，无 Shell
 
 最终镜像暴露 `:8080`，健康检查端点 `GET /api/health`。
@@ -88,7 +88,7 @@ Docker 三阶段构建：
 
 每隔 `SYNC_INTERVAL_SEC`（默认 30 秒）：
 1. 列出所有命名空间的 Ingress
-2. 过滤带有注解 `kube-bt-sync.io/baota-sync=true` 的 Ingress
+2. 过滤带有注解 `labplane.io/baota-sync=true` 的 Ingress
 3. 构建 `ProxyTarget{Domain, TargetURL, BaotaHTTPS, BaotaSSLCert}`
 4. 调用 Baota API 幂等创建站点和反向代理（代理名 `k8s-{domain}`）
 5. 若注解含 `baota-https=true`，追加部署证书和强制 HTTPS
@@ -115,10 +115,10 @@ UI 触发删除（`deleteBaota=true`）→ 删除反向代理 → 查站点 ID �
 
 | 注解键 | 说明 |
 |---|---|
-| `kube-bt-sync.io/baota-sync: "true"` | 标记为受管 Ingress（新版，推荐） |
-| `kube-bt-sync.io/baota-https: "true"` | 在 Baota 侧启用 HTTPS |
-| `kube-bt-sync.io/ddns-port: "PORT"` | 覆盖默认后端端口 |
-| `kube-bt-sync.io/baota-ssl-cert-name: "CERT"` | 指定 Baota 证书名 |
+| `labplane.io/baota-sync: "true"` | 标记为受管 Ingress（新版，推荐） |
+| `labplane.io/baota-https: "true"` | 在 Baota 侧启用 HTTPS |
+| `labplane.io/ddns-port: "PORT"` | 覆盖默认后端端口 |
+| `labplane.io/baota-ssl-cert-name: "CERT"` | 指定 Baota 证书名 |
 
 ---
 
@@ -135,7 +135,7 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `KUBEBT_DATA_DIR` | `./data` | 持久化数据目录（挂 PVC） |
+| `LABPLANE_DATA_DIR` | `./data` | 持久化数据目录（挂 PVC） |
 | `BAOTA_URL` | `http://127.0.0.1:8888` | 宝塔面板地址 |
 | `BAOTA_API_KEY` | — | 宝塔 API 密钥 |
 | `DDNS_HOST` | `home.example.com` | 家庭公网 DDNS 域名 |
@@ -145,13 +145,13 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 | `DASHBOARD_HTTP_ADDR` | `:8080` | 监听地址 |
 | `DASHBOARD_PASSWORD` | — | 设置后启用本地密码登录 |
 | `DASHBOARD_SESSION_SECRET` | 随机 | 多副本时必须固定一致 |
-| `KUBEBT_ENCRYPTION_KEY` | — | SSH 凭据 AES 加密密钥 |
+| `LABPLANE_ENCRYPTION_KEY` | — | SSH 凭据 AES 加密密钥 |
 | `REDIS_ADDR` | — | Redis 地址（可选，用于 HA） |
 | `MYSQL_DSN` | — | MySQL DSN（可选，用于多用户/多副本） |
 | `PLATFORM_PUBLIC_URL` | — | 服务公网 URL（必填） |
-| `KUBEBT_ENABLE_BACKGROUND_JOBS` | `true` | 多副本时非主节点设为 false |
-| `KUBEBT_GOMAXPROCS` | OS 默认 | 对齐 K8s CPU limit 时使用 |
-| `KUBEBT_PERFORMANCE_MODE` | `false` | 启用 Gin release 模式 + 命名空间缓存 |
+| `LABPLANE_ENABLE_BACKGROUND_JOBS` | `true` | 多副本时非主节点设为 false |
+| `LABPLANE_GOMAXPROCS` | OS 默认 | 对齐 K8s CPU limit 时使用 |
+| `LABPLANE_PERFORMANCE_MODE` | `false` | 启用 Gin release 模式 + 命名空间缓存 |
 | `VCENTER_URL/USER/PASSWORD` | — | VMware vCenter 连接 |
 | `HARBOR_BASE_URL/USERNAME/PASSWORD` | — | Harbor 镜像仓库 |
 | `OIDC_ISSUER_URL/CLIENT_ID/CLIENT_SECRET/REDIRECT_URL` | — | OIDC 登录（Authentik 等） |
@@ -188,7 +188,7 @@ Web 向导（`/setup`）写入运行时 JSON，`ServerApp.Reload()` 热重载所
 
 ### Session Token
 
-HMAC-SHA256 签名，Cookie 名 `kbts_session`。
+HMAC-SHA256 签名，Cookie 名 `labplane_session`。
 Payload：`user|role|expUnix|nonce|buildVersion`（base64 raw URL）。
 **新部署后 BuildVersion 变更，所有旧 Token 自动失效。**
 
@@ -241,7 +241,7 @@ livenessProbe:
 ### 多副本 HA
 
 - 所有副本设置相同的 `DASHBOARD_SESSION_SECRET`
-- 非主节点设 `KUBEBT_ENABLE_BACKGROUND_JOBS=false`（禁用 Baota 同步、告警等后台任务）
+- 非主节点设 `LABPLANE_ENABLE_BACKGROUND_JOBS=false`（禁用 Baota 同步、告警等后台任务）
 - 配置 MySQL + Redis 实现跨副本配置热同步（每 10 秒检测版本号变化，自动 Reload）
 
 ---

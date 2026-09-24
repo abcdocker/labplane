@@ -1,6 +1,0 @@
-[    1153ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:8080/api/vcenter/bastion/vms:0
-[    2265ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:8080/api/vcenter/bastion/vms:0
-[   36118ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:8080/api/vcenter/bastion/vms:0
-[   37235ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://127.0.0.1:8080/api/vcenter/bastion/vms:0
-[  159596ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://127.0.0.1:8080/api/ops/mesh/instances/mesh-1789735986499826000/metrics:0
-[  167727ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://127.0.0.1:8080/api/ops/mesh/instances/mesh-1789735986499826000/metrics:0

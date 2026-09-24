@@ -110,7 +110,7 @@ func applySetupEnvironmentDefaults(body *setupSubmitBody, env Config) error {
 	if body.UseEnvironmentEncryptionKey {
 		key := strings.TrimSpace(env.EncryptionKey)
 		if len(key) < 16 {
-			return errors.New("运行环境中的 KUBEBT_ENCRYPTION_KEY 长度不足 16 位")
+			return errors.New("运行环境中的 LABPLANE_ENCRYPTION_KEY 长度不足 16 位")
 		}
 		rs.EncryptionKey = key
 	}

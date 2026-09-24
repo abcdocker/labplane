@@ -32,7 +32,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"homelab-console/internal/mesh_joingoing"
+	"github.com/abcdocker/labplane/internal/mesh_joingoing"
 )
 
 func registerMeshRoutes(api gin.IRouter, app *ServerApp) {

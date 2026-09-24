@@ -31,7 +31,7 @@ export type AuthStatus = {
   username: string;
   /** admin 全量；viewer 只读界面，禁止 Pod/SSH/宝塔敏感数据等 */
   role?: string;
-  /** 与 kubebt_dashboard_users.permissions_json 合并后的模块权限（仅登录后） */
+  /** 与 labplane_dashboard_users.permissions_json 合并后的模块权限（仅登录后） */
   permissions?: AuthPermissions;
   /** 已配置 MySQL 时可管理数据库中的平台用户 */
   usersManagementEnabled?: boolean;

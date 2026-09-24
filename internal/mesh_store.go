@@ -1,7 +1,7 @@
 package internal
 
 // 异地组网（Headscale 控制面）实例配置：管理端在 UI 录入多个 headscale 实例，
-// API Key 用 KUBEBT_ENCRYPTION_KEY 加密存 PlatformKV，接口回显只给 "apiKeySet"。
+// API Key 用 LABPLANE_ENCRYPTION_KEY 加密存 PlatformKV，接口回显只给 "apiKeySet"。
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const kvKeyMeshSettings = "kubebt_mesh_settings_v1"
+const kvKeyMeshSettings = "labplane_mesh_settings_v1"
 
 // MeshTrafficCollector 流量采集器：通过 SSH 到子网路由节点执行
 // `tailscale status --json`，取每个 peer 的 RxBytes/TxBytes 计数。
@@ -224,7 +224,7 @@ func upsertMeshInstance(b *meshSettingsBundle, in meshInstancePutInput, enc func
 	return inst, created, nil
 }
 
-// meshEncryptionKey 模块加密 key（与告警通道/AI 配置同一把 KUBEBT_ENCRYPTION_KEY）。
+// meshEncryptionKey 模块加密 key（与告警通道/AI 配置同一把 LABPLANE_ENCRYPTION_KEY）。
 func meshEncryptionKey(cfg Config) ([]byte, error) {
 	return opsEncryptionKey(cfg)
 }

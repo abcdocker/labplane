@@ -43,7 +43,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               onChange={(e) => setField("platformDisplayName", e.target.value)}
             />
             <p className="text-[11px] text-slate-500">
-              保存后将替换侧栏与顶栏默认的「Kube-BT-Sync」；名称启用时带有轻微呼吸动效（白底界面）。
+              保存后将替换侧栏与顶栏默认的「LabPlane」；名称启用时带有轻微呼吸动效（白底界面）。
             </p>
           </div>
           <div className="space-y-2">
@@ -258,7 +258,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               <Label>键前缀（redisKeyPrefix）</Label>
               <Input
                 className="font-mono text-xs"
-                placeholder="kubebt"
+                placeholder="labplane"
                 value={String(form.redisKeyPrefix ?? "")}
                 onChange={(e) => setField("redisKeyPrefix", e.target.value)}
               />
@@ -410,7 +410,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               <Input
                 value={String(form.oidcIssuerUrl ?? "")}
                 onChange={(e) => setField("oidcIssuerUrl", e.target.value)}
-                placeholder="https://idp.example.com/application/o/kube-bt-sync/"
+                placeholder="https://idp.example.com/application/o/labplane/"
               />
             </div>
             <div className="space-y-2">

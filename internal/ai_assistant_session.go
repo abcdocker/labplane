@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const kvKeyAIAssistantSessions = "kubebt_ai_assistant_sessions_v1"
+const kvKeyAIAssistantSessions = "labplane_ai_assistant_sessions_v1"
 
 type AIAssistantMessage struct {
 	Role    string `json:"role"`

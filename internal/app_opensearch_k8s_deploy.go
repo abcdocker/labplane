@@ -140,8 +140,8 @@ func openSearchLabels(base, component string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":       strings.TrimSpace(base),
 		"app.kubernetes.io/component":  component,
-		"app.kubernetes.io/managed-by": "kube-bt-sync",
-		"kube-bt-sync.io/opensearch":   "true",
+		"app.kubernetes.io/managed-by": "labplane",
+		"labplane.io/opensearch":   "true",
 	}
 }
 
@@ -408,7 +408,7 @@ for i in $(seq 1 120); do
   fi
   sleep 5
 done
-curl -sS -X PUT "$URL/_index_template/kubebt-%s" -H 'Content-Type: application/json' --data-binary @/tpl/body.json
+curl -sS -X PUT "$URL/_index_template/labplane-%s" -H 'Content-Type: application/json' --data-binary @/tpl/body.json
 echo OK
 `, dataSvc, ns, strings.TrimSpace(base))},
 						VolumeMounts: []corev1.VolumeMount{{Name: "tpl", MountPath: "/tpl", ReadOnly: true}},

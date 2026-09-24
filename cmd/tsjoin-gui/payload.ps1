@@ -1,5 +1,5 @@
 # ============================================================
-#  Tailscale 一键加入工具（kube-bt-sync 平台生成）
+#  Tailscale 一键加入工具（labplane 平台生成）
 #  从同目录 tsjoin.json 读取配置
 # ============================================================
 $ErrorActionPreference = "SilentlyContinue"

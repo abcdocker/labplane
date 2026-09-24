@@ -15,8 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// KUBEBT_API_RESPONSE_CACHE=0 关闭全站 GET JSON 响应 Redis 缓存（默认开启，需 Redis）。
-// KUBEBT_API_RESPONSE_CACHE_MAX_BODY_BYTES 单条缓存体上限，默认 1048576（1MiB）。
+// LABPLANE_API_RESPONSE_CACHE=0 关闭全站 GET JSON 响应 Redis 缓存（默认开启，需 Redis）。
+// LABPLANE_API_RESPONSE_CACHE_MAX_BODY_BYTES 单条缓存体上限，默认 1048576（1MiB）。
 
 var apiCacheHit uint64
 var apiCacheMiss uint64
@@ -28,12 +28,12 @@ func incAPICacheHit()  { atomic.AddUint64(&apiCacheHit, 1) }
 func incAPICacheMiss() { atomic.AddUint64(&apiCacheMiss, 1) }
 
 func apiResponseCacheGloballyDisabled() bool {
-	return strings.TrimSpace(os.Getenv("KUBEBT_API_RESPONSE_CACHE")) == "0"
+	return strings.TrimSpace(os.Getenv("LABPLANE_API_RESPONSE_CACHE")) == "0"
 }
 
 func apiResponseCacheMaxBody() int {
 	n := 1048576
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_API_RESPONSE_CACHE_MAX_BODY_BYTES")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_API_RESPONSE_CACHE_MAX_BODY_BYTES")); s != "" {
 		if v, err := strconv.Atoi(s); err == nil && v >= 4096 && v <= 8*1024*1024 {
 			n = v
 		}
@@ -44,7 +44,7 @@ func apiResponseCacheMaxBody() int {
 func apiResponseCacheRedisKey(cfg Config, role, path, rawQuery string) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		p = "kubebt:"
+		p = "labplane:"
 	} else if !strings.HasSuffix(p, ":") {
 		p += ":"
 	}

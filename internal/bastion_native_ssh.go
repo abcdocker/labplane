@@ -30,7 +30,7 @@ const (
 	bastionNativeSSHKeyFile       = "bastion_native_ssh_host_ed25519"
 	bastionNativeSshKUserExt      = "kuser"
 	bastionNativeSshKRoleExt      = "krole"
-	bastionNativeSSHVersionString = "SSH-2.0-kube-bt-sync-bastion"
+	bastionNativeSSHVersionString = "SSH-2.0-labplane-bastion"
 )
 
 // ptyReqWire / winWire 与 golang.org/x/crypto/ssh 内部 pty 消息结构一致，用于 Unmarshal
@@ -56,7 +56,7 @@ var (
 	bastionNativeSSHCachedFP string
 )
 
-// BastionNativeSSHReconcileLoop 按堡垒机策略启停 TCP SSH 入站。应在 KUBEBT_ENABLE_BACKGROUND_JOBS=true 的节点运行。
+// BastionNativeSSHReconcileLoop 按堡垒机策略启停 TCP SSH 入站。应在 LABPLANE_ENABLE_BACKGROUND_JOBS=true 的节点运行。
 func BastionNativeSSHReconcileLoop(ctx context.Context, getApp func() *ServerApp) {
 	tick := time.NewTicker(5 * time.Second)
 	defer tick.Stop()
@@ -163,7 +163,7 @@ func readOrCreateBastionSSHHostSigner(dataDir string) (ssh.Signer, error) {
 	if err != nil {
 		return nil, err
 	}
-	block, err := ssh.MarshalPrivateKey(priv, "bastion@kube-bt-sync")
+	block, err := ssh.MarshalPrivateKey(priv, "bastion@labplane")
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +486,7 @@ func bastionNativeSshRunMenuAndForward(
 	cfg := app.Cfg()
 	key, kerr := sshEncryptionKey(cfg)
 	if kerr != nil {
-		_, _ = io.WriteString(ch, "KUBEBT_ENCRYPTION_KEY 未配置: "+kerr.Error()+"\r\n")
+		_, _ = io.WriteString(ch, "LABPLANE_ENCRYPTION_KEY 未配置: "+kerr.Error()+"\r\n")
 		return
 	}
 	var rcli *ssh.Client
@@ -596,7 +596,7 @@ func handleGetBastionNativeSshInfo(c *gin.Context, app *ServerApp) {
 		port = 2222
 	}
 	_, _ = readOrCreateBastionSSHHostSigner(app.DataDir()) // 确保指纹已计算
-	ver := "SSH-2.0-kube-bt-sync-bastion (OpenSSH 兼容)"
+	ver := "SSH-2.0-labplane-bastion (OpenSSH 兼容)"
 	c.JSON(http.StatusOK, gin.H{
 		"enabled":             pol.NativeSshEnabled,
 		"port":                port,

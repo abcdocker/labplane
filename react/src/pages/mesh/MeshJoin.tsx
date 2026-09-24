@@ -353,7 +353,7 @@ const MeshJoin: React.FC = () => {
         {device === "ios" || device === "android" ? (
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-[11px] text-slate-600">
             <p className="mb-1 text-xs font-semibold text-slate-800">{device === "ios" ? "📱 iPhone / iPad" : "🤖 Android"}</p>
-            <p>① 安装 Tailscale App　② 打开「自定义服务器 / Coordinated server」填 <code className="rounded bg-slate-100 px-1 font-mono">{server}</code>　③ Authentik SSO 登录　④ 开启 VPN</p>
+            <p>① 安装 Tailscale App&nbsp;② 打开「自定义服务器 / Coordinated server」填 <code className="rounded bg-slate-100 px-1 font-mono">{server}</code>&nbsp;③ Authentik SSO 登录&nbsp;④ 开启 VPN</p>
           </div>
         ) : null}
       </div>
@@ -403,9 +403,9 @@ const MeshJoin: React.FC = () => {
               <HelpCircle className="h-3 w-3" /> ❓ 常见问题
             </summary>
             <div className="mt-2 space-y-2 text-[11px] text-slate-600">
-              <p><strong className="text-slate-800">Windows 不弹 SSO？</strong>　复制 register 链接浏览器打开，或使用一键工具的「打开登录页面」按钮。</p>
-              <p><strong className="text-slate-800">退出登录会怎样？</strong>　logout 可能生成新节点。临时断开用 tailscale down。</p>
-              <p><strong className="text-slate-800">如何给新用户开通？</strong>　在 Authentik 中把用户加入 Headscale 组即可。</p>
+              <p><strong className="text-slate-800">Windows 不弹 SSO？</strong>&nbsp;复制 register 链接浏览器打开，或使用一键工具的「打开登录页面」按钮。</p>
+              <p><strong className="text-slate-800">退出登录会怎样？</strong>&nbsp;logout 可能生成新节点。临时断开用 tailscale down。</p>
+              <p><strong className="text-slate-800">如何给新用户开通？</strong>&nbsp;在 Authentik 中把用户加入 Headscale 组即可。</p>
             </div>
           </details>
         </div>

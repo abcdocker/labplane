@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, ChevronRight, ClipboardList, HardDrive, LayoutDashboard, LineChart, ScrollText, Sparkles, Wrench } from "lucide-react";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { useAuth } from "@/auth/auth-context";
@@ -10,6 +10,7 @@ import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
 import { cn } from "@/lib/utils";
 import { OPS_MONITORING_PRESETS } from "./opsMonitoringPresets";
 import { toast } from "sonner";
+import { INSPECTION_DOMAINS } from "./inspectionDomains";
 
 type AlertsGet = {
   rules: { enabled: boolean }[];
@@ -20,6 +21,10 @@ type AiConfigGet = {
   ai: {
     judgeModel?: { enabled: boolean; baseUrl: string; model: string };
     playbooksEnabled?: boolean;
+    inspectVCenter?: boolean;
+    inspectBastion?: boolean;
+    inspectHeadscale?: boolean;
+    inspectAuthentik?: boolean;
   };
   judgeApiKeySet?: boolean;
 };
@@ -86,8 +91,19 @@ const AiInspectDashboard: React.FC = () => {
   const repQ = useQuery({
     queryKey: ["ops-inspect-reports-head"],
     queryFn: ({ signal }) =>
-      apiGetJson<{ reports?: unknown[]; total?: number }>("/api/ops/inspect/reports?limit=1&offset=0", { signal }),
+      apiGetJson<{ reports?: unknown[]; total?: number }>("/api/ops/inspect/reports?domain=platform&limit=1&offset=0", { signal }),
     enabled: loggedIn && isAdmin,
+  });
+  const domainReportQueries = useQueries({
+    queries: INSPECTION_DOMAINS.map((domain) => ({
+      queryKey: ["ops-inspect-reports-head", domain.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        apiGetJson<{ reports?: { createdAt?: string; summary?: string }[]; total?: number }>(
+          `/api/ops/inspect/reports?domain=${domain.id}&limit=1&offset=0`,
+          { signal }
+        ),
+      enabled: loggedIn && isAdmin,
+    })),
   });
 
   const clusterAdvisoryQ = useQuery({
@@ -242,6 +258,35 @@ const AiInspectDashboard: React.FC = () => {
           ) : null}
         </CardContent>
       </Card>
+
+      {isAdmin ? (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">基础设施巡检域</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">独立查看最近报告；立即执行入口位于巡检配置页。</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {INSPECTION_DOMAINS.map((domain, index) => {
+              const latest = domainReportQueries[index]?.data?.reports?.[0];
+              const enabled = Boolean(aiConfigQ.data?.ai?.[domain.configKey]);
+              return (
+                <Link
+                  key={domain.id}
+                  to={`/cluster/ai-inspect/reports/${domain.id}`}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-cyan-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/40 dark:hover:border-cyan-700"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">{domain.label}</h3>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", enabled ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400")}>{enabled ? "定时已启用" : "定时未启用"}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{latest?.createdAt ? `最近：${latest.createdAt}` : "暂无独立报告"}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{latest?.summary || domain.description}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SummaryCard

@@ -10,7 +10,7 @@ func IsManagedIngress(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
 	}
-	return annotations["kube-bt-sync.io/baota-sync"] == "true"
+	return annotations["labplane.io/baota-sync"] == "true"
 }
 
 type BaotaHTTPSConfig struct {
@@ -33,10 +33,10 @@ func BaotaHTTPSFromAnnotations(annotations map[string]string) BaotaHTTPSConfig {
 	if annotations == nil {
 		return cfg
 	}
-	cfg.Enable = annotations["kube-bt-sync.io/baota-https"] == "true"
-	cfg.CertName = baotaAnnotationValue(annotations, "kube-bt-sync.io/baota-ssl-cert-name")
-	cfg.PemPath = baotaAnnotationValue(annotations, "kube-bt-sync.io/baota-ssl-pem-path")
-	cfg.KeyPath = baotaAnnotationValue(annotations, "kube-bt-sync.io/baota-ssl-key-path")
+	cfg.Enable = annotations["labplane.io/baota-https"] == "true"
+	cfg.CertName = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-cert-name")
+	cfg.PemPath = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-pem-path")
+	cfg.KeyPath = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-key-path")
 	return cfg
 }
 
@@ -76,7 +76,7 @@ func BaotaOriginTarget(cfg Config, annotations map[string]string) (host string, 
 	if annotations == nil {
 		return host, scheme, port
 	}
-	overrideScheme := strings.ToLower(strings.TrimSpace(annotations["kube-bt-sync.io/ddns-scheme"]))
+	overrideScheme := strings.ToLower(strings.TrimSpace(annotations["labplane.io/ddns-scheme"]))
 	if overrideScheme == "http" || overrideScheme == "https" {
 		scheme = overrideScheme
 		port = baotaOriginDefaultPortForScheme(cfg, scheme)
@@ -84,7 +84,7 @@ func BaotaOriginTarget(cfg Config, annotations map[string]string) (host string, 
 		scheme = "https"
 		port = baotaOriginDefaultPortForScheme(cfg, scheme)
 	}
-	overridePort := strings.TrimSpace(annotations["kube-bt-sync.io/ddns-port"])
+	overridePort := strings.TrimSpace(annotations["labplane.io/ddns-port"])
 	if overridePort != "" {
 		port = overridePort
 	}
@@ -102,12 +102,12 @@ func BaotaDDNSTargetFromAnnotations(annotations map[string]string, defaultHTTPPo
 		}
 		return scheme, port
 	}
-	rawScheme := strings.ToLower(strings.TrimSpace(annotations["kube-bt-sync.io/ddns-scheme"]))
+	rawScheme := strings.ToLower(strings.TrimSpace(annotations["labplane.io/ddns-scheme"]))
 	if rawScheme == "https" {
 		scheme = "https"
 		port = strings.TrimSpace(defaultHTTPSPort)
 	}
-	customPort := strings.TrimSpace(annotations["kube-bt-sync.io/ddns-port"])
+	customPort := strings.TrimSpace(annotations["labplane.io/ddns-port"])
 	if customPort != "" {
 		port = customPort
 	}

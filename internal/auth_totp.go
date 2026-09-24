@@ -17,14 +17,14 @@ import (
 
 const totpStepTokenTTL = 5 * time.Minute
 
-// totpEncryptionKey 优先 KUBEBT_ENCRYPTION_KEY；否则用会话密钥派生 32 字节（便于开发环境）。
+// totpEncryptionKey 优先 LABPLANE_ENCRYPTION_KEY；否则用会话密钥派生 32 字节（便于开发环境）。
 func totpEncryptionKey(cfg Config) ([]byte, error) {
 	if k := strings.TrimSpace(cfg.EncryptionKey); k != "" {
 		return deriveAESKey(k)
 	}
 	key := cfg.resolvedDashboardSessionKey
 	if len(key) == 0 {
-		return nil, errors.New("缺少 KUBEBT_ENCRYPTION_KEY 或 DASHBOARD_SESSION_SECRET")
+		return nil, errors.New("缺少 LABPLANE_ENCRYPTION_KEY 或 DASHBOARD_SESSION_SECRET")
 	}
 	if len(key) >= 32 {
 		return key[:32], nil
@@ -37,7 +37,7 @@ func totpIssuer(cfg Config) string {
 	if v := strings.TrimSpace(cfg.TotpIssuer); v != "" {
 		return v
 	}
-	return "Kube-BT-Sync"
+	return "LabPlane"
 }
 
 // mintTotpVerifyStepToken 密码已通过、待验证 TOTP；payload: totp|user|role|exp|nonce|buildVer

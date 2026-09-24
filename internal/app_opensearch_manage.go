@@ -176,7 +176,7 @@ type openSearchPruneResult struct {
 func openSearchPruneIndices(ctx context.Context, base string, in openSearchPruneInput) (*openSearchPruneResult, error) {
 	pat := strings.TrimSpace(in.Pattern)
 	if pat == "" {
-		return nil, errors.New("pattern 不能为空（如 kubebt-vmlog-*）")
+		return nil, errors.New("pattern 不能为空（如 labplane-vmlog-*）")
 	}
 	if in.OlderThanDays < 1 {
 		return nil, errors.New("olderThanDays 须 >= 1")

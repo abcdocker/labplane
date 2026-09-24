@@ -5,6 +5,7 @@ import Header from "./Header";
 import RedisStatusBanner from "./RedisStatusBanner";
 import PlatformVersionBanner from "./PlatformVersionBanner";
 import UserGuideSheet from "./UserGuideSheet";
+import AiAssistantPopup from "./AiAssistantPopup";
 import AppLayoutMobile from "./AppLayoutMobile";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -77,6 +78,7 @@ const AppLayout: React.FC = () => {
         </div>
       </div>
       <UserGuideSheet />
+      <AiAssistantPopup />
     </div>
   );
 };

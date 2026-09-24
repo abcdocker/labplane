@@ -20,7 +20,7 @@ func redisPermissionsCacheKey(cfg Config, username string) string {
 
 func permissionsCacheTTL() time.Duration {
 	sec := 120
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_PERMISSIONS_CACHE_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_PERMISSIONS_CACHE_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 10 && n <= 3600 {
 			sec = n
 		}

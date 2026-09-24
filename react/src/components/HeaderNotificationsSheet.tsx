@@ -100,14 +100,14 @@ const HeaderNotificationsSheet: React.FC = () => {
   });
 
   useEffect(() => {
-    setSshEventsReadTs(localStorage.getItem("kubebt-ssh-events-read-ts") || "");
+    setSshEventsReadTs(localStorage.getItem("labplane-ssh-events-read-ts") || "");
   }, []);
 
   useEffect(() => {
     if (!notifyOpen) return;
     const first = sshSecQ.data?.events?.[0]?.ts;
     if (first) {
-      localStorage.setItem("kubebt-ssh-events-read-ts", first);
+      localStorage.setItem("labplane-ssh-events-read-ts", first);
       setSshEventsReadTs(first);
     }
   }, [notifyOpen, sshSecQ.data?.events]);

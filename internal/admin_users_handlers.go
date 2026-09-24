@@ -75,7 +75,7 @@ func handleAdminUsersList(c *gin.Context, app *ServerApp) {
 		COALESCE(allow_multi_ip_login,0) != 0,
 		COALESCE(allowed_login_ips,''),
 		(TRIM(COALESCE(oidc_issuer,'')) <> '' AND TRIM(COALESCE(oidc_sub,'')) <> '')
-		FROM kubebt_dashboard_users ORDER BY id ASC`)
+		FROM labplane_dashboard_users ORDER BY id ASC`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -199,7 +199,7 @@ func handleAdminUsersCreate(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO kubebt_dashboard_users (username, email, password_hash, role, disabled, permissions_json, allow_multi_ip_login, allowed_login_ips) VALUES (?,?,?,?,0,?,?,?)`,
+		`INSERT INTO labplane_dashboard_users (username, email, password_hash, role, disabled, permissions_json, allow_multi_ip_login, allowed_login_ips) VALUES (?,?,?,?,0,?,?,?)`,
 		u, strings.TrimSpace(body.Email), hash, role, permArg, multi, sqlNullString(ipsVal),
 	)
 	if err != nil {
@@ -250,7 +250,7 @@ func handleAdminUsersUpdate(c *gin.Context, app *ServerApp) {
 	var curIPs sql.NullString
 	var curPerm sql.NullString
 	err = db.QueryRowContext(ctx,
-		`SELECT username, role, email, password_hash, disabled, COALESCE(allow_multi_ip_login,0), COALESCE(allowed_login_ips,''), permissions_json FROM kubebt_dashboard_users WHERE id = ?`, id,
+		`SELECT username, role, email, password_hash, disabled, COALESCE(allow_multi_ip_login,0), COALESCE(allowed_login_ips,''), permissions_json FROM labplane_dashboard_users WHERE id = ?`, id,
 	).Scan(&curUser, &curRole, &curEmail, &curHash, &curDisabled, &curMul, &curIPs, &curPerm)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
@@ -341,7 +341,7 @@ func handleAdminUsersUpdate(c *gin.Context, app *ServerApp) {
 	}
 
 	_, err = db.ExecContext(ctx,
-		`UPDATE kubebt_dashboard_users SET email=?, password_hash=?, role=?, disabled=?, permissions_json=?, allow_multi_ip_login=?, allowed_login_ips=? WHERE id=?`,
+		`UPDATE labplane_dashboard_users SET email=?, password_hash=?, role=?, disabled=?, permissions_json=?, allow_multi_ip_login=?, allowed_login_ips=? WHERE id=?`,
 		email, hash, role, disabled, permVal, mul, sqlNullString(ipsStr), id,
 	)
 	if err != nil {
@@ -358,7 +358,7 @@ func handleAdminUsersUpdate(c *gin.Context, app *ServerApp) {
 
 func adminCountEnabled(db *sql.DB, ctx context.Context) (int, error) {
 	var n int
-	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kubebt_dashboard_users WHERE role = ? AND disabled = 0`, DashboardRoleAdmin).Scan(&n)
+	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labplane_dashboard_users WHERE role = ? AND disabled = 0`, DashboardRoleAdmin).Scan(&n)
 	return n, err
 }
 
@@ -371,7 +371,7 @@ func runtimeAdminFallbackInEffect(db *sql.DB, ctx context.Context, cfg Config) (
 	}
 	var tmp string
 	err := db.QueryRowContext(ctx,
-		`SELECT username FROM kubebt_dashboard_users WHERE LOWER(username) = LOWER(?) LIMIT 1`,
+		`SELECT username FROM labplane_dashboard_users WHERE LOWER(username) = LOWER(?) LIMIT 1`,
 		expect).Scan(&tmp)
 	if errors.Is(err, sql.ErrNoRows) {
 		return true, nil
@@ -414,7 +414,7 @@ func handleAdminUsersDelete(c *gin.Context, app *ServerApp) {
 	var curRole string
 	var curUser string
 	var curDisabled int
-	err = db.QueryRowContext(ctx, `SELECT username, role, disabled FROM kubebt_dashboard_users WHERE id = ?`, id).Scan(&curUser, &curRole, &curDisabled)
+	err = db.QueryRowContext(ctx, `SELECT username, role, disabled FROM labplane_dashboard_users WHERE id = ?`, id).Scan(&curUser, &curRole, &curDisabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
@@ -438,7 +438,7 @@ func handleAdminUsersDelete(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "不能删除当前登录用户"})
 		return
 	}
-	_, err = db.ExecContext(ctx, `DELETE FROM kubebt_dashboard_users WHERE id = ?`, id)
+	_, err = db.ExecContext(ctx, `DELETE FROM labplane_dashboard_users WHERE id = ?`, id)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -493,7 +493,7 @@ func handleAdminUserOIDCUnbind(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "当前管理员密码不正确"})
 		return
 	}
-	res, err := db.ExecContext(ctx, `UPDATE kubebt_dashboard_users SET oidc_issuer = NULL, oidc_sub = NULL WHERE username = ?`, target)
+	res, err := db.ExecContext(ctx, `UPDATE labplane_dashboard_users SET oidc_issuer = NULL, oidc_sub = NULL WHERE username = ?`, target)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return

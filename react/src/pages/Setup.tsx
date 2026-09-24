@@ -322,7 +322,7 @@ const Setup: React.FC = () => {
               <Hexagon size={26} strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-300">Kube-BT-Sync</p>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-300">LabPlane</p>
               <h1 className="mt-1 text-xl font-semibold">首次初始化</h1>
             </div>
           </div>
@@ -418,7 +418,7 @@ const Setup: React.FC = () => {
                   value={platformPublicUrl}
                   onChange={(e) => setPlatformPublicUrl(e.target.value)}
                   required
-                  placeholder="https://kube-bt.example.com"
+                  placeholder="https://labplane.example.com"
                 />
                 <FieldHint>浏览器访问本平台的根地址，含协议与域名。</FieldHint>
               </div>
@@ -439,7 +439,7 @@ const Setup: React.FC = () => {
                       onChange={(e) => setMysqlDatabase(e.target.value)}
                       required={!useEnvironmentConnections}
                       disabled={useEnvironmentConnections}
-                      placeholder="kubebt"
+                      placeholder="labplane"
                     />
                   </div>
                   <div className="space-y-2">

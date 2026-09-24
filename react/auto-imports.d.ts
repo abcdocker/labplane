@@ -46,8 +46,10 @@ declare global {
   const Chrome: typeof import('lucide-react').Chrome
   const CircleCheckIcon: typeof import('lucide-react').CircleCheckIcon
   const CircleIcon: typeof import('lucide-react').CircleIcon
+  const CircleSlash: typeof import('lucide-react').CircleSlash
   const ClipboardCopy: typeof import('lucide-react').ClipboardCopy
   const ClipboardList: typeof import('lucide-react').ClipboardList
+  const Clock3: typeof import('lucide-react').Clock3
   const Cloud: typeof import('lucide-react').Cloud
   const CloudCog: typeof import('lucide-react').CloudCog
   const CloudDownload: typeof import('lucide-react').CloudDownload
@@ -145,6 +147,7 @@ declare global {
   const Pencil: typeof import('lucide-react').Pencil
   const PencilLine: typeof import('lucide-react').PencilLine
   const PieChart: typeof import('lucide-react').PieChart
+  const Plane: typeof import('lucide-react').Plane
   const Play: typeof import('lucide-react').Play
   const Plus: typeof import('lucide-react').Plus
   const Radar: typeof import('lucide-react').Radar
@@ -199,6 +202,7 @@ declare global {
   const Users: typeof import('lucide-react').Users
   const View: typeof import('lucide-react').View
   const Wallet: typeof import('lucide-react').Wallet
+  const Waypoints: typeof import('lucide-react').Waypoints
   const Webhook: typeof import('lucide-react').Webhook
   const Wifi: typeof import('lucide-react').Wifi
   const WifiOff: typeof import('lucide-react').WifiOff

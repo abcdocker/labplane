@@ -1,7 +1,7 @@
 package internal
 
 // Authentik（SSO）实例配置：平台直连 Authentik 管理 API（/api/v3，Bearer Token），
-// 实现用户/应用/提供程序的常用管理。Token 用 KUBEBT_ENCRYPTION_KEY 加密存 PlatformKV。
+// 实现用户/应用/提供程序的常用管理。Token 用 LABPLANE_ENCRYPTION_KEY 加密存 PlatformKV。
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const kvKeyAuthentikSettings = "kubebt_authentik_settings_v1"
+const kvKeyAuthentikSettings = "labplane_authentik_settings_v1"
 
 // AuthentikInstance 一个 Authentik 控制台实例。
 type AuthentikInstance struct {

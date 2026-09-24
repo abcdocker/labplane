@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { apiGetJson, type AppConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const SESSION_DISMISS_PREFIX = "kubebt:redis-banner-dismiss:";
+const SESSION_DISMISS_PREFIX = "labplane:redis-banner-dismiss:";
 
 /**
  * 运行时配置了 Redis 但进程连不上时，在顶栏下展示告警；与 /api/config 的 redisConfigured / redisError 对齐。

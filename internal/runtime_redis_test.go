@@ -27,7 +27,7 @@ func TestRedisSnapshotEncryptionRoundTrip(t *testing.T) {
 
 func TestRedisSnapshotEncryptionRequiresKey(t *testing.T) {
 	_, err := encryptRedisSnapshot(Config{}, []byte(`{"secret":"value"}`))
-	if err == nil || !strings.Contains(err.Error(), "KUBEBT_ENCRYPTION_KEY") {
+	if err == nil || !strings.Contains(err.Error(), "LABPLANE_ENCRYPTION_KEY") {
 		t.Fatalf("expected encryption key error, got %v", err)
 	}
 }

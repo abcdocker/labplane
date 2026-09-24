@@ -11,7 +11,7 @@ import {
   Monitor,
   Network,
   Fingerprint,
-  Server,
+  Waypoints,
   Sparkles,
   Settings,
   SquareTerminal,
@@ -42,7 +42,6 @@ const Header: React.FC = () => {
   const isHub = workspace === "hub";
   const isK8s = workspace === "kubernetes";
   const isVcenter = workspace === "vcenter";
-  const isBaota = workspace === "baota";
   const isAppcenter = workspace === "appcenter";
   const isBastion = workspace === "bastion";
   const isAiInspect = workspace === "aiinspect";
@@ -57,7 +56,7 @@ const Header: React.FC = () => {
   const isViewer = cfg?.dashboardRole === "viewer" || cfg?.viewer === true;
   const headerShowK8s = menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
   const headerShowVc = menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
-  const headerShowBaota = menuItemVisible(perm, "baota", navRole, moduleVisible(perm, "baota"));
+  const headerShowGateway = headerShowK8s;
   const headerShowApp = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
   const headerShowBastion = menuItemVisible(
     perm,
@@ -132,7 +131,7 @@ const Header: React.FC = () => {
                 "border-slate-200 bg-slate-50/90 text-slate-800 hover:bg-slate-100",
                 "focus-visible:ring-2 focus-visible:ring-blue-500/30"
               )}
-              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库"
+              aria-label="切换工作区：Kubernetes、Gateway API、vCenter、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库"
             >
               <span
                 className={cn(
@@ -145,9 +144,7 @@ const Header: React.FC = () => {
                         ? "from-blue-600 to-blue-700"
                         : isVcenter
                           ? "from-violet-600 to-violet-700"
-                          : isBaota
-                            ? "from-amber-600 to-orange-600"
-                            : isBastion
+                          : isBastion
                               ? "from-teal-600 to-emerald-800"
                               : isAiInspect
                                 ? "from-cyan-600 to-teal-700"
@@ -166,8 +163,6 @@ const Header: React.FC = () => {
                   <Hexagon size={18} strokeWidth={2.5} />
                 ) : isVcenter ? (
                   <Monitor size={18} strokeWidth={2.25} />
-                ) : isBaota ? (
-                  <Server size={17} strokeWidth={2.25} />
                 ) : isBastion ? (
                   <SquareTerminal size={17} strokeWidth={2.25} />
                 ) : isAiInspect ? (
@@ -189,9 +184,7 @@ const Header: React.FC = () => {
                       ? "Kubernetes"
                       : isVcenter
                         ? "vCenter"
-                        : isBaota
-                          ? "宝塔"
-                          : isBastion
+                        : isBastion
                             ? "堡垒机"
                             : isAiInspect
                               ? "AI 巡检"
@@ -233,17 +226,17 @@ const Header: React.FC = () => {
               </div>
             </DropdownMenuItem>
             ) : null}
-            {headerShowBaota ? (
+            {headerShowGateway ? (
             <DropdownMenuItem
               className="cursor-pointer gap-2 py-2.5"
-              onSelect={() => navigate("/cluster/baota/sync")}
+              onSelect={() => navigate("/cluster/routes")}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600">
-                <Server className="text-white" size={17} strokeWidth={2.25} />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600">
+                <Waypoints className="text-white" size={17} strokeWidth={2.25} />
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="font-medium">宝塔</span>
-                <span className="text-xs text-muted-foreground">Ingress 同步与面板</span>
+                <span className="font-medium">Gateway API</span>
+                <span className="text-xs text-muted-foreground">Ingress 与 Gateway 路由</span>
               </div>
             </DropdownMenuItem>
             ) : null}

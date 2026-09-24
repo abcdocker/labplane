@@ -9,13 +9,13 @@ import (
 
 const (
 	// kvKeyOpsAIInspect 沿用历史 KV key（含 openclaw 字样）保证既有配置数据兼容。
-	kvKeyOpsAIInspect        = "kubebt_ops_openclaw_v1"
-	kvKeyOpsGrafanaMeta      = "kubebt_ops_grafana_meta_v1"
-	kvKeyOpsAlertCenter      = "kubebt_ops_alert_center_v1"
-	kvKeyOpsAlertState       = "kubebt_ops_alert_state_v1"
-	kvKeyOpsInspectReports   = "kubebt_ops_inspect_reports_v1"
-	kvKeyOpsInspectCron      = "kubebt_ops_inspect_cron_v1"
-	kvKeyOpsMonitoringPanels = "kubebt_ops_monitoring_panels_v1"
+	kvKeyOpsAIInspect        = "labplane_ops_openclaw_v1"
+	kvKeyOpsGrafanaMeta      = "labplane_ops_grafana_meta_v1"
+	kvKeyOpsAlertCenter      = "labplane_ops_alert_center_v1"
+	kvKeyOpsAlertState       = "labplane_ops_alert_state_v1"
+	kvKeyOpsInspectReports   = "labplane_ops_inspect_reports_v1"
+	kvKeyOpsInspectCron      = "labplane_ops_inspect_cron_v1"
+	kvKeyOpsMonitoringPanels = "labplane_ops_monitoring_panels_v1"
 )
 
 // OpsAIModelExtra 模型相关扩展（温度、最大 token 等）。
@@ -40,6 +40,9 @@ type OpsAIInspectConfig struct {
 	InspectRedis             bool            `json:"inspectRedis"`
 	InspectSSH               bool            `json:"inspectSSH"`
 	InspectCloudVm           bool            `json:"inspectCloudVm"`
+	InspectBastion           bool            `json:"inspectBastion"`
+	InspectHeadscale         bool            `json:"inspectHeadscale"`
+	InspectAuthentik         bool            `json:"inspectAuthentik"`
 	ModelExtra               OpsAIModelExtra `json:"modelExtra"`
 	// JudgeModel 内嵌判读模型（OpenAI 兼容直连，默认 GLM）；巡检摘要与 findings 根因判读均走它，
 	// 不再依赖 OpenClaw 网关。
@@ -201,6 +204,7 @@ type InspectionLLMProbe struct {
 // InspectionReport 巡检报告。
 type InspectionReport struct {
 	ID                   string                 `json:"id"`
+	Domain               string                 `json:"domain,omitempty"`
 	CreatedAt            string                 `json:"createdAt"`
 	Summary              string                 `json:"summary"`
 	Items                []InspectionReportItem `json:"items"`

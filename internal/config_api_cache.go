@@ -19,10 +19,10 @@ func configAPICacheRedisKey(cfg Config, user, role string) string {
 	return p + "apicfg:v1:" + strings.TrimSpace(role) + ":" + u
 }
 
-// configAPICacheTTLSec GET /api/config 在 Redis 中的缓存秒数；KUBEBT_CONFIG_API_CACHE_TTL_SEC=0 关闭，默认 25，最大 300。
+// configAPICacheTTLSec GET /api/config 在 Redis 中的缓存秒数；LABPLANE_CONFIG_API_CACHE_TTL_SEC=0 关闭，默认 25，最大 300。
 func configAPICacheTTLSec() int {
 	sec := 25
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_CONFIG_API_CACHE_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_CONFIG_API_CACHE_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 0 && n <= 300 {
 			sec = n
 		}

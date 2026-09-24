@@ -146,7 +146,7 @@ func scalarFirstHitK8s(cfg Config, queries []string) *float64 {
 func k8sKubeSphereSnapshotRedisKey(prefix string) string {
 	p := strings.TrimSpace(prefix)
 	if p == "" {
-		p = "kubebt"
+		p = "labplane"
 	}
 	return p + ":k8s:prom:clusterSnapshot:v1"
 }

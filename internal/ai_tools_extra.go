@@ -192,9 +192,9 @@ func aiAppCenterOverview(app *ServerApp) (string, error) {
 		label string
 		table string
 	}{
-		{"Redis", "kubebt_app_redis_instances"},
-		{"OpenSearch", "kubebt_app_opensearch_instances"},
-		{"云主机", "kubebt_app_cloud_vm_instances"},
+		{"Redis", "labplane_app_redis_instances"},
+		{"OpenSearch", "labplane_app_opensearch_instances"},
+		{"云主机", "labplane_app_cloud_vm_instances"},
 	} {
 		var n int
 		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+q.table).Scan(&n); err != nil {

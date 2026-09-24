@@ -35,10 +35,10 @@ func docsPublicPageCacheRedisKey(cfg Config, docID uint64) string {
 	return docsRedisKeyPrefix(cfg) + "docs:v1:pubhtml:" + strconv.FormatUint(docID, 10)
 }
 
-// docsAPICacheTTL GET /api/docs 列表与单篇 JSON 在 Redis 中的 TTL；可通过 KUBEBT_DOCS_API_CACHE_TTL_SEC 调整（5～3600，默认 120）。
+// docsAPICacheTTL GET /api/docs 列表与单篇 JSON 在 Redis 中的 TTL；可通过 LABPLANE_DOCS_API_CACHE_TTL_SEC 调整（5～3600，默认 120）。
 func docsAPICacheTTL() time.Duration {
 	sec := 120
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_DOCS_API_CACHE_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_DOCS_API_CACHE_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 5 && n <= 3600 {
 			sec = n
 		}

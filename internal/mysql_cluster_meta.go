@@ -13,7 +13,7 @@ func mysqlGetSchemaMeta(db *sql.DB, k string) (string, error) {
 		return "", sql.ErrNoRows
 	}
 	var v sql.NullString
-	err := db.QueryRow(`SELECT v FROM kubebt_schema_meta WHERE k=? LIMIT 1`, k).Scan(&v)
+	err := db.QueryRow(`SELECT v FROM labplane_schema_meta WHERE k=? LIMIT 1`, k).Scan(&v)
 	if err != nil {
 		return "", err
 	}

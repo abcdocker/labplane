@@ -207,7 +207,7 @@ func handleCloudVMSSHCaptcha(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var dummy int
-	err = db.QueryRow(`SELECT 1 FROM kubebt_app_cloud_vm_instances WHERE id=? LIMIT 1`, id).Scan(&dummy)
+	err = db.QueryRow(`SELECT 1 FROM labplane_app_cloud_vm_instances WHERE id=? LIMIT 1`, id).Scan(&dummy)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return

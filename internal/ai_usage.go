@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	kvKeyAIUsageStats  = "kubebt_ai_usage_stats_v1"
+	kvKeyAIUsageStats  = "labplane_ai_usage_stats_v1"
 	aiUsageMaxRecent   = 200
 	aiUsageMaxFeatures = 8
 )

@@ -1,1 +1,0 @@
-[   27024ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://127.0.0.1:8080/api/ops/mesh/instances/mesh-1789735986499826000/metrics:0

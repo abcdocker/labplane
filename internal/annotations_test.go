@@ -4,10 +4,10 @@ import "testing"
 
 func TestBaotaHTTPSFromAnnotations(t *testing.T) {
 	cfg := BaotaHTTPSFromAnnotations(map[string]string{
-		"kube-bt-sync.io/baota-https":         "true",
-		"kube-bt-sync.io/baota-ssl-cert-name": "modern-cert",
-		"kube-bt-sync.io/baota-ssl-pem-path":  "/modern/site.pem",
-		"kube-bt-sync.io/baota-ssl-key-path":  "/modern/site.key",
+		"labplane.io/baota-https":         "true",
+		"labplane.io/baota-ssl-cert-name": "modern-cert",
+		"labplane.io/baota-ssl-pem-path":  "/modern/site.pem",
+		"labplane.io/baota-ssl-key-path":  "/modern/site.key",
 	})
 	if !cfg.Enable {
 		t.Fatal("expected https enabled")

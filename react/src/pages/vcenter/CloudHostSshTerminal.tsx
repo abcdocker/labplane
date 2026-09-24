@@ -5,7 +5,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { apiGetJson } from "@/lib/api";
-import { useSshKubeBtXtermOptions } from "@/hooks/use-ssh-kube-bt-xterm-options";
+import { useSshLabPlaneXtermOptions } from "@/hooks/use-ssh-labplane-xterm-options";
 import { tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,7 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
   displayName,
   variant = "default",
 }) => {
-  const xtermOpts = useSshKubeBtXtermOptions();
+  const xtermOpts = useSshLabPlaneXtermOptions();
   const isPage = variant === "page";
   const sshQ = useQuery({
     queryKey: ["cloud-host-ssh-settings", hostId],
@@ -192,7 +192,7 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
 
       {!sshQ.data?.encryptionReady && sshQ.data?.writable === false && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          未配置 <code className="rounded bg-white px-1">KUBEBT_ENCRYPTION_KEY</code> 或 SSH 存储，无法保存每台主机密码/私钥。
+          未配置 <code className="rounded bg-white px-1">LABPLANE_ENCRYPTION_KEY</code> 或 SSH 存储，无法保存每台主机密码/私钥。
             可设置环境变量或全局 SSH 后连接。
         </div>
       )}

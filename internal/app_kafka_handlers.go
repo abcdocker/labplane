@@ -580,7 +580,7 @@ func handleKafkaK8sDeploy(c *gin.Context, app *ServerApp) {
 	defer cancel2()
 	iname := kafkaInstanceName(ns, base)
 	var existing int64
-	qerr := db.QueryRowContext(ctx2, `SELECT id FROM kubebt_app_kafka_instances WHERE name=?`, iname).Scan(&existing)
+	qerr := db.QueryRowContext(ctx2, `SELECT id FROM labplane_app_kafka_instances WHERE name=?`, iname).Scan(&existing)
 	if qerr == sql.ErrNoRows {
 		id, ierr := appKafkaInsert(ctx2, db, iname, string(snap), user)
 		if ierr != nil {
@@ -612,7 +612,7 @@ func handleKafkaK8sDeploy(c *gin.Context, app *ServerApp) {
 		"instanceId":           instanceID,
 		"instancePersistError": nullIfEmptyStr(instanceErr),
 		"hints": []string{
-			"控制台与 kube-bt-sync 须能访问 bootstrapBrokers（通常在集群内或通过 NodePort/Ingress 暴露 9092）。",
+			"控制台与 labplane 须能访问 bootstrapBrokers（通常在集群内或通过 NodePort/Ingress 暴露 9092）。",
 			"模版镜像建议：ZooKeeper 使用官方 zookeeper:3.9.x；Kafka 使用 bitnamilegacy/kafka:3.7.x（Docker Hub 上 bitnami/kafka 已无公开 tag，须为 ZooKeeper 模式）。",
 			"已启用 AclAuthorizer 且 allow.everyone.if.no.acl.found=true，便于起步；生产请收紧 ACL 并改为 false。",
 		},

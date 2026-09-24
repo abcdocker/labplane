@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Kube-BT-Sync",
-  "short_name": "Kube-BT",
-  "description": "Kubernetes、宝塔与 HomeLab 私有管理控制台",
+  "name": "LabPlane",
+  "short_name": "LabPlane",
+  "description": "面向 HomeLab 与自建 Kubernetes 集群的一体化运维控制台",
   "lang": "zh-CN",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "theme_color": "#7c3aed",
   "orientation": "any",
   "icons": [
     {

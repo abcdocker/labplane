@@ -32,7 +32,7 @@ func backgroundLeaderNamespace() string {
 			return namespace
 		}
 	}
-	return "kube-bt-sync"
+	return "labplane"
 }
 
 func startLeaderBackgroundWorkers(ctx context.Context, app *ServerApp) {
@@ -53,15 +53,15 @@ func startLeaderBackgroundWorkers(ctx context.Context, app *ServerApp) {
 // 非 K8s 环境没有协调 API，按单进程模式直接启动。
 func StartBackgroundJobsWithLeaderElection(ctx context.Context, app *ServerApp) {
 	client := app.K8s()
-	if client == nil || !getEnvBool("KUBEBT_LEADER_ELECTION", true) {
+	if client == nil || !getEnvBool("LABPLANE_LEADER_ELECTION", true) {
 		log.Println("后台任务: 单进程模式（无 K8s 客户端或已显式关闭 Leader Election）")
 		startLeaderBackgroundWorkers(ctx, app)
 		return
 	}
 
-	lockName := strings.TrimSpace(os.Getenv("KUBEBT_LEADER_ELECTION_NAME"))
+	lockName := strings.TrimSpace(os.Getenv("LABPLANE_LEADER_ELECTION_NAME"))
 	if lockName == "" {
-		lockName = "kube-bt-sync-background-jobs"
+		lockName = "labplane-background-jobs"
 	}
 	identity := backgroundLeaderIdentity()
 	lock, err := resourcelock.New(

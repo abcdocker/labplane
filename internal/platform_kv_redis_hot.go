@@ -9,7 +9,7 @@ import (
 )
 
 // platformKVRedisHot 在 MySQL/文件持久化之上增加 Redis 热读缓存（短 TTL），重复 Get 不打冷存储。
-// 关闭：环境变量 KUBEBT_PLATFORM_KV_REDIS_CACHE=0
+// 关闭：环境变量 LABPLANE_PLATFORM_KV_REDIS_CACHE=0
 type platformKVRedisHot struct {
 	inner PlatformKV
 	rdb   *RedisLight
@@ -20,7 +20,7 @@ func wrapPlatformKVRedisHot(inner PlatformKV, rdb *RedisLight, cfg Config) Platf
 	if inner == nil || rdb == nil {
 		return inner
 	}
-	if strings.TrimSpace(os.Getenv("KUBEBT_PLATFORM_KV_REDIS_CACHE")) == "0" {
+	if strings.TrimSpace(os.Getenv("LABPLANE_PLATFORM_KV_REDIS_CACHE")) == "0" {
 		return inner
 	}
 	return &platformKVRedisHot{inner: inner, rdb: rdb, cfg: cfg}
@@ -36,7 +36,7 @@ func (p *platformKVRedisHot) redisKey(k string) string {
 
 func platformKVHotTTL() time.Duration {
 	sec := 300
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_PLATFORM_KV_REDIS_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_PLATFORM_KV_REDIS_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 30 && n <= 86400 {
 			sec = n
 		}

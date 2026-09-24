@@ -1,5 +1,5 @@
 /** localStorage 前缀：折叠后的操作手册下次访问默认保持收起 */
-const PREFIX = "kubebt.manual.v1.";
+const PREFIX = "labplane.manual.v1.";
 
 export function getStoredGuideOpen(key: string): boolean | undefined {
   try {

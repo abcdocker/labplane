@@ -1,8 +1,8 @@
 # MetalLB 与 Ingress-Nginx（可选组件）
 
-**kube-bt-sync 镜像内不包含** MetalLB 与 ingress-nginx 二进制或 Helm chart。若你的集群已具备云厂商 LoadBalancer 或自有入口方案，可跳过本文。
+**labplane 镜像内不包含** MetalLB 与 ingress-nginx 二进制或 Helm chart。若你的集群已具备云厂商 LoadBalancer 或自有入口方案，可跳过本文。
 
-**可选**：在控制台以 **admin** 登录后，「集群设置」→「Ingress 与 MetalLB」可对当前已连接的集群 **自动检测** 与 **一键应用** 官方 `metallb-native.yaml`、ingress-nginx bare metal 清单，并写入 `IPAddressPool` / `L2Advertisement`；ingress 控制器 HTTP **NodePort** 默认 **31333**（Kubernetes 仅允许 **30000–32767**，不可使用宝塔 defaultPort 常见的 **38333** 等超出上限的值）。**MetalLB 地址池**可写在运行时 `metallbAddressPool`；未写时接口会根据**节点内网 IPv4** 生成**建议段**（如 `x.y.z.240-x.y.z.250`），安装时亦可**自动采用**（务必确认与 DHCP、现有服务不冲突）。运行时配置或环境变量 `KUBEBT_K8S_ADDONS_MANIFEST_MIRROR` 可选：`auto`、`ghproxy_preferred`（国内推荐）、`direct`、`ghproxy_only`；亦可填写完整 `metallbManifestUrl` / `ingressNginxManifestUrl` 指向内网镜像。与手动 `kubectl` 等价，仍须自行评估变更风险。
+**可选**：在控制台以 **admin** 登录后，「集群设置」→「Ingress 与 MetalLB」可对当前已连接的集群 **自动检测** 与 **一键应用** 官方 `metallb-native.yaml`、ingress-nginx bare metal 清单，并写入 `IPAddressPool` / `L2Advertisement`；ingress 控制器 HTTP **NodePort** 默认 **31333**（Kubernetes 仅允许 **30000–32767**，不可使用宝塔 defaultPort 常见的 **38333** 等超出上限的值）。**MetalLB 地址池**可写在运行时 `metallbAddressPool`；未写时接口会根据**节点内网 IPv4** 生成**建议段**（如 `x.y.z.240-x.y.z.250`），安装时亦可**自动采用**（务必确认与 DHCP、现有服务不冲突）。运行时配置或环境变量 `LABPLANE_K8S_ADDONS_MANIFEST_MIRROR` 可选：`auto`、`ghproxy_preferred`（国内推荐）、`direct`、`ghproxy_only`；亦可填写完整 `metallbManifestUrl` / `ingressNginxManifestUrl` 指向内网镜像。与手动 `kubectl` 等价，仍须自行评估变更风险。
 
 以下适用于：**裸金属 / 自建集群** 需要为 `Service type=LoadBalancer` 分配可达 IP，以及需要标准 **Ingress** 控制器处理 `Ingress` 资源的场景。
 

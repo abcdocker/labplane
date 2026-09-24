@@ -165,7 +165,7 @@ type HSPreAuthKey struct {
 	Expiration string   `json:"expiration"`
 	CreatedAt  string   `json:"createdAt"`
 	AclTags    []string `json:"aclTags"`
-	// 以下为平台补充字段（headscale 不提供，由 kube-bt-sync 存储于 Redis 热层）
+	// 以下为平台补充字段（headscale 不提供，由 labplane 存储于 Redis 热层）
 	Note    string          `json:"note,omitempty"`
 	UsedAt  string          `json:"usedAt,omitempty"`  // 平台检测到 used 翻转的时间（近似）
 	HasFull bool            `json:"hasFull,omitempty"` // 平台保存了完整密钥（本平台创建），可预览
@@ -184,6 +184,23 @@ func (h *headscaleClient) ListUsers(ctx context.Context) ([]HSUser, error) {
 	}
 	err := h.do(ctx, http.MethodGet, "/api/v1/user", nil, nil, &out)
 	return out.Users, err
+}
+
+// CreateUser 创建 headscale 用户（POST /api/v1/user，响应为 {"user":{...}} 包装）。
+// v0.26–v0.28 实测仅 name 必填；displayName/email/provider 为可选字段。
+func (h *headscaleClient) CreateUser(ctx context.Context, name, displayName, email string) (HSUser, error) {
+	body := map[string]any{"name": name}
+	if s := strings.TrimSpace(displayName); s != "" {
+		body["displayName"] = s
+	}
+	if s := strings.TrimSpace(email); s != "" {
+		body["email"] = s
+	}
+	var wrapper struct {
+		User HSUser `json:"user"`
+	}
+	err := h.do(ctx, http.MethodPost, "/api/v1/user", nil, body, &wrapper)
+	return wrapper.User, err
 }
 
 func (h *headscaleClient) ListNodes(ctx context.Context) ([]HSNode, error) {

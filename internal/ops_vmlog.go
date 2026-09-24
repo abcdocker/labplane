@@ -270,7 +270,7 @@ func buildOpsVmLogStatusPayload(ctx context.Context, app *ServerApp) gin.H {
 	}
 	geoMMDB := effectiveGeoLiteCountryMMDB(app.Runtime(), cfg)
 	out["nginxGeoLiteConfigured"] = strings.TrimSpace(geoMMDB) != ""
-	out["nginxGeoHint"] = "Nginx 访问统计：未配置时按内网/公网粗分；填写 MaxMind GeoLite2-Country.mmdb 路径（环境变量 KUBEBT_GEOLITE2_COUNTRY_MMDB 或运行时 geoLite2CountryMmdb）可展示国家/地区 Top。"
+	out["nginxGeoHint"] = "Nginx 访问统计：未配置时按内网/公网粗分；填写 MaxMind GeoLite2-Country.mmdb 路径（环境变量 LABPLANE_GEOLITE2_COUNTRY_MMDB 或运行时 geoLite2CountryMmdb）可展示国家/地区 Top。"
 	if app.K8s() != nil {
 		out["discovered"] = discoverVictoriaLogsInCluster(ctx, app.K8s())
 	}
@@ -966,7 +966,7 @@ type vmLogHitsResponse struct {
 
 func vmlogTrendCacheKey(query, start, end, step string) string {
 	sum := sha256.Sum256([]byte("vmlog-trend-v1\x00" + query + "\x00" + start + "\x00" + end + "\x00" + step))
-	return "kubebt:vmlog:trend:" + hex.EncodeToString(sum[:])
+	return "labplane:vmlog:trend:" + hex.EncodeToString(sum[:])
 }
 
 func fetchVictoriaLogsHits(ctx context.Context, cfg Config, baseRaw, query, start, end, step string) (*vmLogHitsResponse, error) {

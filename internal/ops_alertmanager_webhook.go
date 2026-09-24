@@ -151,7 +151,7 @@ func handleAlertmanagerWebhook(app *ServerApp) gin.HandlerFunc {
 		}
 		gotTok := strings.TrimSpace(c.Query("token"))
 		if gotTok == "" {
-			gotTok = strings.TrimSpace(c.GetHeader("X-Kubebt-Webhook-Token"))
+			gotTok = strings.TrimSpace(c.GetHeader("X-LabPlane-Webhook-Token"))
 		}
 		if !constantTimeStringEq(gotTok, wantTok) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

@@ -127,7 +127,7 @@ func webMKSUpstreamHeaders(wssURL string) http.Header {
 		// 浏览器版 WMKS 会自动携带页面 Origin；服务端代理需要显式补上。
 		headers.Set("Origin", scheme+"://"+u.Host)
 	}
-	headers.Set("User-Agent", "Mozilla/5.0 kube-bt-sync WebMKS proxy")
+	headers.Set("User-Agent", "Mozilla/5.0 labplane WebMKS proxy")
 	return headers
 }
 

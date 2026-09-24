@@ -32,9 +32,10 @@ type opsInspectTask struct {
 	StartedAt  string
 	FinishedAt string
 	Report     *InspectionReport
+	Domain     string
 }
 
-func newOpsInspectTask() *opsInspectTask {
+func newOpsInspectTask(domain string) *opsInspectTask {
 	return &opsInspectTask{
 		ID:        uuid.New().String(),
 		Phase:     opsInspectTaskPhasePending,
@@ -42,6 +43,7 @@ func newOpsInspectTask() *opsInspectTask {
 		Stage:     "queued",
 		Message:   "任务已创建，等待开始执行巡检",
 		StartedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Domain:    normalizeInspectionDomain(domain),
 	}
 }
 
@@ -107,6 +109,7 @@ func (t *opsInspectTask) snapshot() map[string]any {
 		"message":    t.Message,
 		"startedAt":  t.StartedAt,
 		"finishedAt": t.FinishedAt,
+		"domain":     t.Domain,
 	}
 	if t.Error != "" {
 		out["error"] = t.Error
@@ -264,7 +267,7 @@ func RunPlatformInspection(app *ServerApp, cfg Config, bundle OpsAIInspectBundle
 			ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 			defer cancel()
 			var n int
-			err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kubebt_app_redis_instances`).Scan(&n)
+			err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labplane_app_redis_instances`).Scan(&n)
 			if err != nil {
 				add("应用中心 Redis", "warn", err.Error())
 			} else {
@@ -290,7 +293,7 @@ func RunPlatformInspection(app *ServerApp, cfg Config, bundle OpsAIInspectBundle
 			ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 			defer cancel()
 			var n int
-			err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM kubebt_app_cloud_vm_instances`).Scan(&n)
+			err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labplane_app_cloud_vm_instances`).Scan(&n)
 			if err != nil {
 				add("云主机", "warn", err.Error())
 			} else {
@@ -323,12 +326,18 @@ func RunPlatformInspection(app *ServerApp, cfg Config, bundle OpsAIInspectBundle
 	sections = append(sections, InspectCollectK8sRestartCorrelationSection(app, ai))
 	reportProgress(88, "SSH", "采集 SSH 凭据存储状态")
 	sections = append(sections, inspectCollectSSHSection(app, ai))
-	reportProgress(90, "虚拟机剧本", "执行虚拟机层剧本巡检（确定性采集 + 阈值规则）")
+	reportProgress(89, "堡垒机", "采集堡垒机策略与目标连通性")
+	sections = append(sections, inspectCollectBastionSection(colCtx, app, ai.InspectBastion))
+	reportProgress(90, "Headscale", "采集 Headscale 实例与节点健康状态")
+	sections = append(sections, inspectCollectHeadscaleSection(colCtx, app, ai.InspectHeadscale))
+	reportProgress(91, "Authentik", "采集 Authentik 状态与异常事件")
+	sections = append(sections, inspectCollectAuthentikSection(colCtx, app, ai.InspectAuthentik))
+	reportProgress(92, "虚拟机剧本", "执行虚拟机层剧本巡检（确定性采集 + 阈值规则）")
 	sections = append(sections, inspectCollectPlaybookSection(colCtx, app, cfg, ai, "vm"))
-	reportProgress(91, "服务剧本", "执行虚拟机服务剧本巡检（确定性采集 + 阈值规则）")
+	reportProgress(93, "服务剧本", "执行虚拟机服务剧本巡检（确定性采集 + 阈值规则）")
 	sections = append(sections, inspectCollectPlaybookSection(colCtx, app, cfg, ai, "service"))
 
-	reportProgress(93, "模型探针", "执行判读模型连通性探针")
+	reportProgress(94, "模型探针", "执行判读模型连通性探针")
 	llmProbe := opsInspectJudgeProbe(cfg, app.PlatformKV(), ai)
 
 	summary := fmt.Sprintf("巡检完成：正常 %d，警告 %d，异常 %d · 分项报告 %d 段", okN, warnN, failN, len(sections))
@@ -350,6 +359,7 @@ func RunPlatformInspection(app *ServerApp, cfg Config, bundle OpsAIInspectBundle
 
 	rep := InspectionReport{
 		ID:        uuid.New().String(),
+		Domain:    "platform",
 		CreatedAt: ts,
 		Summary:   summary,
 		Items:     items,

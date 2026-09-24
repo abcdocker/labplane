@@ -169,7 +169,7 @@ func handleCloudHostSSHWS(c *gin.Context, app *ServerApp) {
 	}
 	if !cloudSSHReady(ctx, app.Cfg(), store, cloudKey, key, host) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "未配置 SSH：请设置全局 VCENTER_VM_SSH_USER 与密码/私钥，或在启用 SSH 存储与 KUBEBT_ENCRYPTION_KEY 后于页面保存该主机凭据",
+			"error": "未配置 SSH：请设置全局 VCENTER_VM_SSH_USER 与密码/私钥，或在启用 SSH 存储与 LABPLANE_ENCRYPTION_KEY 后于页面保存该主机凭据",
 		})
 		return
 	}
@@ -351,7 +351,7 @@ func handlePutCloudHostSSHSettings(c *gin.Context, app *ServerApp) {
 	}
 	key, err := sshEncryptionKey(app.Cfg())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "KUBEBT_ENCRYPTION_KEY: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "LABPLANE_ENCRYPTION_KEY: " + err.Error()})
 		return
 	}
 	id := strings.TrimSpace(c.Param("id"))

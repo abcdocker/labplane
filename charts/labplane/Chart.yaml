@@ -1,0 +1,17 @@
+apiVersion: v2
+name: labplane
+description: K8s 边缘网关同步中心 (HomeLab 专供)
+type: application
+version: 2.0.0
+appVersion: "v2.0.0"
+icon: https://raw.githubusercontent.com/abcdocker/labplane/main/react/public/app-icon.svg
+
+dependencies:
+  - name: ingress-nginx
+    version: "4.10.0"
+    repository: "https://kubernetes.github.io/ingress-nginx"
+    condition: ingress-nginx.enabled # 通过 values.yaml 控制是否安装
+  - name: metallb
+    version: "0.14.3"
+    repository: "https://metallb.github.io/metallb"
+    condition: metallb.enabled      # 通过 values.yaml 控制是否安装

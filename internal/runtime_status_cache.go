@@ -26,7 +26,7 @@ func redisRuntimeStatusKey(cfg Config, roleSuffix string) string {
 
 func runtimeStatusTTL() time.Duration {
 	sec := 90
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_RUNTIME_STATUS_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_RUNTIME_STATUS_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n > 0 {
 			sec = n
 		}
@@ -36,7 +36,7 @@ func runtimeStatusTTL() time.Duration {
 
 func runtimeStatusRefreshInterval() time.Duration {
 	sec := 60
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_RUNTIME_STATUS_REFRESH_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_RUNTIME_STATUS_REFRESH_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n > 0 {
 			sec = n
 		}

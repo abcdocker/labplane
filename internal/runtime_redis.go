@@ -15,7 +15,7 @@ type redisEncryptedEnvelope struct {
 func encryptRedisSnapshot(cfg Config, plaintext []byte) ([]byte, error) {
 	key, err := deriveAESKey(cfg.EncryptionKey)
 	if err != nil {
-		return nil, fmt.Errorf("KUBEBT_ENCRYPTION_KEY 未配置，拒绝把含敏感信息的运行时快照明文写入 Redis: %w", err)
+		return nil, fmt.Errorf("LABPLANE_ENCRYPTION_KEY 未配置，拒绝把含敏感信息的运行时快照明文写入 Redis: %w", err)
 	}
 	ciphertext, err := encryptSecret(key, string(plaintext))
 	if err != nil {
@@ -29,7 +29,7 @@ func decryptRedisSnapshot(cfg Config, raw string) ([]byte, error) {
 	if err := json.Unmarshal([]byte(raw), &envelope); err == nil && envelope.Version == 2 {
 		key, err := deriveAESKey(cfg.EncryptionKey)
 		if err != nil {
-			return nil, fmt.Errorf("Redis 快照已加密，但当前未配置 KUBEBT_ENCRYPTION_KEY: %w", err)
+			return nil, fmt.Errorf("Redis 快照已加密，但当前未配置 LABPLANE_ENCRYPTION_KEY: %w", err)
 		}
 		plaintext, err := decryptSecret(key, envelope.Ciphertext)
 		if err != nil {
@@ -44,7 +44,7 @@ func decryptRedisSnapshot(cfg Config, raw string) ([]byte, error) {
 func redisRuntimeConfigKey(cfg Config) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		p = "kubebt:"
+		p = "labplane:"
 	} else if !strings.HasSuffix(p, ":") {
 		p += ":"
 	}
@@ -54,7 +54,7 @@ func redisRuntimeConfigKey(cfg Config) string {
 func redisPlatformKVKey(cfg Config) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		p = "kubebt:"
+		p = "labplane:"
 	} else if !strings.HasSuffix(p, ":") {
 		p += ":"
 	}

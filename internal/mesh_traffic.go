@@ -254,8 +254,8 @@ func collectMeshTrafficAll(app *ServerApp, inst MeshInstance) []MeshTrafficSnaps
 	return snaps
 }
 
-const kvKeyMeshTraffic = "kubebt_mesh_traffic_v1"
-const kvKeyMeshTrafficHistory = "kubebt_mesh_traffic_history_v1"
+const kvKeyMeshTraffic = "labplane_mesh_traffic_v1"
+const kvKeyMeshTrafficHistory = "labplane_mesh_traffic_history_v1"
 
 // meshTrafficHistoryMaxPerCollector 每采集器保留的历史快照上限（约 4h@1min 间隔）。
 const meshTrafficHistoryMaxPerCollector = 240
@@ -362,8 +362,8 @@ func StartMeshTrafficWorker(ctx context.Context, app *ServerApp, interval time.D
 
 // ── headscale 版本 / 精简 metrics 热缓存 ──
 
-const kvKeyMeshVersions = "kubebt_mesh_versions_v1"
-const kvKeyMeshMetricsCache = "kubebt_mesh_metrics_cache_v1"
+const kvKeyMeshVersions = "labplane_mesh_versions_v1"
+const kvKeyMeshMetricsCache = "labplane_mesh_metrics_cache_v1"
 
 type meshVersionEntry struct {
 	Version   string    `json:"version"`

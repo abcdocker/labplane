@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '手动发布版本号（如 v1.0.0）'
+        description: '手动发布版本号（如 v2.0.0）'
         required: true
-        default: 'v1.0.0'
+        default: 'v2.0.0'
 
 env:
   REGISTRY: ghcr.io
@@ -38,8 +38,10 @@ jobs:
         working-directory: react
         run: |
           npm ci
+          npm audit --audit-level=high
           npm run lint
           npm run typecheck
+          npm test
           npm run build
 
       - name: Setup Go
@@ -63,14 +65,14 @@ jobs:
           for os in linux darwin windows; do
             for arch in amd64 arm64; do
               if [ "$os" = "windows" ] && [ "$arch" = "arm64" ]; then continue; fi
-              package="kube-bt-sync-${os}-${arch}"
+              package="labplane-${os}-${arch}"
               package_dir="build/release/${package}"
-              binary="kube-bt-sync"
+              binary="labplane"
               if [ "$os" = "windows" ]; then binary="${binary}.exe"; fi
               mkdir -p "${package_dir}/react"
               echo "Building $os/$arch -> ${package}/${binary}"
               GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath \
-                -ldflags="-s -w -X kube-bt-sync/internal.BuildVersion=${VERSION}" \
+                -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${VERSION}" \
                 -o "${package_dir}/${binary}" .
               cp -R react/dist "${package_dir}/react/dist"
               cp -R templates "${package_dir}/templates"
@@ -84,8 +86,8 @@ jobs:
           done
           image_name="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
           image_ref="${REGISTRY}/${image_name}:${VERSION}"
-          cp deploy/kube-bt-sync-all.yaml dist/kube-bt-sync-all.yaml
-          sed -i "s#ghcr.io/kube-bt-sync/kube-bt-sync:v1.0.0#${image_ref}#g" dist/kube-bt-sync-all.yaml
+          cp deploy/labplane-all.yaml dist/labplane-all.yaml
+          sed -i "s#ghcr.io/abcdocker/labplane:v2.0.0#${image_ref}#g" dist/labplane-all.yaml
           printf 'Release manifest image: %s\n' "${image_ref}"
           (cd dist && sha256sum * > SHA256SUMS)
           ls -lh dist/

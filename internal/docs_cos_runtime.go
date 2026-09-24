@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const docsCosSettingsKVKey = "kubebt_docs_cos_settings_v1"
+const docsCosSettingsKVKey = "labplane_docs_cos_settings_v1"
 
 // docsCosStored 持久化在 PlatformKV 中的 COS 配置（JSON）。
 type docsCosStored struct {

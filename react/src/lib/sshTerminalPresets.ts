@@ -4,8 +4,8 @@
 import type { ITheme } from "@xterm/xterm";
 import { DEFAULT_SSH_TERM_THEME_ID, readSshTerminalThemeId } from "@/lib/sshTermLocal";
 
-/** 与 xtermShared.kubeBtXtermOptions.theme 一致（避免循环依赖） */
-const classicKubeBtTheme: ITheme = {
+/** 与 xtermShared.labPlaneXtermOptions.theme 一致（避免循环依赖） */
+const classicLabPlaneTheme: ITheme = {
   background: "#1e1e1e",
   foreground: "#e8e8e8",
   cursor: "#22c55e",
@@ -141,7 +141,7 @@ export const SSH_TERM_PRESETS: SshTermPreset[] = [
   {
     id: "classic",
     label: "经典（本平台原色）",
-    theme: { ...classicKubeBtTheme },
+    theme: { ...classicLabPlaneTheme },
   },
   oneHalfDark,
   dracula,
@@ -156,5 +156,5 @@ export function sshXtermThemeForCurrentPreference(): ITheme {
   const hit = presetById.get(id);
   if (hit) return { ...hit.theme };
   const fallback = presetById.get(DEFAULT_SSH_TERM_THEME_ID);
-  return { ...(fallback?.theme ?? classicKubeBtTheme) };
+  return { ...(fallback?.theme ?? classicLabPlaneTheme) };
 }

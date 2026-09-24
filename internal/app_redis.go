@@ -20,7 +20,7 @@ const appRedisMirrorRedisKeySuffix = "app-redis-instances"
 func redisAppRedisInstancesKey(cfg Config) string {
 	p := strings.TrimSpace(cfg.RedisKeyPrefix)
 	if p == "" {
-		p = "kubebt:"
+		p = "labplane:"
 	} else if !strings.HasSuffix(p, ":") {
 		p += ":"
 	}
@@ -109,7 +109,7 @@ func appRedisListFromMySQL(ctx context.Context, db *sql.DB) ([]appRedisRow, erro
 		return nil, nil
 	}
 	rows, err := db.QueryContext(ctx,
-		`SELECT id, name, mode, config_json, created_at, updated_at, created_by FROM kubebt_app_redis_instances ORDER BY id DESC`)
+		`SELECT id, name, mode, config_json, created_at, updated_at, created_by FROM labplane_app_redis_instances ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func appRedisGetByID(ctx context.Context, db *sql.DB, id int64) (*appRedisRow, e
 	var r appRedisRow
 	var created, updated sql.NullTime
 	err := db.QueryRowContext(ctx,
-		`SELECT id, name, mode, config_json, created_at, updated_at, created_by FROM kubebt_app_redis_instances WHERE id=?`,
+		`SELECT id, name, mode, config_json, created_at, updated_at, created_by FROM labplane_app_redis_instances WHERE id=?`,
 		id,
 	).Scan(&r.ID, &r.Name, &r.Mode, &r.ConfigJSON, &created, &updated, &r.CreatedBy)
 	if err != nil {
@@ -167,13 +167,13 @@ func appRedisGetByID(ctx context.Context, db *sql.DB, id int64) (*appRedisRow, e
 }
 
 func appRedisDelete(ctx context.Context, db *sql.DB, id int64) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM kubebt_app_redis_instances WHERE id=?`, id)
+	_, err := db.ExecContext(ctx, `DELETE FROM labplane_app_redis_instances WHERE id=?`, id)
 	return err
 }
 
 func appRedisInsert(ctx context.Context, db *sql.DB, name, mode, configJSON, createdBy string) (int64, error) {
 	res, err := db.ExecContext(ctx,
-		`INSERT INTO kubebt_app_redis_instances (name, mode, config_json, created_by) VALUES (?,?,?,?)`,
+		`INSERT INTO labplane_app_redis_instances (name, mode, config_json, created_by) VALUES (?,?,?,?)`,
 		name, mode, configJSON, createdBy)
 	if err != nil {
 		return 0, err
@@ -184,7 +184,7 @@ func appRedisInsert(ctx context.Context, db *sql.DB, name, mode, configJSON, cre
 
 func appRedisUpdate(ctx context.Context, db *sql.DB, id int64, name, mode, configJSON string) error {
 	_, err := db.ExecContext(ctx,
-		`UPDATE kubebt_app_redis_instances SET name=?, mode=?, config_json=? WHERE id=?`,
+		`UPDATE labplane_app_redis_instances SET name=?, mode=?, config_json=? WHERE id=?`,
 		name, mode, configJSON, id)
 	return err
 }
@@ -724,7 +724,7 @@ func BuildRedisInstallScript(version string, maxmemory string, maxmemoryPolicy s
 	}
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -euo pipefail
-# 由 kube-bt-sync 应用中心生成 — 请审阅后再执行
+# 由 labplane 应用中心生成 — 请审阅后再执行
 # Redis %s · 端口 %d
 docker run -d --name redis-appcenter-%s --restart unless-stopped \
   -p %d:6379 \

@@ -148,8 +148,8 @@ func kafkaLabels(base, component string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":       strings.TrimSpace(base),
 		"app.kubernetes.io/component":  component,
-		"app.kubernetes.io/managed-by": "kube-bt-sync",
-		"kube-bt-sync.io/kafka":        "true",
+		"app.kubernetes.io/managed-by": "labplane",
+		"labplane.io/kafka":        "true",
 	}
 }
 

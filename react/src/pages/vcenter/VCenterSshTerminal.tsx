@@ -8,7 +8,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { apiGetJson, type AppConfig, wsUrlForApiPath } from "@/lib/api";
-import { resolveSshKubeBtXtermOptions, tryLoadXtermWebgl } from "@/lib/xtermShared";
+import { resolveSshLabPlaneXtermOptions, tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 
 function buildVCenterSshWsUrl(moref: string): string {
@@ -114,7 +114,7 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
       const el = wrapRef.current;
       if (!el || cancelled) return;
 
-      const baseOpts = resolveSshKubeBtXtermOptions(cfgQ.data);
+      const baseOpts = resolveSshLabPlaneXtermOptions(cfgQ.data);
       if (typeof fontSizeOverride === "number" && fontSizeOverride >= 10 && fontSizeOverride <= 28) {
         baseOpts.fontSize = fontSizeOverride;
       }

@@ -1113,7 +1113,7 @@ func inspectCollectRedisSection(ctx context.Context, app *ServerApp, cfg Config,
 		sec.Markdown = "无 MySQL，无法读取实例表。"
 		return sec
 	}
-	rows, err := db.QueryContext(ctx, `SELECT id, name, mode, config_json FROM kubebt_app_redis_instances ORDER BY id DESC LIMIT 25`)
+	rows, err := db.QueryContext(ctx, `SELECT id, name, mode, config_json FROM labplane_app_redis_instances ORDER BY id DESC LIMIT 25`)
 	if err != nil {
 		sec.Status = "warn"
 		sec.Markdown = fmt.Sprintf("读取实例表失败：%s", err.Error())
@@ -1181,7 +1181,7 @@ func inspectCollectCloudVmSection(ctx context.Context, app *ServerApp, ai OpsAII
 		sec.Markdown = "无 MySQL。"
 		return sec
 	}
-	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json FROM kubebt_app_cloud_vm_instances ORDER BY id DESC LIMIT 40`)
+	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json FROM labplane_app_cloud_vm_instances ORDER BY id DESC LIMIT 40`)
 	if err != nil {
 		sec.Status = "warn"
 		sec.Markdown = err.Error()

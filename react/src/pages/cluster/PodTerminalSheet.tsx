@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-import { useKubeBtXtermOptions } from "@/hooks/use-kube-bt-xterm-options";
+import { useLabPlaneXtermOptions } from "@/hooks/use-labplane-xterm-options";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { usePodExecTerminal } from "./usePodExecTerminal";
 
@@ -29,7 +29,7 @@ const PodTerminalSheet: React.FC<PodTerminalSheetProps> = ({
   container,
   shell = "/bin/sh",
 }) => {
-  const xtermOpts = useKubeBtXtermOptions();
+  const xtermOpts = useLabPlaneXtermOptions();
   const { wrapRef, status, errMsg, showConnectOverlay, overlayHint, teardown } = usePodExecTerminal({
     enabled: open && !!container.trim() && !!namespace && !!podName,
     namespace,

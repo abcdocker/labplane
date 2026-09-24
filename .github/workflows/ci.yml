@@ -43,15 +43,23 @@ jobs:
       - name: Install
         working-directory: react
         run: npm ci
+      - name: Audit dependencies
+        working-directory: react
+        run: npm audit --audit-level=high
       - name: Lint
         working-directory: react
         run: npm run lint
       - name: Typecheck
         working-directory: react
         run: npm run typecheck
+      - name: Test
+        working-directory: react
+        run: npm test
       - name: Build
         working-directory: react
         run: npm run build
+      - name: First-paint bundle budget
+        run: bash scripts/check-bundle-size.sh react/dist
 
   deploy-validation:
     runs-on: ubuntu-latest
@@ -61,16 +69,16 @@ jobs:
       - name: Validate local Compose environment
         run: |
           bash -n scripts/init-compose-env.sh
+          bash -n run.sh scripts/run-sh-test.sh
+          bash scripts/run-sh-test.sh
           docker compose --env-file .env.example config --quiet
-      - name: Validate Helm charts
+      - name: Validate Helm chart
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo add metallb https://metallb.github.io/metallb
-          helm dependency build charts/kube-bt-sync
-          helm lint charts/kube-bt-sync
-          helm template kube-bt-sync charts/kube-bt-sync --namespace kube-bt-sync >/tmp/chart.yaml
-          helm lint helm/kube-bt-sync
-          helm template kube-bt-sync helm/kube-bt-sync --namespace kube-bt-sync >/tmp/legacy-chart.yaml
+          helm dependency build charts/labplane
+          helm lint charts/labplane
+          helm template labplane charts/labplane --namespace labplane >/tmp/chart.yaml
       - name: Scan repository
         uses: aquasecurity/trivy-action@v0.36.0
         with:

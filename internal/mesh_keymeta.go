@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-const kvKeyMeshKeyMeta = "kubebt_mesh_keymeta_v1"
-const kvKeyMeshDefaultKey = "kubebt_mesh_defaultkey_v1"
+const kvKeyMeshKeyMeta = "labplane_mesh_keymeta_v1"
+const kvKeyMeshDefaultKey = "labplane_mesh_defaultkey_v1"
 
 // MeshKeyDevice 通过一键加入脚本回传的设备记录（headscale API 无 key↔节点关联）。
 type MeshKeyDevice struct {

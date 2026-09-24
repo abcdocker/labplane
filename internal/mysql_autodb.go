@@ -13,7 +13,7 @@ import (
 )
 
 func mysqlAutoCreateDatabaseEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("KUBEBT_MYSQL_AUTOCREATE_DATABASE")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("LABPLANE_MYSQL_AUTOCREATE_DATABASE")))
 	if v == "0" || v == "false" || v == "off" || v == "no" {
 		return false
 	}
@@ -47,7 +47,7 @@ func mysqlValidSchemaName(name string) bool {
 }
 
 // mysqlEnsureDatabaseExists 在 DSN 中的库不存在时，用去掉库名的 DSN 连上服务端并 CREATE DATABASE。
-// 需要账号具备建库权限；可通过 KUBEBT_MYSQL_AUTOCREATE_DATABASE=false 关闭。
+// 需要账号具备建库权限；可通过 LABPLANE_MYSQL_AUTOCREATE_DATABASE=false 关闭。
 func mysqlEnsureDatabaseExists(fullDSN string) error {
 	cfg, err := mysqldriver.ParseDSN(fullDSN)
 	if err != nil {
@@ -77,6 +77,6 @@ func mysqlEnsureDatabaseExists(fullDSN string) error {
 	if _, err := db.ExecContext(ctx, q); err != nil {
 		return err
 	}
-	log.Printf("MySQL: 已自动创建数据库 %s，正在初始化 kubebt_* 表…", dbName)
+	log.Printf("MySQL: 已自动创建数据库 %s，正在初始化 labplane_* 表…", dbName)
 	return nil
 }

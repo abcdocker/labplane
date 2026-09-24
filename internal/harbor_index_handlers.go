@@ -115,7 +115,7 @@ func handleHarborIndexSearch(app *ServerApp) gin.HandlerFunc {
 				"matched":    0,
 				"query":      q,
 				"indexReady": false,
-				"indexNote":  "索引尚未就绪，请等待后台任务（需 Redis + Harbor，且 KUBEBT_ENABLE_BACKGROUND_JOBS=true）",
+				"indexNote":  "索引尚未就绪，请等待后台任务（需 Redis + Harbor，且 LABPLANE_ENABLE_BACKGROUND_JOBS=true）",
 				"meta":       m,
 			})
 			return

@@ -318,7 +318,7 @@
 /* ── Login v2（白底双栏）：轻网格、浮动角标、卡片光晕 ── */
 
 .login-page-v2 {
-  --login-v2-primary: #1a5ec8;
+  --login-v2-primary: #7c3aed;
   --login-v2-k8s: #326de6;
   --login-v2-docker: #0db7ed;
   --login-v2-go: #00acd7;
@@ -326,10 +326,18 @@
   --login-v2-vc: #6ab04c;
 }
 
+.login-brand-heading {
+  color: #7c3aed;
+}
+
+.dark .login-brand-heading {
+  color: #22d3ee;
+}
+
 .login-page-v2-grid-bg {
   background-image:
-    linear-gradient(rgba(26, 94, 200, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 94, 200, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(124, 58, 237, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.06) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -430,7 +438,11 @@
 }
 
 .login-card-glow-v2 {
-  box-shadow: 0 8px 48px rgba(26, 94, 200, 0.08), 0 2px 12px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 24px 80px rgba(91, 33, 182, 0.13), 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+.dark .login-card-glow-v2 {
+  box-shadow: 0 28px 90px rgba(34, 211, 238, 0.08), 0 18px 60px rgba(0, 0, 0, 0.32);
 }
 
 @keyframes login-v2-fade-in-up {
@@ -462,7 +474,7 @@
 }
 
 .login-v2-input:focus {
-  box-shadow: 0 0 0 2px rgba(26, 94, 200, 0.15), 0 0 12px rgba(26, 94, 200, 0.08);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15), 0 0 12px rgba(124, 58, 237, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

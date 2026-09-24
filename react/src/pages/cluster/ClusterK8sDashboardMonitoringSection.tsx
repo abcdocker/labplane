@@ -108,26 +108,26 @@ kubectl apply -f - <<'EOF'
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
   namespace: kubernetes-dashboard
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
   namespace: kubernetes-dashboard
 EOF
 
 kubectl get pods -n kube-system -l k8s-app=metrics-server
 kubectl get pods -n kubernetes-dashboard
-kubectl create token kube-bt-sync-dashboard-admin -n kubernetes-dashboard --duration=24h
+kubectl create token labplane-dashboard-admin -n kubernetes-dashboard --duration=24h
 # 访问：kubectl proxy 后打开
 # http://127.0.0.1:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 
@@ -251,7 +251,7 @@ const ClusterK8sDashboardMonitoringSection: React.FC = () => {
           <code className="rounded bg-white px-0.5 text-[11px]">kubernetesui/*</code> 改写为{" "}
           <code className="rounded bg-white px-0.5 text-[11px]">m.daocloud.io/docker.io/kubernetesui/*</code>
           （与 ingress 共用「关闭 K8s 镜像改写」开关时则不改写）。安装结束后自动轮询 Deployment 就绪；另创建{" "}
-          <code className="rounded bg-white px-0.5 text-[11px]">kube-bt-sync-dashboard-admin</code>（cluster-admin，仅便于登录演示，生产请改最小权限）。
+          <code className="rounded bg-white px-0.5 text-[11px]">labplane-dashboard-admin</code>（cluster-admin，仅便于登录演示，生产请改最小权限）。
           <span className="mt-2 block text-[13px] text-slate-700">
             <strong className="text-slate-800">说明：</strong>本平台「集群 → 监控」页的 <strong>Prometheus / VictoriaMetrics</strong> 地址仍在下方「Kubernetes
             监控」卡片单独配置；本栈解决 Dashboard UI 内 CPU/内存条与 <code className="rounded bg-slate-100 px-0.5 text-[11px]">kubectl top</code> 所需 metrics-server。
@@ -427,7 +427,7 @@ const ClusterK8sDashboardMonitoringSection: React.FC = () => {
               一键安装 / 升级 Dashboard 与 metrics-server
             </Button>
             <p className="text-[11px] text-slate-500">
-              登录 Token：<code className="rounded bg-slate-100 px-0.5">kubectl create token kube-bt-sync-dashboard-admin -n kubernetes-dashboard --duration=24h</code>
+              登录 Token：<code className="rounded bg-slate-100 px-0.5">kubectl create token labplane-dashboard-admin -n kubernetes-dashboard --duration=24h</code>
             </p>
           </div>
         ) : (

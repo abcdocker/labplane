@@ -592,7 +592,7 @@ export default function AppCenterRedis() {
           {!statusQ.data?.encryptionReady && (
             <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-900">
               保存访问密码需配置{" "}
-              <code className="rounded bg-red-100/80 px-1 font-mono text-xs">KUBEBT_ENCRYPTION_KEY</code>
+              <code className="rounded bg-red-100/80 px-1 font-mono text-xs">LABPLANE_ENCRYPTION_KEY</code>
               {statusQ.data?.encryptionError ? (
                 <span className="ml-1 font-mono text-xs">{statusQ.data.encryptionError}</span>
               ) : null}

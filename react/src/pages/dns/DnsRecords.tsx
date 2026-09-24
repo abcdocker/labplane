@@ -204,7 +204,82 @@ export default function DnsRecords() {
       {selectedDomainId > 0 && recordsQ.isLoading && <p className="text-sm text-slate-500">加载中…</p>}
 
       {filtered.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200/90 bg-white shadow-sm">
+        <>
+          <div className="grid gap-3 md:hidden">
+            {filtered.map((r) => (
+              <article
+                key={r.id}
+                className="min-w-0 rounded-lg border border-slate-200/90 bg-white p-4 shadow-sm"
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <h3 className="break-all font-mono text-sm font-bold text-slate-800">{r.host}</h3>
+                      <span className="inline-flex shrink-0 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-xs text-slate-700">
+                        {r.recordType}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 break-all text-xs text-slate-400">{recordFqdn(r.host)}</p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1.5 text-xs">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${r.status === 1 ? "bg-emerald-500" : "bg-slate-300"}`}
+                    />
+                    <span className={r.status === 1 ? "text-emerald-700" : "text-slate-500"}>
+                      {r.status === 1 ? "正常" : "暂停"}
+                    </span>
+                  </span>
+                </div>
+
+                <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                  <div className="min-w-0">
+                    <dt className="mb-1 text-slate-400">记录值</dt>
+                    <dd className="break-all font-mono text-[12px] leading-snug text-slate-700">{r.value}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">线路</dt>
+                    <dd className="min-w-0 text-right text-slate-700">{dnsLineDisplayLabel(r.line)}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">TTL</dt>
+                    <dd className="min-w-0 text-right tabular-nums text-slate-600">{r.ttl}</dd>
+                  </div>
+                  {r.mxPriority ? (
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">优先级</dt>
+                      <dd className="min-w-0 text-right tabular-nums text-slate-500">{r.mxPriority}</dd>
+                    </div>
+                  ) : null}
+                  {r.remark ? (
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-slate-400">备注</dt>
+                      <dd className="break-all text-slate-500">{r.remark}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+
+                {!isViewer && (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                    <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => toggleMut.mutate(r)}>
+                      {r.status === 1
+                        ? <ToggleRight className="h-3.5 w-3.5 text-emerald-600" />
+                        : <ToggleLeft className="h-3.5 w-3.5 text-slate-400" />}
+                      {r.status === 1 ? "暂停" : "启用"}
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(r)}>
+                      <Pencil className="h-3.5 w-3.5" /> 编辑
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-red-500 hover:text-red-700"
+                      onClick={() => setDeleteRec(r)}>
+                      <Trash2 className="h-3.5 w-3.5" /> 删除
+                    </Button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-slate-200/90 bg-white shadow-sm md:block">
           <Table className="min-w-[880px] text-[13px]">
             <TableHeader>
               <TableRow className="border-b border-slate-200/90 bg-[#f6f7fb] hover:bg-[#f6f7fb]">
@@ -275,7 +350,8 @@ export default function DnsRecords() {
               ))}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
 
       {selectedDomainId > 0 && !recordsQ.isLoading && filtered.length === 0 && (

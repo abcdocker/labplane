@@ -23,8 +23,8 @@ import (
 
 const (
 	vectorShipperVersion       = "0.36.1"
-	vmShipperSystemdUnitName   = "kubebt-vector-vmlog.service"
-	vmShipperVectorConfigPath  = "/etc/vector/kube-bt-vmlog.toml"
+	vmShipperSystemdUnitName   = "labplane-vector-vmlog.service"
+	vmShipperVectorConfigPath  = "/etc/vector/labplane-vmlog.toml"
 	vmShipperVectorInstallPath = "/usr/local/bin/vector"
 )
 
@@ -463,13 +463,13 @@ batch.timeout_secs = 1
 	}
 	prefix := strings.TrimSpace(os.IndexPrefix)
 	if prefix == "" {
-		prefix = "kubebt-vmlog"
+		prefix = "labplane-vmlog"
 	}
 	ep := strings.TrimRight(strings.TrimSpace(os.Endpoint), "/")
 	var b strings.Builder
 	b.WriteString(base)
 	b.WriteString(fmt.Sprintf(`
-[sinks.kubebt_opensearch]
+[sinks.labplane_opensearch]
 type = "elasticsearch"
 distribution = "opensearch"
 inputs = ["vl_prep"]
@@ -480,7 +480,7 @@ bulk.index = "%s-%%Y-%%m-%%d"
 	pw := strings.TrimSpace(os.Password)
 	if u != "" {
 		b.WriteString(fmt.Sprintf(`
-[sinks.kubebt_opensearch.auth]
+[sinks.labplane_opensearch.auth]
 strategy = "basic"
 user = %q
 password = %q
@@ -495,7 +495,7 @@ func vmShipperBuildBashScript(vlBase, vectorBaseURL, vmLabel, logSource string, 
 	tomlB64 := base64.StdEncoding.EncodeToString([]byte(toml))
 
 	unit := `[Unit]
-Description=kube-bt-sync Vector -> VictoriaLogs (VM / 宝塔日志)
+Description=labplane Vector -> VictoriaLogs (VM / 宝塔日志)
 After=network-online.target
 Wants=network-online.target
 
@@ -511,7 +511,7 @@ WantedBy=multi-user.target
 	unitB64 := base64.StdEncoding.EncodeToString([]byte(unit))
 
 	return fmt.Sprintf(`#!/bin/bash
-# 由 kube-bt-sync 生成：在 Linux 虚拟机安装 Vector，将文本日志推送到 VictoriaLogs。
+# 由 labplane 生成：在 Linux 虚拟机安装 Vector，将文本日志推送到 VictoriaLogs。
 # 要求：当前 SSH 登录用户为 root，或已配置 NOPASSWD sudo（非交互）。
 set -euo pipefail
 
@@ -631,12 +631,12 @@ SZ=$(rk stat -c %%s "$TMP" 2>/dev/null || true)
 if [ -z "$SZ" ]; then
   SZ="?"
 fi
-echo "[kube-bt-sync] 已确认 Vector 安装包存在于本机: $TMP 大小=${SZ} 字节，继续解压与安装"
+echo "[labplane] 已确认 Vector 安装包存在于本机: $TMP 大小=${SZ} 字节，继续解压与安装"
 progress 45 verify "安装包校验通过（${SZ} 字节）"
 
 progress 58 install "解压安装包"
-EXTRACT_DIR=/tmp/kubebt-vector-${VECTOR_VER}-${VARCH}
-TAR_ERR=/tmp/kubebt-vector-${VECTOR_VER}-${VARCH}.tar.err
+EXTRACT_DIR=/tmp/labplane-vector-${VECTOR_VER}-${VARCH}
+TAR_ERR=/tmp/labplane-vector-${VECTOR_VER}-${VARCH}.tar.err
 rk rm -rf "$EXTRACT_DIR" "$TAR_ERR"
 rk mkdir -p "$EXTRACT_DIR"
 if ! rk tar -xzf "$TMP" -C "$EXTRACT_DIR" 2>"$TAR_ERR"; then
@@ -858,7 +858,7 @@ func vmShipperResolveTarget(ctx context.Context, app *ServerApp, body opsVmLogVm
 				return nil, kerr
 			}
 			if store == nil {
-				return nil, fmt.Errorf("未配置 SSH 存储：请在虚拟机详情保存 SSH 凭据（需 KUBEBT_ENCRYPTION_KEY），或配置全局 VCENTER_VM_SSH_USER 与密码/私钥路径")
+				return nil, fmt.Errorf("未配置 SSH 存储：请在虚拟机详情保存 SSH 凭据（需 LABPLANE_ENCRYPTION_KEY），或配置全局 VCENTER_VM_SSH_USER 与密码/私钥路径")
 			}
 		}
 		if !sshEffectiveReady(reqCtx, cfg, store, moref, key) {
@@ -897,7 +897,7 @@ func vmShipperResolveTarget(ctx context.Context, app *ServerApp, body opsVmLogVm
 	}
 	store := app.SSHStore()
 	if store == nil {
-		return nil, fmt.Errorf("未配置 SSH 存储（KUBEBT_ENCRYPTION_KEY + SSH 设置）")
+		return nil, fmt.Errorf("未配置 SSH 存储（LABPLANE_ENCRYPTION_KEY + SSH 设置）")
 	}
 	cloudKey := cloudHostSSHStorageKey(cloudID)
 	if !cloudSSHReady(reqCtx, cfg, store, cloudKey, key, host) {

@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
-  AlertTriangle, CheckCircle2, Copy, Fingerprint, KeyRound, Loader2, Plus, RefreshCw, ShieldCheck,
-  Trash2, UserPlus, Users, XCircle,
+  Activity, AlertTriangle, Boxes, CheckCircle2, Clock3, Copy, Fingerprint, KeyRound, Loader2, Plus,
+  RefreshCw, ShieldCheck, Trash2, UserPlus, Users, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -54,6 +54,12 @@ type AKStatus = {
   usersCount?: number; groupsCount?: number; appsCount?: number; providersCount?: number;
 };
 
+type AKEvent = {
+  pk?: string; created?: string; action?: string; client_ip?: string;
+  user?: unknown; app?: unknown; target?: unknown; brand?: unknown;
+  context?: Record<string, unknown>; severity?: string;
+};
+
 const emptyInstance = (): AKInstance => ({
   id: "", name: "", baseUrl: "", tokenSet: false, enabled: true, notes: "", createdAt: "", updatedAt: "",
 });
@@ -73,7 +79,9 @@ const apiErr = (e: unknown) => (e instanceof ApiHttpError ? e.serverMessage : e 
 
 // ──────────────────────────── 页面 ────────────────────────────
 
-const AuthentikPage: React.FC = () => {
+const AuthentikPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = initialTab && ["dashboard", "users", "apps", "providers", "events"].includes(initialTab) ? initialTab : "dashboard";
   const qc = useQueryClient();
   const { status } = useAuth();
   const isAdmin = status?.role === "admin";
@@ -83,15 +91,19 @@ const AuthentikPage: React.FC = () => {
     queryFn: () => apiGetJson<{ instances: AKInstance[] }>("/api/ops/authentik/instances"),
   });
   const instances = useMemo(() => instancesQ.data?.instances ?? [], [instancesQ.data]);
-  const [selectedId, setSelectedId] = useState("");
+  const requestedId = searchParams.get("inst") ?? "";
+  const selectedId = instances.some((instance) => instance.id === requestedId)
+    ? requestedId
+    : (instances[0]?.id ?? "");
   const selected = instances.find((i) => i.id === selectedId) ?? null;
 
   useEffect(() => {
-    if (!selectedId && instances.length > 0) setSelectedId(instances[0].id);
-    if (selectedId && instances.length > 0 && !instances.some((i) => i.id === selectedId)) {
-      setSelectedId(instances[0].id);
+    if (selectedId && requestedId !== selectedId) {
+      const next = new URLSearchParams(searchParams);
+      next.set("inst", selectedId);
+      setSearchParams(next, { replace: true });
     }
-  }, [instances, selectedId]);
+  }, [requestedId, searchParams, selectedId, setSearchParams]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<AKInstance>(emptyInstance());
@@ -102,6 +114,15 @@ const AuthentikPage: React.FC = () => {
     setTokenInput("");
     setEditorOpen(true);
   };
+  useEffect(() => {
+    if (!isAdmin || searchParams.get("new") !== "1") return;
+    setDraft(emptyInstance());
+    setTokenInput("");
+    setEditorOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [isAdmin, searchParams, setSearchParams]);
   const openEdit = (inst: AKInstance) => {
     setDraft({ ...inst });
     setTokenInput("");
@@ -131,10 +152,12 @@ const AuthentikPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <PageHeader isAdmin={isAdmin} onAdd={isAdmin ? openCreate : undefined} />
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-          <Fingerprint className="mx-auto h-10 w-10 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-600">还没有 Authentik 实例。</p>
-          <p className="mt-1 text-xs text-slate-400">
+        <div className="rounded-3xl border border-dashed border-fuchsia-200 bg-gradient-to-br from-white via-fuchsia-50/30 to-indigo-50/60 p-12 text-center shadow-sm dark:border-fuchsia-900/60 dark:from-slate-950 dark:via-fuchsia-950/20 dark:to-indigo-950/30">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-100 text-fuchsia-600 shadow-inner dark:bg-fuchsia-500/15 dark:text-fuchsia-300">
+            <Fingerprint className="h-7 w-7" />
+          </span>
+          <p className="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-100">还没有 Authentik 实例</p>
+          <p className="mx-auto mt-1 max-w-xl text-xs leading-5 text-slate-500 dark:text-slate-400">
             配置 Authentik 管理 API（Base URL + API Token）后，可在平台创建用户与应用、
             生成 OIDC 提供程序并关联用户组——无需登录 Authentik 控制台。
           </p>
@@ -157,46 +180,14 @@ const AuthentikPage: React.FC = () => {
         <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> 加载实例…</p>
       ) : null}
 
-      {instances.length > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-          <div className="space-y-2">
-            {instances.map((inst) => (
-              <button
-                key={inst.id}
-                type="button"
-                onClick={() => setSelectedId(inst.id)}
-                className={cn(
-                  "w-full rounded-xl border px-3.5 py-3 text-left transition-colors",
-                  inst.id === selectedId
-                    ? "border-fuchsia-300 bg-fuchsia-50/70"
-                    : "border-slate-200 bg-white hover:border-slate-300",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <Fingerprint className="h-4 w-4 text-fuchsia-600" /> {inst.name}
-                  </span>
-                  {!inst.enabled ? <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-500">停用</span> : null}
-                </div>
-                <p className="mt-1 truncate font-mono text-[10px] text-slate-400">{inst.baseUrl}</p>
-              </button>
-            ))}
-            {isAdmin ? (
-              <Button type="button" variant="outline" size="sm" className="w-full" onClick={openCreate}>
-                <Plus className="mr-1 h-3.5 w-3.5" /> 添加实例
-              </Button>
-            ) : null}
-          </div>
-
-          {selected ? (
-            <InstanceDetail
-              key={selected.id}
-              inst={selected}
-              isAdmin={isAdmin}
-              onEdit={() => openEdit(selected)}
-            />
-          ) : null}
-        </div>
+      {instances.length > 0 && selected ? (
+        <InstanceDetail
+          key={`${selected.id}:${tab}`}
+          inst={selected}
+          isAdmin={isAdmin}
+          onEdit={() => openEdit(selected)}
+          tab={tab}
+        />
       ) : null}
 
       {editorOpen ? renderInstanceEditor() : null}
@@ -255,23 +246,37 @@ const AuthentikPage: React.FC = () => {
 // ──────────────────────────── 子组件 ────────────────────────────
 
 const PageHeader: React.FC<{ isAdmin: boolean; onAdd?: () => void }> = ({ isAdmin, onAdd }) => (
-  <div className="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-        <Fingerprint className="h-6 w-6 text-fuchsia-600" /> Authentik
-      </h1>
-      <p className="mt-1 text-sm text-slate-600">
-        统一认证管理：平台直建用户并关联组（如 headscale 的 OIDC 组）、创建应用与 OAuth2
-        提供程序、查看状态与事件——常用配置无需登录 Authentik 控制台。
-      </p>
+  <div className="relative overflow-hidden rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-white via-fuchsia-50/60 to-indigo-50/80 px-6 py-6 shadow-sm dark:border-fuchsia-950 dark:from-slate-950 dark:via-fuchsia-950/30 dark:to-indigo-950/40 sm:px-7">
+    <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-fuchsia-300/20 blur-3xl dark:bg-fuchsia-500/10" />
+    <div className="pointer-events-none absolute -bottom-20 right-32 h-40 w-40 rounded-full bg-indigo-300/20 blur-3xl dark:bg-indigo-500/10" />
+    <div className="relative flex flex-wrap items-center justify-between gap-5">
+      <div className="flex min-w-0 items-start gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-600 text-white shadow-lg shadow-fuchsia-200/70 dark:shadow-fuchsia-950/50">
+          <Fingerprint className="h-6 w-6" />
+        </span>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-fuchsia-600 dark:text-fuchsia-300">Identity control plane</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Authentik</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            统一管理用户、访问组、应用与 OAuth2 提供程序，并与 Headscale OIDC 接入保持联动。
+          </p>
+        </div>
+      </div>
+      {isAdmin && onAdd ? (
+        <Button type="button" size="sm" className="bg-slate-950 text-white shadow-lg shadow-slate-300/40 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:shadow-none dark:hover:bg-slate-200" onClick={onAdd}>
+          <Plus className="mr-1 h-4 w-4" /> 添加实例
+        </Button>
+      ) : null}
     </div>
-    {isAdmin && onAdd ? (
-      <Button type="button" size="sm" onClick={onAdd}><Plus className="mr-1 h-4 w-4" /> 添加实例</Button>
-    ) : null}
   </div>
 );
 
-const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () => void }> = ({ inst, isAdmin, onEdit }) => {
+const InstanceDetail: React.FC<{
+  inst: AKInstance;
+  isAdmin: boolean;
+  onEdit: () => void;
+  tab: string;
+}> = ({ inst, isAdmin, onEdit, tab }) => {
   const qc = useQueryClient();
   const statusQ = useQuery({
     queryKey: ["authentik-status", inst.id],
@@ -296,18 +301,18 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
   });
 
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white via-white to-fuchsia-50/50 px-5 py-4 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-fuchsia-950/20">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-base font-semibold text-slate-900">{inst.name}</h2>
+            <h2 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">{inst.name}</h2>
             {statusQ.isError ? (
               <span className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
                 <AlertTriangle className="h-3 w-3" /> {apiErr(statusQ.error)}
               </span>
             ) : st ? (
               st.healthy ? (
-                <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
                   <CheckCircle2 className="h-3 w-3" /> 健康{st.version ? ` · ${st.version}` : ""}
                 </span>
               ) : (
@@ -315,7 +320,7 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
               )
             ) : null}
           </div>
-          <p className="truncate font-mono text-[11px] text-slate-400">{inst.baseUrl}</p>
+          <p className="mt-1 truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">{inst.baseUrl}</p>
         </div>
         <div className="flex items-center gap-2">
           {isAdmin ? (
@@ -344,31 +349,201 @@ const InstanceDetail: React.FC<{ inst: AKInstance; isAdmin: boolean; onEdit: () 
         </div>
       </div>
 
-      <div className="p-4">
-        <Tabs defaultValue="users">
-          <TabsList className="flex flex-wrap">
-            <TabsTrigger value="users"><Users className="mr-1 h-3.5 w-3.5" /> 用户</TabsTrigger>
-            <TabsTrigger value="apps"><ShieldCheck className="mr-1 h-3.5 w-3.5" /> 应用对接</TabsTrigger>
-            <TabsTrigger value="providers"><KeyRound className="mr-1 h-3.5 w-3.5" /> 提供程序</TabsTrigger>
-            <TabsTrigger value="events"><RefreshCw className="mr-1 h-3.5 w-3.5" /> 事件</TabsTrigger>
-          </TabsList>
+      <div className="p-4 sm:p-5">
+        {tab === "dashboard" ? <DashboardPanel instance={inst} status={st} statusLoading={statusQ.isLoading} /> : null}
+        {tab === "users" ? <UsersPanel instanceId={inst.id} isAdmin={isAdmin} /> : null}
+        {tab === "apps" ? <AppsPanel instanceId={inst.id} isAdmin={isAdmin} /> : null}
+        {tab === "providers" ? <ProvidersPanel instanceId={inst.id} isAdmin={isAdmin} /> : null}
+        {tab === "events" ? <EventsPanel instanceId={inst.id} /> : null}
+      </div>
+    </div>
+  );
+};
 
-          <TabsContent value="users" className="mt-3">
-            <UsersPanel instanceId={inst.id} isAdmin={isAdmin} />
-          </TabsContent>
+// ── Dashboard 与事件展示 ──
 
-          <TabsContent value="apps" className="mt-3">
-            <AppsPanel instanceId={inst.id} isAdmin={isAdmin} />
-          </TabsContent>
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
-          <TabsContent value="providers" className="mt-3">
-            <ProvidersPanel instanceId={inst.id} isAdmin={isAdmin} />
-          </TabsContent>
+const firstText = (source: Record<string, unknown> | null | undefined, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return "";
+};
 
-          <TabsContent value="events" className="mt-3">
-            <EventsPanel instanceId={inst.id} />
-          </TabsContent>
-        </Tabs>
+const eventActor = (event: AKEvent) => {
+  if (typeof event.user === "string" && event.user.trim()) return event.user;
+  const user = asRecord(event.user);
+  return firstText(user, "username", "name", "email") || firstText(event.context, "username", "user") || "系统";
+};
+
+const eventApp = (event: AKEvent) => {
+  if (typeof event.app === "string" && event.app.trim()) return event.app;
+  return firstText(asRecord(event.app), "name", "slug", "model_name") || firstText(event.context, "app", "application");
+};
+
+const eventMessage = (event: AKEvent) =>
+  firstText(event.context, "message", "error", "exception", "description", "status") || firstText(asRecord(event.target), "name", "username", "slug");
+
+const eventTaskName = (event: AKEvent) => {
+  const explicit = firstText(event.context, "task_name", "task", "handler", "flow");
+  if (explicit) return explicit;
+  const match = eventMessage(event).match(/^Task\s+([^\s]+)\s+encountered\s+an\s+error/i);
+  return match?.[1] ?? "";
+};
+
+const eventIsException = (event: AKEvent) => {
+  const marker = `${event.action ?? ""} ${event.severity ?? ""}`.toLowerCase();
+  return /exception|error|fail|denied|warning/.test(marker);
+};
+
+const eventActionLabel = (action?: string) => ({
+  system_task_exception: "系统任务异常",
+  login: "用户登录",
+  logout: "用户退出",
+  authorize_application: "应用授权",
+  configuration_error: "配置异常",
+}[action ?? ""] ?? action?.replaceAll("_", " ") ?? "未知事件");
+
+const EventCard: React.FC<{ event: AKEvent; compact?: boolean }> = ({ event, compact = false }) => {
+  const context = event.context ?? {};
+  const taskName = eventTaskName(event);
+  const exception = firstText(context, "exception", "error", "traceback");
+  const message = eventMessage(event);
+  const app = eventApp(event);
+  const target = typeof event.target === "string" ? event.target : firstText(asRecord(event.target), "name", "username", "slug", "pk");
+  const extraDetails = [
+    ["任务", taskName],
+    ["异常", exception && exception !== message ? exception : ""],
+    ["应用", app],
+    ["目标", target],
+    ["品牌", typeof event.brand === "string" ? event.brand : firstText(asRecord(event.brand), "name")],
+  ].filter((entry) => entry[1]);
+
+  return (
+    <article className={cn(
+      "rounded-xl border bg-white px-3.5 py-3 shadow-sm dark:bg-slate-950",
+      eventIsException(event) ? "border-rose-200 dark:border-rose-900/70" : "border-slate-200 dark:border-slate-800",
+    )}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", eventIsException(event) ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300")}>
+              {eventIsException(event) ? "异常" : "信息"}
+            </span>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{eventActionLabel(event.action)}</h3>
+            {event.action ? <code className="text-[10px] text-slate-400 dark:text-slate-500">{event.action}</code> : null}
+          </div>
+          {message ? <p className="mt-1.5 break-words text-xs leading-5 text-slate-700 dark:text-slate-300">{message}</p> : null}
+          {taskName ? <p className="mt-1 break-all font-mono text-[10px] text-fuchsia-700 dark:text-fuchsia-300">{taskName}</p> : null}
+        </div>
+        <time className="shrink-0 text-[10px] text-slate-400" dateTime={event.created}>{String(event.created ?? "").slice(0, 19).replace("T", " ") || "时间未知"}</time>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+        <span>用户 <strong className="font-medium text-slate-700 dark:text-slate-200">{eventActor(event)}</strong></span>
+        {event.client_ip ? <span>IP <strong className="font-mono font-medium text-slate-700 dark:text-slate-200">{event.client_ip}</strong></span> : null}
+        {app ? <span>来源 <strong className="font-medium text-slate-700 dark:text-slate-200">{app}</strong></span> : null}
+      </div>
+      {!compact && extraDetails.length > 0 ? (
+        <details className="mt-2 rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] dark:bg-slate-900">
+          <summary className="cursor-pointer select-none font-medium text-slate-600 dark:text-slate-300">事件上下文</summary>
+          <dl className="mt-2 grid gap-1.5">
+            {extraDetails.map(([label, value]) => (
+              <div key={String(label)} className="grid gap-1 sm:grid-cols-[56px_minmax(0,1fr)]">
+                <dt className="text-slate-400">{label}</dt>
+                <dd className="max-h-40 overflow-auto whitespace-pre-wrap break-all font-mono text-slate-700 dark:text-slate-300">{String(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      ) : null}
+    </article>
+  );
+};
+
+const DashboardPanel: React.FC<{ instance: AKInstance; status?: AKStatus; statusLoading: boolean }> = ({ instance, status, statusLoading }) => {
+  const eventsQ = useQuery({
+    queryKey: ["authentik-events", instance.id],
+    queryFn: () => apiGetJson<{ events: AKEvent[] }>(`/api/ops/authentik/instances/${instance.id}/events?perPage=50`),
+  });
+  const events = useMemo(() => eventsQ.data?.events ?? [], [eventsQ.data]);
+  const exceptions = events.filter(eventIsException);
+  const actors = new Set(events.map(eventActor).filter((actor) => actor !== "系统"));
+  const actionCounts = events.reduce<Record<string, number>>((counts, event) => {
+    const action = event.action || "unknown";
+    counts[action] = (counts[action] ?? 0) + 1;
+    return counts;
+  }, {});
+  const topActions = Object.entries(actionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const resourceCards: Array<{ label: string; value?: number; icon: React.ElementType; gradient: string }> = [
+    { label: "用户", value: status?.usersCount, icon: Users, gradient: "from-fuchsia-500 to-pink-500" },
+    { label: "用户组", value: status?.groupsCount, icon: ShieldCheck, gradient: "from-indigo-500 to-violet-500" },
+    { label: "应用", value: status?.appsCount, icon: Boxes, gradient: "from-sky-500 to-cyan-500" },
+    { label: "提供程序", value: status?.providersCount, icon: KeyRound, gradient: "from-amber-500 to-orange-500" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-fuchsia-600 dark:text-fuchsia-300">Dashboard</p>
+        <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">身份系统概览</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前实例的资源规模、运行状态与近期安全事件。</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {resourceCards.map(({ label, value, icon: Icon, gradient }) => (
+          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+              <span className={cn("rounded-lg bg-gradient-to-br p-2 text-white", gradient)}><Icon className="h-4 w-4" /></span>
+            </div>
+            <p className="mt-3 text-2xl font-bold tabular-nums text-slate-950 dark:text-white">{statusLoading ? "…" : value ?? "—"}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
+        <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+          <div className="flex items-center justify-between gap-3">
+            <div><h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">近期事件</h3><p className="mt-0.5 text-[11px] text-slate-400">最近拉取的 {events.length} 条审计记录</p></div>
+            <Activity className="h-4 w-4 text-fuchsia-500" />
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {[["事件总数", events.length], ["近期异常", exceptions.length], ["活跃用户", actors.size]].map(([label, value]) => (
+              <div key={String(label)} className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900"><p className="text-[10px] text-slate-400">{label}</p><p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{eventsQ.isLoading ? "…" : value}</p></div>
+            ))}
+          </div>
+          <div className="mt-4 space-y-2">
+            {eventsQ.isError ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                近期事件加载失败：{apiErr(eventsQ.error)}。资源统计仍可正常查看。
+              </p>
+            ) : null}
+            {(exceptions.length ? exceptions : events).slice(0, 3).map((event, index) => <EventCard key={event.pk ?? index} event={event} compact />)}
+            {!eventsQ.isLoading && events.length === 0 ? <p className="py-6 text-center text-xs text-slate-400">暂无事件</p> : null}
+          </div>
+        </section>
+
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">运行信息</h3>
+            <dl className="mt-3 space-y-2 text-xs">
+              {[["连接状态", statusLoading ? "检测中…" : status?.healthy ? "健康" : "不可达"], ["版本", statusLoading ? "…" : status?.version || "—"], ["API Token", instance.tokenSet ? "已配置" : "未配置"], ["实例状态", instance.enabled ? "已启用" : "已停用"]].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-3"><dt className="text-slate-400">{label}</dt><dd className="font-medium text-slate-700 dark:text-slate-200">{value}</dd></div>
+              ))}
+            </dl>
+          </section>
+          <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">事件类型</h3>
+            <div className="mt-3 space-y-2">
+              {topActions.map(([action, count]) => <div key={action} className="flex items-center justify-between gap-3 text-xs"><span className="truncate text-slate-500 dark:text-slate-400">{eventActionLabel(action)}</span><span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">{count}</span></div>)}
+              {!eventsQ.isLoading && topActions.length === 0 ? <p className="text-xs text-slate-400">暂无分布数据</p> : null}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -493,9 +668,84 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
         ) : null}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      {/* 移动端用户卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {usersQ.isLoading ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">加载中…</div>
+        ) : users.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无用户</div>
+        ) : (
+          users.map((u) => (
+            <article key={u.pk} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-all text-sm font-bold text-slate-900 dark:text-slate-100">{u.username}</h3>
+                  <p className="mt-0.5 break-all text-xs text-slate-500 dark:text-slate-400">
+                    {u.name || "—"}
+                    {u.email ? <span className="ml-1 text-[10px] text-slate-400">{u.email}</span> : null}
+                  </p>
+                </div>
+                {u.is_active ? (
+                  <span className="shrink-0 text-xs font-medium text-emerald-700">启用</span>
+                ) : (
+                  <span className="shrink-0 text-xs font-medium text-slate-400">停用</span>
+                )}
+              </div>
+
+              <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                <div className="min-w-0">
+                  <dt className="mb-1 text-slate-400">组</dt>
+                  <dd className="flex min-w-0 flex-wrap gap-1">
+                    {(u.groups ?? []).map((gpk) => (
+                      <span key={gpk} className="rounded bg-violet-50 px-1 text-[10px] text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+                        {groupById[gpk]?.name ?? gpk.slice(0, 8)}
+                      </span>
+                    ))}
+                    {(u.groups ?? []).length === 0 ? <span className="text-[10px] text-slate-300">—</span> : null}
+                  </dd>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <dt className="shrink-0 text-slate-400">最近登录</dt>
+                  <dd className="min-w-0 break-all text-right text-slate-600 dark:text-slate-300">{u.last_login ? fmtTime(u.last_login) : "从未"}</dd>
+                </div>
+              </dl>
+
+              {isAdmin ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                    onClick={() => openEditUser(u)}>
+                    编辑
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                    onClick={() => { setResetUser(u); setResetPw(""); }}>
+                    重置密码
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-slate-600"
+                    onClick={() => activeMut.mutate({ uid: u.pk, active: !u.is_active })}>
+                    {u.is_active ? "停用" : "启用"}
+                  </Button>
+                  {confirmDel?.pk === u.pk ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                      onClick={() => delMut.mutate(u.pk)}>
+                      确认删除？
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
+                      onClick={() => setConfirmDel(u)}>
+                      删除
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端用户表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900/50 md:block">
         <table className="w-full min-w-[720px] text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500">
+          <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2 font-medium">用户名</th>
               <th className="px-3 py-2 font-medium">姓名 / 邮箱</th>
@@ -507,16 +757,16 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.pk} className="border-t border-slate-50 hover:bg-slate-50/60">
-                <td className="px-3 py-2 font-medium text-slate-900">{u.username}</td>
-                <td className="px-3 py-2 text-slate-600">
+              <tr key={u.pk} className="border-t border-slate-50 hover:bg-slate-50/60 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{u.username}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                   {u.name || "—"}
                   {u.email ? <span className="ml-1 text-[10px] text-slate-400">{u.email}</span> : null}
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1">
                     {(u.groups ?? []).map((gpk) => (
-                      <span key={gpk} className="rounded bg-violet-50 px-1 text-[10px] text-violet-700">
+                      <span key={gpk} className="rounded bg-violet-50 px-1 text-[10px] text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
                         {groupById[gpk]?.name ?? gpk.slice(0, 8)}
                       </span>
                     ))}
@@ -530,7 +780,7 @@ const UsersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instan
                     <span className="text-slate-400">停用</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-slate-500">{u.last_login ? fmtTime(u.last_login) : "从未"}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{u.last_login ? fmtTime(u.last_login) : "从未"}</td>
                 {isAdmin ? (
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1.5">
@@ -820,9 +1070,55 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
         ) : null}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      {/* 移动端应用卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {appsQ.isLoading ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">加载中…</div>
+        ) : apps.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无应用</div>
+        ) : (
+          apps.map((a) => (
+            <article key={a.pk} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-all text-sm font-bold text-slate-900 dark:text-slate-100">{a.name}</h3>
+                  <p className="mt-0.5 break-all font-mono text-[11px] text-slate-600 dark:text-slate-300">{a.slug}</p>
+                </div>
+              </div>
+
+              <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <dt className="shrink-0 text-slate-400">提供程序 pk</dt>
+                  <dd className="min-w-0 break-all text-right text-slate-600 dark:text-slate-300">
+                    {a.provider != null ? String(a.provider) : <span className="text-amber-600">未关联</span>}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="mb-1 text-slate-400">入口 URL</dt>
+                  <dd className="break-all font-mono text-[10px] text-slate-500 dark:text-slate-400">{a.meta_launch_url || "—"}</dd>
+                </div>
+              </dl>
+
+              {isAdmin ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => setBindApp(a)}>访问绑定</Button>
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => openEditApp(a)}>编辑</Button>
+                  {confirmDelApp?.pk === a.pk ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={() => delAppMut.mutate(a.slug)}>确认删除？</Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600" onClick={() => setConfirmDelApp(a)}>删除</Button>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端应用表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900/50 md:block">
         <table className="w-full min-w-[680px] text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500">
+          <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2 font-medium">应用</th>
               <th className="px-3 py-2 font-medium">Slug</th>
@@ -833,11 +1129,11 @@ const AppsPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ instanc
           </thead>
           <tbody>
             {apps.map((a) => (
-              <tr key={a.pk} className="border-t border-slate-50 hover:bg-slate-50/60">
-                <td className="px-3 py-2 font-medium text-slate-900">{a.name}</td>
-                <td className="px-3 py-2 font-mono text-[11px] text-slate-600">{a.slug}</td>
-                <td className="px-3 py-2 text-slate-600">{a.provider != null ? String(a.provider) : <span className="text-amber-600">未关联</span>}</td>
-                <td className="px-3 py-2 font-mono text-[10px] text-slate-500">{a.meta_launch_url || "—"}</td>
+              <tr key={a.pk} className="border-t border-slate-50 hover:bg-slate-50/60 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{a.name}</td>
+                <td className="px-3 py-2 font-mono text-[11px] text-slate-600 dark:text-slate-300">{a.slug}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{a.provider != null ? String(a.provider) : <span className="text-amber-600 dark:text-amber-400">未关联</span>}</td>
+                <td className="px-3 py-2 font-mono text-[10px] text-slate-500 dark:text-slate-400">{a.meta_launch_url || "—"}</td>
                 {isAdmin ? (
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1.5">
@@ -1129,9 +1425,79 @@ const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ in
           </Button>
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      {/* 移动端提供程序卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {q.isLoading ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">加载中…</div>
+        ) : providers.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无 OAuth2 提供程序</div>
+        ) : (
+          providers.map((p) => (
+            <article key={p.pk} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <h3 className="min-w-0 break-all text-sm font-bold text-slate-900 dark:text-slate-100">{p.name}</h3>
+              </div>
+              <p className="mt-0.5 flex min-w-0 items-center gap-1">
+                <code className="min-w-0 break-all font-mono text-[11px] text-slate-700 dark:text-slate-300">{p.client_id}</code>
+                <Button type="button" size="sm" variant="ghost" className="h-5 w-5 shrink-0 p-0 text-slate-400"
+                  onClick={() => void navigator.clipboard.writeText(p.client_id).catch(() => {})}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </p>
+
+              <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                <div className="min-w-0">
+                  <dt className="mb-1 text-slate-400">回调地址</dt>
+                  <dd className="flex min-w-0 flex-col gap-0.5">
+                    {(p.redirect_uris ?? []).map((u, i) => (
+                      <span key={i} className="break-all font-mono text-[10px] text-slate-500 dark:text-slate-400" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
+                        {u.url || JSON.stringify(u)}
+                      </span>
+                    ))}
+                    {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
+                  </dd>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <dt className="shrink-0 text-slate-400">所属应用</dt>
+                  <dd className="min-w-0 break-all text-right text-slate-600 dark:text-slate-300">
+                    {p.assigned_application_slug ? <span className="font-mono text-[10px]">{p.assigned_application_slug}</span> : <span className="text-[10px] text-slate-300">未关联</span>}
+                  </dd>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <dt className="shrink-0 text-slate-400">sub 模式</dt>
+                  <dd className="min-w-0 break-all text-right text-slate-500 dark:text-slate-400">{p.sub_mode ?? "—"}</dd>
+                </div>
+              </dl>
+
+              {isAdmin ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      setEditProv(p);
+                      setEditForm({
+                        name: p.name ?? "",
+                        redirectUris: (p.redirect_uris ?? []).map((u) => u.url).join("\n"),
+                        subMode: p.sub_mode || "user_email",
+                      });
+                    }}>
+                    编辑
+                  </Button>
+                  {confirmDel?.pk === p.pk ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]" onClick={() => delMut.mutate(p.pk)}>确认删除？</Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600" onClick={() => setConfirmDel(p)}>删除</Button>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端提供程序表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900/50 md:block">
         <table className="w-full min-w-[760px] text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500">
+          <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2 font-medium">名称</th>
               <th className="px-3 py-2 font-medium">Client ID</th>
@@ -1143,10 +1509,10 @@ const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ in
           </thead>
           <tbody>
             {providers.map((p) => (
-              <tr key={p.pk} className="border-t border-slate-50 align-top hover:bg-slate-50/60">
-                <td className="px-3 py-2 font-medium text-slate-900">{p.name}</td>
+              <tr key={p.pk} className="border-t border-slate-50 align-top hover:bg-slate-50/60 dark:border-slate-800 dark:hover:bg-slate-800/50">
+                <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{p.name}</td>
                 <td className="px-3 py-2">
-                  <span className="font-mono text-[11px] text-slate-700">{p.client_id}</span>
+                  <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300">{p.client_id}</span>
                   <Button type="button" size="sm" variant="ghost" className="ml-1 h-5 w-5 p-0 text-slate-400"
                     onClick={() => void navigator.clipboard.writeText(p.client_id).catch(() => {})}>
                     <Copy className="h-3 w-3" />
@@ -1155,15 +1521,15 @@ const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ in
                 <td className="px-3 py-2">
                   <div className="flex flex-col gap-0.5">
                     {(p.redirect_uris ?? []).map((u, i) => (
-                      <span key={i} className="font-mono text-[10px] text-slate-500" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
+                      <span key={i} className="font-mono text-[10px] text-slate-500 dark:text-slate-400" title={u.matching_mode ? `匹配模式：${u.matching_mode}` : undefined}>
                         {u.url || JSON.stringify(u)}
                       </span>
                     ))}
                     {(p.redirect_uris ?? []).length === 0 ? <span className="text-slate-300">—</span> : null}
                   </div>
                 </td>
-                <td className="px-3 py-2 text-slate-600">{p.assigned_application_slug ? <span className="font-mono text-[10px]">{p.assigned_application_slug}</span> : <span className="text-[10px] text-slate-300">未关联</span>}</td>
-                <td className="px-3 py-2 text-slate-500">{p.sub_mode ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{p.assigned_application_slug ? <span className="font-mono text-[10px]">{p.assigned_application_slug}</span> : <span className="text-[10px] text-slate-300 dark:text-slate-600">未关联</span>}</td>
+                <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{p.sub_mode ?? "—"}</td>
                 {isAdmin ? (
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1.5">
@@ -1274,9 +1640,14 @@ const ProvidersPanel: React.FC<{ instanceId: string; isAdmin: boolean }> = ({ in
 const EventsPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
   const q = useQuery({
     queryKey: ["authentik-events", instanceId],
-    queryFn: () => apiGetJson<{ events: Record<string, unknown>[] }>(`/api/ops/authentik/instances/${instanceId}/events?perPage=30`),
+    queryFn: () => apiGetJson<{ events: AKEvent[] }>(`/api/ops/authentik/instances/${instanceId}/events?perPage=50`),
   });
   const events = q.data?.events ?? [];
+  const summaryCards: Array<{ label: string; value: React.ReactNode; icon: React.ElementType }> = [
+    { label: "事件总数", value: events.length, icon: Activity },
+    { label: "异常事件", value: events.filter(eventIsException).length, icon: AlertTriangle },
+    { label: "最后活动", value: events[0]?.created ? fmtTime(events[0].created) : "—", icon: Clock3 },
+  ];
   if (q.isError) {
     return (
       <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">
@@ -1285,17 +1656,30 @@ const EventsPanel: React.FC<{ instanceId: string }> = ({ instanceId }) => {
     );
   }
   return (
-    <ul className="max-h-96 space-y-1.5 overflow-y-auto rounded-xl border border-slate-100 p-2.5 font-mono text-[11px] text-slate-700">
-      {events.map((e, i) => (
-        <li key={i} className="rounded border border-slate-50 bg-slate-50/60 px-2 py-1">
-          <span className="text-slate-400">{String(e.created ?? "").slice(0, 19).replace("T", " ")}</span>{" "}
-          <span className="font-semibold text-fuchsia-700">{String(e.action ?? "?")}</span>{" "}
-          {e.user && typeof e.user === "object" ? <span className="text-slate-500">user={String((e.user as Record<string, unknown>).username ?? "")}</span> : null}
-          {e.client_ip ? <span className="text-slate-400"> ip={String(e.client_ip)}</span> : null}
-        </li>
-      ))}
-      {events.length === 0 ? <li className="py-6 text-center text-slate-400">{q.isLoading ? "加载中…" : "暂无事件"}</li> : null}
-    </ul>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-fuchsia-600 dark:text-fuchsia-300">Audit stream</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">事件与异常</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">展示最近 {events.length} 条记录，系统任务事件会展开任务名、消息与异常原因。</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => q.refetch()} disabled={q.isFetching}>
+          <RefreshCw className={cn("mr-1 h-3.5 w-3.5", q.isFetching && "animate-spin")} /> 刷新事件
+        </Button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {summaryCards.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+            <Icon className="h-4 w-4 text-fuchsia-500" />
+            <div><p className="text-[10px] text-slate-400">{label}</p><p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-100">{q.isLoading ? "…" : value}</p></div>
+          </div>
+        ))}
+      </div>
+      <div className="max-h-[680px] space-y-2 overflow-y-auto pr-1">
+        {events.map((event, index) => <EventCard key={event.pk ?? index} event={event} />)}
+        {events.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 py-10 text-center text-xs text-slate-400 dark:border-slate-800">{q.isLoading ? "加载中…" : "暂无事件"}</p> : null}
+      </div>
+    </div>
   );
 };
 

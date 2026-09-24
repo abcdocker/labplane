@@ -1,7 +1,7 @@
 //go:build windows
 
 // tsjoin-gui — Windows Tailscale 加入/重连桌面程序。
-// 读取同目录 tsjoin.json 配置文件（由 kube-bt-sync 平台生成），
+// 读取同目录 tsjoin.json 配置文件（由 labplane 平台生成），
 // 启动内嵌的 PowerShell WinForms GUI 脚本。
 package main
 

@@ -748,7 +748,43 @@ const TopologyPanel: React.FC<{ discover?: Discover; isAdmin: boolean; onAddColl
             实时模式（每 60s 自动采集）
           </label>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-100">
+        {/* 移动端链路卡片（<768px） */}
+        <div className="grid gap-2 md:hidden">
+          {links.length === 0 ? (
+            <p className="rounded-xl border border-slate-100 px-3 py-4 text-center text-xs text-slate-400">
+              暂无链路数据：请先在「流量监控」配置采集器并采集一次（拓扑按钮「自动发现」会同时触发采集）。
+            </p>
+          ) : (
+            links.map((l, i) => (
+              <div key={`${l.from}-${l.to}-${i}`} className="min-w-0 rounded-xl border border-slate-100 bg-white p-3">
+                <p className="break-all text-xs font-semibold text-slate-800">{l.from} → {l.to}</p>
+                <dl className="mt-2 grid min-w-0 gap-1.5 text-xs">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">路径</dt>
+                    <dd className="min-w-0 break-all text-right">
+                      {l.via === "direct" ? (
+                        <span className="font-mono text-[10px] text-emerald-700" title={l.curAddr}>直连 {l.curAddr}</span>
+                      ) : (
+                        <span className="text-[10px] text-amber-700">DERP {l.relay}</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">收 ↓ / 发 ↑</dt>
+                    <dd className="min-w-0 font-mono text-slate-600">{fmtBytes(l.rxBytes)} / {fmtBytes(l.txBytes)}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">采样时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-400">{fmtTime(l.seenAt)}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 桌面端链路表格（≥768px） */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
           <table className="w-full min-w-[560px] text-left text-xs">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
@@ -867,7 +903,103 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
           </Button>
         </div>
       ) : null}
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      <div>
+      {/* 移动端节点卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {nodes.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无节点</div>
+        ) : (
+          nodes.map((n) => (
+            <article key={n.id} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-all text-sm font-bold text-slate-900">
+                    {n.givenName || n.name}
+                    {(n.tags ?? []).length > 0 ? (
+                      <span className="ml-1 rounded bg-indigo-50 px-1 text-[10px] font-normal text-indigo-700">{(n.tags ?? []).join(",")}</span>
+                    ) : null}
+                  </h3>
+                  <p className="mt-0.5 break-all font-mono text-[11px] text-slate-600">
+                    {(n.ipAddresses ?? []).filter((ip) => ip.startsWith("100.")).join(", ") || "—"}
+                  </p>
+                </div>
+                {n.online ? (
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-emerald-700"><Wifi className="h-3 w-3" /> 在线</span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-slate-400"><WifiOff className="h-3 w-3" /> 离线</span>
+                )}
+              </div>
+
+              <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                <div className="min-w-0">
+                  <dt className="mb-1 text-slate-400">子网路由（router）</dt>
+                  <dd className="flex min-w-0 flex-wrap gap-1">
+                    {(n.approvedRoutes ?? []).length > 0 ? (
+                      (n.approvedRoutes ?? []).map((r) => (
+                        <span key={r} className="flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-800"><RouteIcon className="h-3 w-3" /> {r}</span>
+                      ))
+                    ) : (n.availableRoutes ?? []).length > 0 ? (
+                      <span className="text-[10px] text-amber-700">已宣告待审批：{(n.availableRoutes ?? []).join(", ")}</span>
+                    ) : (
+                      <span className="text-[10px] text-slate-300">—</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">用户</dt>
+                    <dd className="break-all text-slate-600">{n.user?.name ?? "—"}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">类型</dt>
+                    <dd className="break-all">
+                      {n.os ? (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700">{n.os}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300" title="由流量采集器自动补齐">待采集</span>
+                      )}
+                      {n.registerMethod === "REGISTER_METHOD_OIDC" ? (
+                        <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] text-violet-700">OIDC</span>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">最近在线</dt>
+                    <dd className="break-all text-slate-500">{fmtTime(n.lastSeen)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">加入时间</dt>
+                    <dd className="break-all text-slate-500">{fmtTime(n.createdAt)}</dd>
+                  </div>
+                </div>
+              </dl>
+
+              {isAdmin ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                  {(n.availableRoutes ?? []).length > 0 ? (
+                    <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                      onClick={() => { setRouteEditId(n.id); setRoutesDraft((n.availableRoutes ?? []).join("\n")); }}>
+                      <Router className="mr-1 h-3 w-3" /> 路由
+                    </Button>
+                  ) : null}
+                  {confirmNodeId === n.id ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                      onClick={() => nodeMut.mutate({ nid: n.id, action: "delete" })}>
+                      确认删除？
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-slate-500"
+                      onClick={() => setConfirmNodeId(n.id)}>删除</Button>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端节点表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
       <table className="w-full min-w-[960px] text-left text-xs">
         <thead className="bg-slate-50 text-slate-500">
           <tr>
@@ -957,6 +1089,7 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
           ) : null}
         </tbody>
       </table>
+      </div>
 
       <Dialog open={routeEditId !== ""} onOpenChange={(o) => { if (!o) setRouteEditId(""); }}>
         <DialogContent className="max-w-md">
@@ -1190,7 +1323,118 @@ const PreAuthKeysPanel: React.FC<{
         </DialogContent>
       </Dialog>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      {/* 移动端密钥卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {uniqueKeys.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无预授权密钥</div>
+        ) : (
+          uniqueKeys.map((k) => {
+            const expired = k.expiration ? Date.parse(k.expiration) < Date.now() : false;
+            return (
+              <article key={k.id} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <code className="min-w-0 break-all font-mono text-xs text-slate-700">{k.key}</code>
+                  <span className={cn("shrink-0 rounded px-1 text-[10px]", k.reusable ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
+                    {k.reusable ? "可复用" : "一次性"}
+                  </span>
+                </div>
+
+                <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                  <dd className="flex min-w-0 flex-wrap items-center gap-1">
+                    {k.ephemeral ? <span className="rounded bg-violet-50 px-1 text-[10px] text-violet-700">临时</span> : null}
+                    {k.used ? (
+                      <span className={cn("rounded px-1 text-[10px]",
+                        k.reusable ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}
+                        title={k.reusable ? "已被至少一台节点兑换，仍可继续注册新节点" : "已被节点兑换且不可复用，已无法再使用"}>
+                        {k.reusable ? "使用中" : "已消耗"}
+                      </span>
+                    ) : (
+                      <span className="rounded bg-slate-50 px-1 text-[10px] text-slate-400">未使用</span>
+                    )}
+                  </dd>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">用户</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-600">{k.user?.name ?? "—"}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">过期时间</dt>
+                    <dd className={cn("min-w-0 break-all text-right", expired ? "text-red-500" : "text-slate-600")}>
+                      {k.expiration ? new Date(k.expiration).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">使用时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-500" title={k.usedAt ? "平台检测到密钥被使用的时间（近似）" : "尚未检测到使用"}>
+                      {k.usedAt ? new Date(k.usedAt).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">创建时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-500">{fmtTime(k.createdAt)}</dd>
+                  </div>
+                  {isAdmin ? (
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-slate-400">备注</dt>
+                      <dd>
+                        <input
+                          className="w-full min-w-0 rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] focus:border-indigo-300 focus:outline-none"
+                          defaultValue={k.note ?? ""} placeholder="点击填写备注"
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (k.note ?? "")) noteMut.mutate({ id: k.id, note: v });
+                          }}
+                        />
+                      </dd>
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">备注</dt>
+                      <dd className="min-w-0 break-all text-right text-slate-500">{k.note || "—"}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                {isAdmin ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                    {k.hasFull ? (
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        title="查看完整密钥（可复用于注册节点）"
+                        onClick={() => revealMut.mutate(k.id)}>
+                        {revealMut.isPending && revealMut.variables === k.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                        查看
+                      </Button>
+                    ) : null}
+                    {!expired ? (
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        disabled={expireMut.isPending && expireMut.variables === k.id}
+                        onClick={() => expireMut.mutate(k.id)}>
+                        使过期
+                      </Button>
+                    ) : null}
+                    {confirmDelId === k.id ? (
+                      <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                        disabled={deleteMut.isPending}
+                        onClick={() => { deleteMut.mutate(k.id); setConfirmDelId(""); }}>
+                        确认删除？
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
+                        title="从 headscale 移除该密钥记录；已用它注册的节点不受影响"
+                        onClick={() => setConfirmDelId(k.id)}>
+                        删除
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      {/* 桌面端密钥表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
         <table className="w-full min-w-[900px] text-left text-xs">
           <thead className="bg-slate-50 text-slate-500">
             <tr>
@@ -1892,7 +2136,45 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
           {s.error ? (
             <p className="px-3 py-3 text-xs text-red-600">{s.error}</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* 移动端对端卡片（<768px） */}
+              <div className="grid gap-2 p-3 md:hidden">
+              {(s.peers ?? []).map((p) => (
+                <div key={p.hostName + (p.tailscaleIps?.[0] ?? "")} className="min-w-0 rounded-lg border border-slate-100 bg-white p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <p className="min-w-0 break-all text-xs font-semibold text-slate-800">
+                      {p.hostName}
+                      <span className="ml-1 font-mono text-[10px] font-normal text-slate-400">{(p.tailscaleIps ?? []).find((ip) => ip.startsWith("100.")) ?? ""}</span>
+                    </p>
+                    {p.online ? <span className="shrink-0 text-xs text-emerald-700">在线</span> : <span className="shrink-0 text-xs text-slate-400">{fmtTime(p.lastSeen)}</span>}
+                  </div>
+                  <dl className="mt-2 grid min-w-0 grid-cols-3 gap-2 text-xs">
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">接收 ↓</dt>
+                      <dd className="break-all font-mono text-slate-700">{fmtBytes(p.rxBytes)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">发送 ↑</dt>
+                      <dd className="break-all font-mono text-slate-700">{fmtBytes(p.txBytes)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">连接</dt>
+                      <dd className="break-all">
+                        {p.curAddr ? (
+                          <span className="font-mono text-[10px] text-sky-700" title="直连">直连 {p.curAddr}</span>
+                        ) : p.relay ? (
+                          <span className="text-[10px] text-amber-700">DERP {p.relay}</span>
+                        ) : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+              {(s.peers ?? []).length === 0 ? <p className="py-2 text-center text-xs text-slate-400">暂无对端</p> : null}
+            </div>
+
+            {/* 桌面端对端表格（≥768px） */}
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[640px] text-left text-xs">
                 <thead className="bg-slate-50/60 text-slate-500">
                   <tr>
@@ -1927,6 +2209,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       ))}
