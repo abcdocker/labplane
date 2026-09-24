@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>虚拟机抓包 v2（AI 分析 + 平台解码） · 效果演示 · labplane</title>
+<style>
+  /* ===== 设计令牌：取自 labplane react/src/index.css（shadcn/ui 主题） ===== */
+  :root{
+    --background:#ffffff; --foreground:#202020; --card:#ffffff;
+    --primary:#8848f9; --primary-foreground:#ffffff;
+    --secondary:#f1e4fb; --secondary-foreground:#202020;
+    --muted:#f6f6f6; --muted-foreground:#7f7f7f;
+    --accent:#f2f2f2; --accent-foreground:#202020;
+    --destructive:#f4165f; --border:#e0dfdf; --input:#e2e2e2; --ring:#bd95ff;
+    --term-bg:#0b0e14; --term-border:#22293a;
+    --ok:#16a34a; --ok-bg:rgba(22,163,74,.12);
+    --warn:#b45309; --warn-bg:rgba(245,158,11,.16);
+    --ai:#7c3aed; --ai-bg:rgba(124,58,237,.09);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  .dark{
+    --background:#0a0a0a; --foreground:#fafafa; --card:#171717;
+    --primary:#e5e5e5; --primary-foreground:#171717;
+    --secondary:#262626; --secondary-foreground:#fafafa;
+    --muted:#262626; --muted-foreground:#a1a1a1;
+    --accent:#262626; --accent-foreground:#fafafa;
+    --destructive:#ff6467; --border:rgba(255,255,255,.1); --input:rgba(255,255,255,.15); --ring:#737373;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--background);color:var(--foreground);
+    font:14px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    transition:background .2s,color .2s}
+  body.lock{overflow:hidden}
+  .mono{font-family:var(--mono)}
+
+  /* ===== 演示控制条 ===== */
+  .demo-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:9px 20px;border-bottom:1px dashed var(--border);background:var(--secondary);font-size:12.5px}
+  .demo-bar .grow{flex:1}
+  .demo-tag{display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:var(--primary-foreground);
+    padding:2px 10px;border-radius:999px;font-weight:600;font-size:11.5px;letter-spacing:.5px}
+
+  /* ===== 骨架 ===== */
+  .shell{max-width:1080px;margin:0 auto;padding:22px 20px 60px}
+  .app-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#8848f9,#5b8cff);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+  .crumb{color:var(--muted-foreground);font-size:13px}
+  .crumb b{color:var(--foreground);font-weight:600}
+
+  /* ===== 卡片 ===== */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:16px}
+  .card-h{display:flex;align-items:flex-start;gap:12px;padding:16px 20px 0}
+  .card-h .title{font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card-h .desc{color:var(--muted-foreground);font-size:12.8px;margin-top:2px}
+  .card-h .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .card-b{padding:14px 20px 18px}
+
+  /* ===== 按钮 ===== */
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:6px;
+    font-size:13.5px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:.15s;
+    background:transparent;color:var(--foreground);font-family:inherit}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);color:var(--primary-foreground)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-outline{border-color:var(--input);background:var(--card)}
+  .btn-outline:hover:not(:disabled){background:var(--accent)}
+  .btn-destructive{background:var(--destructive);color:#fff}
+  .btn-ghost:hover:not(:disabled){background:var(--accent)}
+  .btn-ai{background:var(--ai);color:#fff}
+  .btn-ai:hover:not(:disabled){filter:brightness(1.1)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn-sm{height:27px;padding:0 10px;font-size:12.5px;border-radius:5px}
+
+  /* ===== 输入 ===== */
+  .input,.select{height:34px;border:1px solid var(--input);border-radius:6px;background:var(--card);
+    color:var(--foreground);padding:0 10px;font-size:13.5px;font-family:inherit}
+  .input:focus,.select:focus{outline:none;border-color:var(--ring);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 28%,transparent)}
+  .input{width:100%}
+  .field label{display:block;font-size:12.8px;font-weight:500;margin-bottom:5px}
+  .field .hint{font-size:11.8px;color:var(--muted-foreground);margin-top:4px}
+
+  /* ===== 徽章 ===== */
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:999px;
+    font-size:12px;font-weight:500;line-height:1.5;white-space:nowrap}
+  .b-primary{background:var(--primary);color:var(--primary-foreground)}
+  .b-secondary{background:var(--secondary);color:var(--secondary-foreground)}
+  .b-muted{background:var(--muted);color:var(--muted-foreground)}
+  .b-ok{background:var(--ok-bg);color:var(--ok)}
+  .b-warn{background:var(--warn-bg);color:var(--warn)}
+  .b-destructive{background:var(--destructive);color:#fff}
+  .b-ai{background:var(--ai-bg);color:var(--ai);border:1px solid color-mix(in srgb,var(--ai) 35%,transparent)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .pulse{animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ===== VM 头部 + 页签 ===== */
+  .vm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .vm-name{font-size:17px;font-weight:700}
+  .vm-meta{color:var(--muted-foreground);font-size:12.8px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+  .vtabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-top:14px;overflow-x:auto}
+  .vtab{padding:8px 14px;font-size:13.5px;color:var(--muted-foreground);cursor:pointer;
+    border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;user-select:none}
+  .vtab:hover{color:var(--foreground)}
+  .vtab.active{color:var(--foreground);border-color:var(--primary);font-weight:600}
+
+  /* ===== 预检 ===== */
+  .pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+  .pf-item{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);
+    border-radius:6px;font-size:13px;background:color-mix(in srgb,var(--muted) 45%,transparent)}
+  .pf-ico{flex-shrink:0;margin-top:1px}
+  .pf-item.ok .pf-ico{color:var(--ok)} .pf-item.bad .pf-ico{color:var(--destructive)}
+  .pf-item b{font-weight:600}
+  .pf-item .sub{color:var(--muted-foreground);font-size:12px}
+  .cmdblock{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:6px;
+    background:var(--term-bg);color:#c9d1d9;font-family:var(--mono);font-size:12.5px}
+  .cmdblock .grow{flex:1;word-break:break-all}
+  .cmdblock .btn{border-color:#2c3547;color:#c9d1d9;background:transparent}
+  .cmdblock .btn:hover{background:#161c27}
+
+  /* ===== 表单 ===== */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .chip{padding:3px 11px;border-radius:999px;border:1px solid var(--border);font-size:12.3px;
+    cursor:pointer;color:var(--muted-foreground);background:transparent;font-family:inherit;transition:.15s}
+  .chip:hover{background:var(--accent);color:var(--foreground)}
+  .chip.active{border-color:var(--primary);color:var(--primary);
+    background:color-mix(in srgb,var(--primary) 8%,transparent);font-weight:500}
+
+  /* ===== AI 呼出框（命令解读） ===== */
+  .ai-callout{margin-top:12px;border:1px solid color-mix(in srgb,var(--ai) 35%,transparent);
+    background:var(--ai-bg);border-radius:8px;padding:12px 14px}
+  .ai-callout .ai-head{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ai);margin-bottom:8px}
+  .ai-spark{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#7c3aed,#38bdf8);
+    display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800}
+  .ai-line{font-size:12.8px;line-height:1.7;color:var(--foreground);opacity:0;transform:translateY(3px);
+    transition:.3s;display:flex;gap:7px}
+  .ai-line.show{opacity:1;transform:none}
+  .ai-line .ic{flex-shrink:0;font-weight:700}
+  .ic-ok{color:var(--ok)} .ic-warn{color:var(--warn)} .ic-bad{color:var(--destructive)} .ic-info{color:var(--muted-foreground)}
+
+  /* ===== 抓包中 ===== */
+  .live-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .cmd-echo{margin:10px 0 4px;padding:8px 12px;border-radius:6px;background:var(--muted);
+    border:1px dashed var(--border);color:var(--muted-foreground);font-family:var(--mono);font-size:12px;word-break:break-all}
+  .cmd-echo b{color:var(--foreground);font-weight:600}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 10px}
+  .metric{border:1px solid var(--border);border-radius:6px;padding:10px 13px}
+  .metric .k{font-size:11.8px;color:var(--muted-foreground)}
+  .metric .v{font-size:19px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .metric .v small{font-size:12px;font-weight:500;color:var(--muted-foreground)}
+  .progress{height:8px;background:var(--muted);border-radius:999px;overflow:hidden}
+  .progress>i{display:block;height:100%;width:0%;background:var(--primary);transition:width .25s linear}
+  .progress-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted-foreground);margin-top:5px}
+
+  /* 双栏：包流 + AI 实时分析 */
+  .live-cols{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-top:14px}
+  @media (max-width:920px){.live-cols{grid-template-columns:1fr}}
+  .term{background:var(--term-bg);border:1px solid var(--term-border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--term-border);
+    color:#8b949e;font-size:12px;flex-wrap:wrap}
+  .term-bar .grow{flex:1}
+  .term-bar .btn{border-color:#2c3547;color:#8b949e;background:transparent;height:24px;padding:0 9px;font-size:11.5px}
+  .term-bar .btn:hover{color:#c9d1d9;background:#161c27}
+  .term-body{height:300px;overflow-y:auto;padding:10px 13px;font-family:var(--mono);font-size:12px;line-height:1.6;color:#c9d1d9}
+  .term-line{white-space:pre-wrap;word-break:break-all}
+  .t{color:#6e7681}
+  .c-tcp{color:#c9d1d9}.c-ssh{color:#ff7b72}.c-redis{color:#7ee787}.c-http{color:#79c0ff}
+  .c-udp{color:#79c0ff}.c-dns{color:#d2a8ff}.c-icmp{color:#e3b341}.c-arp{color:#ffa657}
+  .c-sys{color:#6e7681;font-style:italic}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11.8px;color:var(--muted-foreground)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+
+  /* ===== AI 实时分析面板 ===== */
+  .ai-panel{border:1px solid color-mix(in srgb,var(--ai) 30%,transparent);border-radius:8px;
+    display:flex;flex-direction:column;overflow:hidden;background:color-mix(in srgb,var(--ai-bg) 60%,var(--card))}
+  .ai-panel-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--ai) 25%,transparent)}
+  .ai-panel-h .ttl{font-size:13px;font-weight:600;color:var(--ai);display:flex;align-items:center;gap:6px}
+  .ai-panel-h .grow{flex:1}
+  .dial-wrap{display:flex;align-items:center;gap:8px}
+  .dial{width:54px;height:54px;position:relative;flex-shrink:0}
+  .dial svg{transform:rotate(-90deg)}
+  .dial .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+  .dial-lbl{font-size:11px;color:var(--muted-foreground);line-height:1.45}
+  .dial-lbl b{display:block;font-size:12.5px}
+  .ai-feed{flex:1;overflow-y:auto;padding:10px 12px;max-height:262px;min-height:200px}
+  .finding{border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:8px;
+    background:var(--card);animation:fin .3s ease-out;font-size:12.5px;line-height:1.55}
+  @keyframes fin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .finding .fh{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .finding .ft{font-size:11px;color:var(--muted-foreground);margin-left:auto;font-variant-numeric:tabular-nums}
+  .finding .ref{color:var(--primary);cursor:pointer;text-decoration:underline dotted}
+  .ai-panel-f{padding:7px 12px;border-top:1px dashed var(--border);font-size:11.3px;color:var(--muted-foreground)}
+
+  /* ===== 表格 ===== */
+  .tbl{width:100%;border-collapse:collapse;font-size:13.2px}
+  .tbl th{text-align:left;font-weight:500;color:var(--muted-foreground);padding:9px 12px;
+    border-bottom:1px solid var(--border);white-space:nowrap;font-size:12.3px}
+  .tbl td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .tbl tr:hover td{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+  .tbl .num{font-variant-numeric:tabular-nums}
+  .fname{font-family:var(--mono);font-size:12.3px}
+  .ops{display:flex;gap:6px}
+  .footnote{color:var(--muted-foreground);font-size:12.3px;line-height:1.8;margin-top:4px}
+  .footnote code{background:var(--muted);border-radius:4px;padding:1px 6px;font-size:11.5px}
+  .hidden{display:none!important}
+
+  /* ================= 弹窗查看器 ================= */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;
+    justify-content:center;padding:22px;z-index:60;animation:fin .18s}
+  .modal-card{width:min(1200px,97vw);max-height:94vh;display:flex;flex-direction:column;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.4)}
+  .modal-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .modal-h .ftitle{font-family:var(--mono);font-size:14px;font-weight:700}
+  .modal-h .fmeta{color:var(--muted-foreground);font-size:12.3px;display:flex;gap:10px;flex-wrap:wrap}
+  .modal-h .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .ptabs{display:inline-flex;background:var(--muted);border-radius:8px;padding:3px;gap:2px}
+  .ptab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted-foreground);cursor:pointer;border:none;background:transparent;font-family:inherit}
+  .ptab.active{background:var(--card);color:var(--foreground);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .modal-b{overflow-y:auto;padding:16px 18px 18px}
+
+  /* 源文件视图 */
+  .vtoolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .vtoolbar .input{max-width:420px;font-family:var(--mono);font-size:12.5px}
+  .plist{border:1px solid var(--border);border-radius:8px;overflow:auto;max-height:262px}
+  .ptbl{width:100%;border-collapse:collapse;font-size:12.4px;font-family:var(--mono)}
+  .ptbl th{position:sticky;top:0;background:var(--muted);color:var(--muted-foreground);font-weight:600;
+    padding:6px 10px;text-align:left;font-size:11.3px;white-space:nowrap;z-index:1}
+  .ptbl td{padding:5px 10px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer}
+  .ptbl tr:hover td{background:color-mix(in srgb,var(--primary) 7%,transparent)}
+  .ptbl tr.sel td{background:color-mix(in srgb,var(--primary) 16%,transparent)}
+  .ptbl tr.flash td{animation:rowflash 1.2s}
+  @keyframes rowflash{0%,60%{background:color-mix(in srgb,var(--warn) 35%,transparent)}100%{}}
+  .pbadge{display:inline-block;padding:0 7px;border-radius:4px;font-size:10.8px;font-weight:700;letter-spacing:.3px}
+  .pb-redis{background:rgba(126,231,135,.15);color:#2ea043}
+  .pb-tcp{background:rgba(127,127,127,.15);color:var(--muted-foreground)}
+  .pb-tls{background:rgba(210,168,255,.16);color:#a371f7}
+  .pb-dns{background:rgba(121,192,255,.16);color:#4493f8}
+  .pb-ssh{background:rgba(255,123,114,.16);color:#f85149}
+  .pb-icmp{background:rgba(227,179,65,.18);color:#b08800}
+  .pb-arp{background:rgba(255,166,87,.16);color:#e7811d}
+
+  .vpanes{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;margin-top:12px}
+  @media (max-width:860px){.vpanes{grid-template-columns:1fr}}
+  .pane{border:1px solid var(--border);border-radius:8px;overflow:auto;max-height:250px;min-height:180px;padding:8px 12px;font-size:12.5px}
+  .pane-h{font-size:11.5px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .ptree details{margin:2px 0}
+  .ptree summary{cursor:pointer;font-family:var(--mono);font-size:12.3px;font-weight:600;padding:2px 4px;border-radius:4px;user-select:none}
+  .ptree summary:hover{background:var(--accent)}
+  .ptree details>div{padding-left:20px;font-family:var(--mono);font-size:12px;color:var(--muted-foreground);line-height:1.7}
+  .ptree details>div b{color:var(--foreground);font-weight:500}
+  .hexline{display:flex;gap:10px;font-family:var(--mono);font-size:11.8px;line-height:1.75;white-space:nowrap}
+  .hexoff{color:var(--muted-foreground)}
+  .hexb{width:330px}
+  .hexb i{font-style:normal;padding:0 1px;border-radius:2px}
+  .hexb i.hl{background:rgba(210,168,255,.3);color:inherit}
+  .hexa{color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;max-width:200px}
+
+  /* AI 分析报告 */
+  .ai-report{max-width:960px}
+  .ar-head{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--ai) 30%,transparent);
+    background:var(--ai-bg);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+  .ar-score-ring{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:21px;font-weight:800;position:relative;flex-shrink:0}
+  .ar-score-ring::after{content:"";position:absolute;inset:0;border-radius:50%;padding:3px}
+  .ar-head .h1{font-size:15.5px;font-weight:700}
+  .ar-head .sub{font-size:12.8px;color:var(--muted-foreground);margin-top:3px;line-height:1.7}
+  .ar-sec{margin:16px 0 8px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .ar-sec .n{width:20px;height:20px;border-radius:6px;background:var(--ai-bg);color:var(--ai);
+    display:inline-flex;align-items:center;justify-content:center;font-size:11.5px}
+  .ar-sum{font-size:13px;line-height:1.85;background:var(--muted);border-radius:8px;padding:12px 14px}
+  .ar-finding{border:1px solid var(--border);border-left:3px solid var(--muted);border-radius:8px;
+    padding:11px 14px;margin-bottom:9px;background:var(--card)}
+  .ar-finding.sev-high{border-left-color:var(--destructive)}
+  .ar-finding.sev-mid{border-left-color:#f59e0b}
+  .ar-finding.sev-low{border-left-color:var(--primary)}
+  .ar-finding .fh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;font-weight:600;font-size:13.5px}
+  .ar-finding .desc{font-size:12.8px;line-height:1.75;color:var(--foreground)}
+  .ar-finding .fix{font-size:12.5px;color:var(--muted-foreground);margin-top:5px;line-height:1.7}
+  .ar-finding .ref{color:var(--primary);cursor:pointer;text-decoration:underline dotted;font-weight:500}
+  .bars{display:flex;flex-direction:column;gap:8px;margin:4px 0}
+  .bar-row{display:grid;grid-template-columns:150px 1fr 64px;gap:10px;align-items:center;font-size:12.6px}
+  .bar-track{height:16px;background:var(--muted);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#8848f9,#5b8cff)}
+  .bar-row .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted-foreground)}
+  .ar-two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:860px){.ar-two{grid-template-columns:1fr}}
+  .ar-list{font-size:13px;line-height:2;padding-left:0;margin:0;list-style:none}
+  .ar-list li{display:flex;gap:8px}
+  .ar-list .ic{flex-shrink:0}
+  .ai-chat{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:16px}
+  .ai-chat .log{max-height:180px;overflow-y:auto;margin-bottom:10px}
+  .bubble{max-width:86%;padding:8px 12px;border-radius:10px;font-size:12.8px;line-height:1.7;margin-bottom:8px}
+  .bubble.user{background:var(--primary);color:var(--primary-foreground);margin-left:auto;border-bottom-right-radius:3px}
+  .bubble.ai{background:var(--muted);border-bottom-left-radius:3px}
+  .bubble.ai b{color:var(--ai)}
+  .ai-chat .row{display:flex;gap:8px}
+  .ai-chat .row .input{flex:1}
+
+  #toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:99}
+  .toast{background:#1c1c1e;color:#f5f5f5;border:1px solid rgba(255,255,255,.12);border-radius:8px;
+    padding:10px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:340px;animation:fin .2s}
+  @keyframes fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ======= 演示控制条 ======= -->
+<div class="demo-bar">
+  <span class="demo-tag">效果稿 v2</span>
+  <span>labplane · 抓包 + AI 实时风险分析 + 平台 pcap 解码查看 · 所有数据均为假数据</span>
+  <span class="grow"></span>
+  <button class="btn btn-outline btn-sm" id="themeBtn">🌙 暗色</button>
+</div>
+
+<div class="shell">
+  <div class="app-header">
+    <div class="logo">K</div>
+    <div>
+      <div style="font-weight:700;font-size:15px">labplane</div>
+      <div class="crumb">vCenter / 虚拟机 / <b>ops（vm-42）</b> / 抓包</div>
+    </div>
+  </div>
+
+  <!-- VM 信息 -->
+  <div class="card">
+    <div class="card-b" style="padding-bottom:0">
+      <div class="vm-head">
+        <span class="vm-name">ops</span>
+        <span class="badge b-ok"><span class="dot"></span>运行中</span>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="toast('演示页仅实现「抓包」标签')">Web 控制台</button>
+          <button class="btn btn-outline btn-sm" onclick="toast('演示页仅实现「抓包」标签')">SSH 终端</button>
+        </span>
+      </div>
+      <div class="vm-meta">
+        <span>vm-42</span>·<span>192.168.21.2</span>·<span>Ubuntu 22.04 LTS</span>·
+        <span>4 vCPU / 8 GiB</span>·<span>ESXi R730（192.168.21.101）</span>
+      </div>
+      <div class="vtabs">
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">概览</div>
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">性能</div>
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">监控</div>
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">控制台</div>
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">SSH 终端</div>
+        <div class="vtab" onclick="toast('演示页仅实现「抓包」标签')">诊断</div>
+        <div class="vtab active">抓包</div>
+      </div>
+      <div style="height:14px"></div>
+    </div>
+  </div>
+
+  <!-- 预检 -->
+  <div class="card">
+    <div class="card-h">
+      <div>
+        <div class="title">抓包预检</div>
+        <div class="desc">开始前自动在来宾内探测工具链与权限</div>
+      </div>
+      <div class="right"><span class="badge b-ok">✔ 全部通过</span></div>
+    </div>
+    <div class="card-b">
+      <div class="pf-grid">
+        <div class="pf-item ok"><span class="pf-ico">✔</span><div><b>tcpdump 已安装</b><div class="sub">4.99.1 · libpcap 1.10.1</div></div></div>
+        <div class="pf-item ok"><span class="pf-ico">✔</span><div><b>sudo -n 免密可用</b><div class="sub">来宾用户 abcdocker</div></div></div>
+        <div class="pf-item ok"><span class="pf-ico">✔</span><div><b>SSH 通道正常</b><div class="sub">192.168.21.2:22 · RTT 0.8 ms</div></div></div>
+        <div class="pf-item ok"><span class="pf-ico">✔</span><div><b>AI 分析引擎就绪</b><div class="sub">解码统计 ✓ · 风险模型 v3 ✓</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 表单 -->
+  <div class="card">
+    <div class="card-h">
+      <div>
+        <div class="title">新建抓包任务</div>
+        <div class="desc">在来宾内以 root 运行 tcpdump，pcap 经 SSH 流式回传平台 PVC；AI 在回传链路上旁路解码</div>
+      </div>
+    </div>
+    <div class="card-b">
+      <div class="form-grid">
+        <div class="field">
+          <label>网卡</label>
+          <select class="select" id="fIface" style="width:100%">
+            <option value="any">any（推荐 · 进出全收）</option><option>eth0</option><option>ens192</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>snaplen</label>
+          <select class="select" id="fSnap" style="width:100%">
+            <option value="1600">1600（推荐）</option><option value="96">96（仅头部）</option><option value="65535">65535（完整）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>时长上限</label>
+          <select class="select" id="fDur" style="width:100%">
+            <option value="60">60 秒</option><option value="120">120 秒</option><option value="300" selected>300 秒（推荐）</option><option value="600">600 秒</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>大小上限</label>
+          <select class="select" id="fSize" style="width:100%">
+            <option value="32">32 MiB</option><option value="64">64 MiB</option><option value="128" selected>128 MiB（推荐）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>AI 实时分析</label>
+          <select class="select" id="fAi" style="width:100%">
+            <option value="on" selected>开启（风险流 + 评分）</option>
+            <option value="off">关闭（仅落盘）</option>
+          </select>
+          <div class="hint">旁路分析，不影响抓包性能</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>BPF 过滤器（留空 = 全量抓包）</label>
+        <input class="input mono" id="fBpf" value="tcp port 6379 or host 192.168.21.99" spellcheck="false"
+               placeholder="例：tcp port 6379 or host 192.168.21.99">
+        <div class="presets" id="presetRow"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" id="startBtn" onclick="startCapture()">▶ 开始抓包</button>
+        <button class="btn btn-ai" onclick="aiRead()">✨ AI 解读此过滤器</button>
+        <span class="footnote" style="margin:0">仅 admin 角色可发起 · 操作写入审计日志</span>
+      </div>
+      <div class="ai-callout hidden" id="aiReadBox"></div>
+    </div>
+  </div>
+
+  <!-- 抓包中 -->
+  <div class="card hidden" id="liveCard">
+    <div class="card-h">
+      <div>
+        <div class="title">
+          <span class="badge b-destructive"><span class="dot pulse"></span>抓包中</span>
+          <span id="liveMeta" style="font-weight:500;font-size:13px;color:var(--muted-foreground)"></span>
+        </div>
+      </div>
+      <div class="right"><button class="btn btn-destructive" onclick="stopCapture('done')">⏹ 停止并保存</button></div>
+    </div>
+    <div class="card-b">
+      <div class="cmd-echo" id="cmdEcho"></div>
+      <div class="ai-callout hidden" id="aiCmdBox" style="margin-top:10px"></div>
+      <div class="metrics">
+        <div class="metric"><div class="k">已运行</div><div class="v" id="mElapsed">00:00</div></div>
+        <div class="metric"><div class="k">已捕获包数（写入文件）</div><div class="v" id="mPkts">0</div></div>
+        <div class="metric"><div class="k">当前文件大小</div><div class="v" id="mBytes">0 <small>MiB</small></div></div>
+        <div class="metric"><div class="k">预览流速率</div><div class="v" id="mPps">0 <small>pps</small></div></div>
+        <div class="metric"><div class="k">AI 已识别风险</div><div class="v" id="mRisk">0 <small>项</small></div></div>
+      </div>
+      <div class="progress"><i id="pBar"></i></div>
+      <div class="progress-labels"><span id="pLeft">已写 0 MiB</span><span id="pRight">上限 128 MiB</span></div>
+
+      <div class="live-cols">
+        <div>
+          <div class="term">
+            <div class="term-bar">
+              <span>实时包流 · <span class="mono">tcpdump -l</span> 预览（窗口保留最近 200 行）</span>
+              <span class="grow"></span>
+              <button class="btn" id="scrollBtn" onclick="toggleScroll()">⏸ 暂停滚动</button>
+              <button class="btn" onclick="clearStream()">清屏</button>
+            </div>
+            <div class="term-body" id="termBody"></div>
+          </div>
+          <div class="legend">
+            <span><i style="background:#c9d1d9"></i>TCP</span>
+            <span><i style="background:#7ee787"></i>Redis</span>
+            <span><i style="background:#ff7b72"></i>SSH</span>
+            <span><i style="background:#79c0ff"></i>HTTP/UDP</span>
+            <span><i style="background:#d2a8ff"></i>DNS</span>
+            <span><i style="background:#e3b341"></i>ICMP</span>
+            <span><i style="background:#ffa657"></i>ARP</span>
+          </div>
+        </div>
+        <div class="ai-panel">
+          <div class="ai-panel-h">
+            <span class="ttl"><span class="ai-spark">AI</span>实时风险分析</span>
+            <span class="grow"></span>
+            <span class="dial-wrap">
+              <span class="dial">
+                <svg width="54" height="54" viewBox="0 0 54 54">
+                  <circle cx="27" cy="27" r="23" fill="none" stroke="var(--muted)" stroke-width="5"/>
+                  <circle id="dialArc" cx="27" cy="27" r="23" fill="none" stroke="#16a34a" stroke-width="5"
+                          stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5"
+                          style="transition:stroke-dashoffset .6s,stroke .6s"/>
+                </svg>
+                <span class="num" id="dialNum">0</span>
+              </span>
+              <span class="dial-lbl"><b id="dialLabel">评估中…</b>风险指数<br>0–100</span>
+            </span>
+          </div>
+          <div class="ai-feed" id="aiFeed"></div>
+          <div class="ai-panel-f">旁路分析 · 解码统计与风险流由平台 AI 引擎生成 · 停止后将自动生成完整分析报告</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 历史 -->
+  <div class="card">
+    <div class="card-h">
+      <div>
+        <div class="title">抓包文件</div>
+        <div class="desc">平台 PVC <span class="mono">/data/captures/</span> · 每个文件含「源文件」（平台解码）与「AI 分析」两个视图 · 保留 7 天</div>
+      </div>
+      <div class="right"><span class="badge b-muted">已用 19.0 MiB / 2 GiB</span></div>
+    </div>
+    <div class="card-b">
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>文件</th><th>开始时间</th><th>时长</th><th>包数</th><th>大小</th><th>过滤器</th><th>AI 结论</th><th>状态</th><th style="width:190px">操作</th>
+          </tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+      <div class="footnote">
+        「查看」= 平台内解码浏览（无需下载 Wireshark）：包列表 / 协议树 / Hex 转储 + AI 分析报告，可从风险发现一键跳转到具体包。
+        下载的 .pcap 仍可用 <code>termshark vm-42_xxx.pcap</code> 本地分析。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ pcap 查看器弹窗 ============ -->
+<div class="modal hidden" id="viewerModal" onclick="if(event.target===this)closeViewer()">
+  <div class="modal-card">
+    <div class="modal-h">
+      <div>
+        <div class="ftitle" id="vTitle">—</div>
+        <div class="fmeta" id="vMeta">—</div>
+      </div>
+      <div class="right">
+        <div class="ptabs">
+          <button class="ptab active" id="tabRaw" onclick="vTab('raw')">源文件</button>
+          <button class="ptab" id="tabAi" onclick="vTab('ai')">✨ AI 分析</button>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="toast('演示环境：真实点击将下载 .pcap')">⤓ 下载 pcap</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeViewer()">✕ 关闭</button>
+      </div>
+    </div>
+    <div class="modal-b">
+      <!-- 源文件视图 -->
+      <div id="vRaw">
+        <div class="vtoolbar">
+          <input class="input" id="vFilter" placeholder="显示过滤器（演示：按协议 / IP / 关键字过滤，如 redis 或 6379）" oninput="renderPlist()">
+          <span class="badge b-muted" id="vCount">—</span>
+        </div>
+        <div class="plist"><table class="ptbl" id="ptbl">
+          <thead><tr><th>#</th><th>时间</th><th>源</th><th>目的</th><th>协议</th><th>长度</th><th>信息</th></tr></thead>
+          <tbody id="plistBody"></tbody>
+        </table></div>
+        <div class="vpanes">
+          <div class="pane ptree">
+            <div class="pane-h">协议树（点击行查看）</div>
+            <div id="pDetail">在上方选择一个包查看解码详情</div>
+          </div>
+          <div class="pane">
+            <div class="pane-h">Hex 转储</div>
+            <div id="pHex" style="color:var(--muted-foreground)">—</div>
+          </div>
+        </div>
+      </div>
+      <!-- AI 分析视图 -->
+      <div id="vAi" class="hidden ai-report">
+        <div class="ar-head">
+          <div class="ar-score-ring" id="arRing">62</div>
+          <div>
+            <div class="h1">AI 抓包分析报告 <span class="badge b-ai" style="margin-left:6px">风险模型 v3 · 自动生成</span></div>
+            <div class="sub" id="arSub">—</div>
+          </div>
+        </div>
+        <div class="ar-sec"><span class="n">1</span>摘要</div>
+        <div class="ar-sum" id="arSum">—</div>
+        <div class="ar-sec"><span class="n">2</span>关键发现</div>
+        <div id="arFindings"></div>
+        <div class="ar-two">
+          <div>
+            <div class="ar-sec"><span class="n">3</span>协议分布（平台解码）</div>
+            <div class="bars" id="arBars"></div>
+          </div>
+          <div>
+            <div class="ar-sec"><span class="n">4</span>Top 通信端点</div>
+            <div class="bars" id="arTalkers"></div>
+          </div>
+        </div>
+        <div class="ar-sec"><span class="n">5</span>处置建议</div>
+        <ul class="ar-list" id="arAdvice"></ul>
+        <div class="ai-chat">
+          <div class="pane-h">AI 追问（基于本文件解码数据）</div>
+          <div class="log" id="chatLog">
+            <div class="bubble ai">已完成对 <b id="chatFile">—</b> 的解码与关联分析，可针对该文件提问，例如「192.168.21.31 高频访问是什么？」</div>
+          </div>
+          <div class="row">
+            <input class="input" id="chatInput" placeholder="输入问题，回车发送…" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn-ai" onclick="sendChat()">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ================= 基础 ================= */
+const $=s=>document.querySelector(s);
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  $('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.3s';setTimeout(()=>t.remove(),320)},2800)}
+function fmtNum(n){return n.toLocaleString('en-US')}
+function pad(n,w){return String(n).padStart(w,'0')}
+function nowTs(){const d=new Date();return pad(d.getHours(),2)+':'+pad(d.getMinutes(),2)+':'+pad(d.getSeconds(),2)+'.'+pad(d.getMilliseconds(),3)}
+function fileStamp(){const d=new Date();return d.getFullYear()+pad(d.getMonth()+1,2)+pad(d.getDate(),2)+'-'+pad(d.getHours(),2)+pad(d.getMinutes(),2)+pad(d.getSeconds(),2)}
+function hashCode(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rint(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function pick(a){return a[rint(0,a.length-1)]}
+
+/* 主题 */
+if(localStorage.getItem('labplane-demo-dark')==='1')document.body.classList.add('dark');
+function syncThemeBtn(){$('#themeBtn').textContent=document.body.classList.contains('dark')?'☀️ 亮色':'🌙 暗色'}
+syncThemeBtn();
+$('#themeBtn').onclick=()=>{document.body.classList.toggle('dark');
+  localStorage.setItem('labplane-demo-dark',document.body.classList.contains('dark')?'1':'0');syncThemeBtn()};
+
+/* ================= BPF 预设 ================= */
+const PRESETS=[
+  {label:'Redis',expr:'tcp port 6379'},{label:'指定主机',expr:'host 192.168.21.99'},
+  {label:'HTTP(S)',expr:'tcp port 80 or tcp port 443'},{label:'DNS',expr:'udp port 53'},
+  {label:'排除 SSH',expr:'not tcp port 22'},{label:'ICMP',expr:'icmp'},
+];
+$('#presetRow').innerHTML=PRESETS.map((p,i)=>
+  `<button class="chip${i===0?' active':''}" onclick="pickPreset(${i})">${p.label} · <span class="mono">${p.expr}</span></button>`).join('');
+function pickPreset(i){$('#fBpf').value=PRESETS[i].expr;
+  document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('active',j===i))}
+
+/* ================= AI：解读 BPF（表单 + 抓包中共用） ================= */
+function aiLines(bpf,iface,snap,sizeMiB,durSec){
+  const L=[];const b=bpf.toLowerCase();
+  L.push(['info','命令：<b class="mono" style="font-size:12px">sudo -n tcpdump -i '+iface+' -U -s '+snap+' -w - \''+(bpf||'')+'\'</b>']);
+  if(b===''){L.push(['bad','过滤器为空 = 全量抓包：该 VM 峰值 ~35 Mbps，'+sizeMiB+' MiB 上限预计 '+Math.max(2,Math.round(sizeMiB/15))+' 分钟内写满，且明文口令全部入包——建议至少排除 SSH（not tcp port 22）'])}
+  else{L.push(['ok','过滤范围明确（'+(bpf.length>42?bpf.slice(0,42)+'…':bpf)+'），预计速率 ~35 pps，'+sizeMiB+' MiB 可支撑 ≥ '+durSec+' 秒'])}
+  if(b.includes('6379'))L.push(['warn','Redis 为明文协议：AUTH 口令、GET/SET 键值将完整出现在抓包数据中。文件将按敏感文件策略存储（仅 admin 可下载），建议分析完成后即删，必要时轮换口令']);
+  if(b.includes('not port 22')||b.includes('not tcp port 22'))L.push(['info','SSH 已被排除：无法审计本次窗口内的登录行为（如需审计来源 IP，可改用 not port 22 and host 只看握手）']);
+  if(b.includes('53'))L.push(['info','DNS 为明文：可看到全部查询域名（含内部服务名），可用于发现数据外发渠道，注意勿外传']);
+  if(b.includes('443'))L.push(['info','HTTPS 载荷已加密，可分析 SNI/证书/时序特征，内容不可见']);
+  if(/host [0-9]/.test(b))L.push(['ok','按主机聚焦，噪声小，AI 关联分析准确率更高']);
+  L.push(['info','AI 将在回传链路旁路解码：实时风险流 + 停止后自动生成分析报告（风险指数 / Top 端点 / 处置建议）']);
+  return L;
+}
+function showAiCallout(box,lines){
+  box.classList.remove('hidden');
+  box.innerHTML='<div class="ai-head"><span class="ai-spark">AI</span>命令与风险解读</div>'+
+    lines.map(l=>'<div class="ai-line"><span class="ic ic-'+l[0]+'">'+({ok:'✔',warn:'⚠',bad:'✖',info:'·'}[l[0]])+'</span><span>'+l[1]+'</span></div>').join('');
+  box.querySelectorAll('.ai-line').forEach((el,i)=>setTimeout(()=>el.classList.add('show'),120+i*260));
+}
+function aiRead(){
+  showAiCallout($('#aiReadBox'),aiLines($('#fBpf').value.trim(),$('#fIface').value.split('（')[0],$('#fSnap').value,+$('#fSize').value,+$('#fDur').value));
+  toast('AI 已解读当前过滤器（演示：规则生成）');
+}
+
+/* ================= 实时包流（假） ================= */
+const IPS=['192.168.21.2','192.168.21.99','192.168.21.10','192.168.21.13','192.168.21.14','192.168.21.31'];
+const DOMAINS=['i4t.com','api.weixin.qq.com','harbor.frps.cn','opensearch.wordpress.svc','kubernetes.default.svc'];
+function otherIp(self){const x=pick(IPS);return x===self?pick(IPS):x}
+const seqCache={};
+function nextSeq(k){if(!seqCache[k])seqCache[k]=rint(1000,90000);seqCache[k]+=rint(40,1400);return seqCache[k]}
+function genPacket(selfIp){
+  const r=Math.random();const t='<span class="t">'+nowTs()+'</span> ';
+  if(r<0.05){const a=otherIp(),b=otherIp();
+    return {cls:'c-arp',proto:'arp',html:t+'IP '+selfIp+' > '+b+': ARP, Request who-has '+a+' tell '+selfIp+', length 46'}}
+  if(r<0.13){const a=otherIp(),q=Math.random()<0.6;
+    return {cls:'c-icmp',proto:'icmp',html:t+'IP '+(q?selfIp:a)+' > '+(q?a:selfIp)+': ICMP echo '+(q?'request':'reply')+' id 1, seq '+rint(1,120)+', length 64'}}
+  if(r<0.30){const q=Math.random()<0.7,d=pick(DOMAINS);
+    if(q)return {cls:'c-dns',proto:'dns',html:t+'IP '+selfIp+'.'+rint(40000,60000)+' > 192.168.21.10.53: '+rint(10000,65000)+'+ A? '+d+'. (34)'};
+    return {cls:'c-dns',proto:'dns',html:t+'IP 192.168.21.10.53 > '+selfIp+'.'+rint(40000,60000)+': '+rint(10000,65000)+' 1/0/0 A '+otherIp()+' (62)'}}
+  const ports=[6379,6379,6379,22,22,80,443,443,3306,8080];
+  const port=pick(ports),peer=otherIp(selfIp),sport=rint(32768,60000),k=peer+':'+sport,dir=Math.random()<0.5;
+  const src=dir?peer+'.'+sport:selfIp+'.'+port,dst=dir?selfIp+'.'+port:peer+'.'+sport;
+  let cls='c-tcp';if(port===6379)cls='c-redis';else if(port===22)cls='c-ssh';else if(port===80||port===443||port===8080)cls='c-http';
+  const kind=Math.random();let body;
+  if(kind<0.14)body='Flags [.], ack '+nextSeq(k)+', win '+rint(200,900)+', length 0';
+  else if(kind<0.22)body='Flags [S], seq '+rint(100000,999999)+', win 64240, options [mss 1460,sackOK,wscale 7], length 0';
+  else if(kind<0.28)body='Flags [F.], seq '+nextSeq(k)+', ack '+nextSeq(k)+', win '+rint(200,900)+', length 0';
+  else body='Flags [P.], seq '+nextSeq(k)+', ack '+nextSeq(k)+', win '+rint(200,900)+', length '+rint(52,1400);
+  return {cls,proto:'tcp',html:t+'IP '+src+' > '+dst+': '+body};
+}
+
+/* ================= AI 实时风险流（假） ================= */
+const FEED=[
+  {delay:3.5,sev:'info',score:18,title:'流量基线已建立',text:'当前 ~35 pps，TCP 71% / DNS 18%，与该 VM 近 7 日基线一致，未见异常突增'},
+  {delay:8,sev:'mid',score:44,title:'检测到端口扫描特征',text:'192.168.21.31 在 0.5s 内对本机 6379/6380/6381 发起 23 次 SYN 且无完成握手——与 Prometheus rediseverysecond 探测指纹吻合，判定为巡检流量，误报已抑制',ref:'#18-27'},
+  {delay:14,sev:'high',score:72,title:'Redis AUTH 明文口令暴露',text:'捕获到 RESP 明文 AUTH 命令，口令出现在包载荷中（demo-redis-pass）。该口令近 90 天未轮换。抓包文件按敏感策略存储，建议：分析后立即删除本文件 + 轮换 Redis 口令 + 评估 TLS',ref:'#31'},
+  {delay:21,sev:'mid',score:65,title:'发现大 value 键',text:'GET session:active 返回 86KB（阈值 64KB），存在大 value 反序列化/阻塞风险，建议拆分或压缩',ref:'#33'},
+  {delay:28,sev:'low',score:62,title:'SSH banner 版本暴露',text:'OpenSSH_8.9p1 Ubuntu（含 CVE 补丁版本），对外暴露面可控，建议升级至 9.x',ref:'#9'},
+];
+let feedIdx=0,riskCount=0;
+function pushFinding(f){
+  riskCount++;$('#mRisk').innerHTML=riskCount+' <small>项</small>';
+  const sevBadge={high:'<span class="badge b-destructive">高危</span>',mid:'<span class="badge b-warn">中危</span>',
+    low:'<span class="badge b-secondary">低危</span>',info:'<span class="badge b-muted">信息</span>'}[f.sev];
+  const d=document.createElement('div');d.className='finding';
+  d.innerHTML='<div class="fh">'+sevBadge+'<b>'+f.title+'</b><span class="ft">'+nowTs().slice(0,8)+'</span></div>'+
+    '<div>'+f.text+(f.ref?' <span class="ref">跳转 '+f.ref+'</span>':'')+'</div>';
+  d.querySelector('.ref')&&d.querySelector('.ref').addEventListener('click',()=>toast('停止后可在「查看 → AI 分析」中跳转到对应包 '+f.ref));
+  $('#aiFeed').prepend(d);
+  setDial(f.score);
+}
+function setDial(score){
+  const c=144.5;$('#dialArc').style.strokeDashoffset=(c*(1-score/100)).toFixed(1);
+  $('#dialNum').textContent=score;
+  const col=score>=70?'#f4165f':score>=40?'#f59e0b':'#16a34a';
+  $('#dialArc').style.stroke=col;$('#dialNum').style.color=col;
+  $('#dialLabel').textContent=score>=70?'中高危':score>=40?'中危':'低危';
+}
+function scheduleFeed(){
+  if(feedIdx>=FEED.length)return;
+  const f=FEED[feedIdx++];
+  cap.timers.push(setTimeout(()=>{if(cap.running){pushFinding(f);scheduleFeed()}},f.delay*1000));
+}
+
+/* ================= 抓包状态机 ================= */
+let cap={running:false,t0:0,timers:[],scroll:true,winPkts:[],lines:0,finalBytes:0,finalPkts:0};
+const FILL_SECONDS=45;
+function startCapture(){
+  if(cap.running)return;
+  const bpf=$('#fBpf').value.trim(),iface=$('#fIface').value.split('（')[0],
+        snap=$('#fSnap').value,sizeMiB=+$('#fSize').value;
+  cap={running:true,t0:Date.now(),timers:[],scroll:true,winPkts:[],lines:0,
+       finalBytes:rint(90,127)*sizeMiB/128*1048576,finalPkts:rint(150000,230000)};
+  $('#startBtn').disabled=true;$('#startBtn').textContent='… 校验过滤器';
+  toast('tcpdump -d 语法校验通过 · SSH 会话已建立');
+  setTimeout(()=>{
+    $('#liveCard').classList.remove('hidden');
+    $('#liveCard').scrollIntoView({behavior:'smooth',block:'start'});
+    $('#liveMeta').textContent="vm-42 · "+iface+" · '"+(bpf||'(全量)')+"' · snaplen "+snap;
+    $('#cmdEcho').innerHTML='guest$ <b>sudo -n tcpdump -i '+iface+' -U -s '+snap+" -w - '"+(bpf||'')+"'</b>&nbsp;&nbsp;→&nbsp;&nbsp;SSH stdout&nbsp;&nbsp;→&nbsp;&nbsp;pvc://data/captures/vm-42_"+fileStamp()+'.pcap';
+    $('#pRight').textContent='上限 '+sizeMiB+' MiB';
+    if($('#fAi').value==='on'){feedIdx=0;riskCount=0;$('#aiFeed').innerHTML='';setDial(0);$('#dialLabel').textContent='评估中…';
+      $('#mRisk').innerHTML='0 <small>项</small>';scheduleFeed();
+      showAiCallout($('#aiCmdBox'),aiLines(bpf,iface,snap,sizeMiB,+$('#fDur').value));}
+    sysLine('tcpdump: listening on '+iface+', link-type EN10MB, snapshot length '+snap+' bytes');
+    cap.timers.push(setInterval(tickMetrics,200));
+    (function loop(){if(!cap.running)return;pushPacket();setTimeout(loop,rint(90,650))})();
+    $('#startBtn').textContent='▶ 开始抓包';
+  },700);
+}
+function tickMetrics(){
+  const el=(Date.now()-cap.t0)/1000,p=Math.min(el/FILL_SECONDS,1);
+  $('#mElapsed').textContent=pad(Math.floor(el/60),2)+':'+pad(Math.floor(el%60),2);
+  $('#mPkts').textContent=fmtNum(Math.floor(cap.finalPkts*p));
+  const mib=cap.finalBytes*p/1048576;
+  $('#mBytes').innerHTML=mib.toFixed(1)+' <small>MiB</small>';
+  $('#pBar').style.width=(p*100).toFixed(1)+'%';
+  $('#pLeft').textContent='已写 '+mib.toFixed(1)+' MiB';
+  const now=Date.now();cap.winPkts=cap.winPkts.filter(x=>now-x<5000);
+  $('#mPps').innerHTML=cap.winPkts.length+' <small>pps</small>';
+  if(p>=1)stopCapture('size');
+}
+function pushPacket(){
+  const pk=genPacket('192.168.21.2');cap.lines++;cap.winPkts.push(Date.now());
+  const body=$('#termBody'),d=document.createElement('div');
+  d.className='term-line '+pk.cls;d.innerHTML=pk.html;body.appendChild(d);
+  while(body.children.length>200)body.removeChild(body.firstChild);
+  if(cap.scroll)body.scrollTop=body.scrollHeight;
+}
+function sysLine(s){const d=document.createElement('div');d.className='term-line c-sys';
+  d.innerHTML='<span class="t">'+nowTs()+'</span> *** '+s;$('#termBody').appendChild(d)}
+function toggleScroll(){cap.scroll=!cap.scroll;$('#scrollBtn').textContent=cap.scroll?'⏸ 暂停滚动':'▶ 继续滚动'}
+function clearStream(){$('#termBody').innerHTML='';sysLine('预览窗口已清屏（落盘不受影响）')}
+function stopCapture(reason){
+  if(!cap.running)return;cap.running=false;cap.timers.forEach(t=>{clearTimeout(t);clearInterval(t)});
+  const el=(Date.now()-cap.t0)/1000,frac=Math.min(el/FILL_SECONDS,1);
+  const pkts=Math.floor(cap.finalPkts*frac),mib=cap.finalBytes*frac/1048576;
+  sysLine(reason==='size'?'已达到大小上限，自动停止并保存':'收到停止请求，tcpdump 已 SIGINT 退出');
+  sysLine('共捕获 '+fmtNum(pkts)+' 包，写入 vm-42_'+fileStamp()+'.pcap');
+  const name='vm-42_'+fileStamp()+'.pcap';
+  addHistoryRow({name:name,dur:el,pkts:pkts,mib:mib,bpf:$('#fBpf').value||'(全量)',reason:reason,
+    time:startTimeStr(),ai:riskCount>0?(riskCount+' 项发现'):'未发现风险'});
+  toast(reason==='size'?'已达大小上限 · 自动停止并保存':'已停止并保存 ✔ AI 分析报告已生成，点击「查看」查看');
+  $('#startBtn').disabled=false;
+}
+function startTimeStr(){const d=new Date(cap.t0||Date.now());
+  return pad(d.getHours(),2)+':'+pad(d.getMinutes(),2)+':'+pad(d.getSeconds(),2)}
+
+/* ================= 历史表 ================= */
+function durStr(s){return Math.floor(s/60)+' 分 '+pad(Math.floor(s%60),2)+' 秒'}
+function addHistoryRow(r){
+  const status=r.reason==='size'?'<span class="badge b-warn">大小上限</span>':r.reason==='dur'?'<span class="badge b-warn">时长上限</span>':'<span class="badge b-ok">完成</span>';
+  const ai=r.ai==='未发现风险'?'<span class="badge b-ok">'+r.ai+'</span>':'<span class="badge b-warn">'+r.ai+'</span>';
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td class="fname">'+r.name+'</td><td class="num">'+r.time+'</td>'+
+    '<td class="num">'+durStr(r.dur)+'</td><td class="num">'+fmtNum(r.pkts)+'</td>'+
+    '<td class="num">'+r.mib.toFixed(1)+' MiB</td><td class="mono" style="font-size:12px">'+r.bpf+'</td>'+
+    '<td>'+ai+'</td><td>'+status+'</td>'+
+    '<td><div class="ops">'+
+      '<button class="btn btn-outline btn-sm" onclick="openViewer(\''+r.name+'\','+r.pkts+','+r.mib.toFixed(1)+')">👁 查看</button>'+
+      '<button class="btn btn-ghost btn-sm" onclick="toast(\'演示环境：真实点击将下载 '+r.name+'\')">⤓</button>'+
+      '<button class="btn btn-ghost btn-sm" style="color:var(--destructive)" onclick="delRow(this,\''+r.name+'\')">删</button>'+
+    '</div></td>';
+  $('#histBody').prepend(tr);
+}
+function delRow(btn,name){toast('已删除 '+name+'（真实环境会先弹确认框）');btn.closest('tr').remove()}
+addHistoryRow({name:'vm-42_20260921-094412.pcap',time:'09:44:12',dur:150,pkts:18421,mib:14.2,bpf:'tcp port 6379',reason:'done',ai:'5 项发现'});
+addHistoryRow({name:'vm-42_20260921-083107.pcap',time:'08:31:07',dur:60,pkts:6204,mib:4.8,bpf:'host 192.168.21.99',reason:'dur',ai:'未发现风险'});
+
+/* ================= 平台 pcap 解码（查看器，假数据） ================= */
+let V={name:'',pkts:[],sel:0};
+const REDIS_CMDS=[
+  {cmd:'AUTH',args:['demo-redis-pass'],danger:'high'},
+  {cmd:'PING',args:[]},
+  {cmd:'GET',args:['session:active'],danger:'mid'},
+  {cmd:'SETEX',args:['cache:home','300','<86KB value>'],danger:'mid'},
+  {cmd:'INFO',args:['replication']},
+  {cmd:'SELECT',args:['0']},
+];
+function respBytes(cmd,args){
+  const parts=[cmd].concat(args);
+  let s='*'+parts.length+'\r\n';
+  parts.forEach(p=>{s+='$'+Buffer_like_len(p)+'\r\n'+p+'\r\n'});
+  function Buffer_like_len(x){return String(x).length}
+  const arr=[];for(let i=0;i<s.length;i++)arr.push(s.charCodeAt(i));
+  return arr;
+}
+function rndBytes(rnd,n){const a=[];for(let i=0;i<n;i++)a.push(Math.floor(rnd()*256));return a}
+function buildEthIpTcp(rnd,srcIp,dstIp,sport,dport,payloadLen,flags){
+  const eth=[];for(let i=0;i<6;i++)eth.push(Math.floor(rnd()*256));
+  eth.push(0x00,0x50,0x56,0x11,0x22,0x33,0x08,0x00);
+  const ip=[0x45,0x00,(payloadLen+40)>>8&0xff,(payloadLen+40)&0xff,0x1a,0x2b,0x40,0x00,0x40,0x06,0x00,0x00]
+    .concat(ipBytes(srcIp)).concat(ipBytes(dstIp));
+  const tcp=[sport>>8&0xff,sport&0xff,dport>>8&0xff,dport&0xff,0,0,0,1,0,0,0,1,0x50,0x10,0xff,0xff,0x00,0x00,0x00,0x00];
+  return {eth:eth,ip:ip,tcp:tcp};
+}
+function ipBytes(ip){return ip.split('.').map(Number)}
+function genViewerPackets(fname){
+  const rnd=mulberry32(hashCode(fname));const pkts=[];
+  let t=9*3600+44*60+12;
+  const macs=['00:50:56:aa:01:42','00:50:56:aa:07:19'];
+  for(let i=0;i<38;i++){
+    t+=0.02+rnd()*0.4;
+    const ts=pad(Math.floor(t/3600),2)+':'+pad(Math.floor(t/60)%60,2)+':'+pad(Math.floor(t%60),2)+'.'+pad(Math.floor((t%1)*1e6),6);
+    const r=rnd();let p={no:i+1,t:ts};
+    if(r<0.34){ /* Redis */
+      const c=REDIS_CMDS[Math.floor(rnd()*REDIS_CMDS.length)];
+      const client=rnd()<0.7;
+      p.src=client?'192.168.21.99':'192.168.21.2';
+      p.dst=client?'192.168.21.2':'192.168.21.99';
+      p.sport=40000+Math.floor(rnd()*20000);p.dport=6379;p.proto='REDIS';p.len=54+respBytes(c.cmd,c.args).length;
+      p.info=client?('Request: '+c.cmd+(c.args.length?' '+c.args.join(' '):'')):'Response: status/length';
+      p.payload=respBytes(c.cmd,c.args);p.app={kind:'redis',cmd:c.cmd,args:c.args,danger:c.danger||''};
+    }else if(r<0.50){ /* SSH */
+      p.src='192.168.21.2';p.dst='192.168.21.31';p.sport=22;p.dport=50000+Math.floor(rnd()*9999);
+      if(rnd()<0.5){const x=p.src;p.src=p.dst;p.sport=p.dport+(p.sport-50000);p.dst=x;p.sport=50000+Math.floor(rnd()*9999);p.dport=22}
+      p.proto='SSH';p.len=54+Math.floor(rnd()*300);
+      p.info=i<3?'Server: Protocol 2.0 (SSH-2.0-OpenSSH_8.9p1 Ubuntu)':'Encrypted client/server data';
+      p.payload=rndBytes(rnd,Math.floor(rnd()*48)+16);p.app={kind:'ssh',banner:i<3};
+    }else if(r<0.62){ /* DNS */
+      const d=DOMAINS[Math.floor(rnd()*DOMAINS.length)];
+      p.src=rnd()<0.6?'192.168.21.2':'192.168.21.13';p.dst='192.168.21.10';p.sport=40000+Math.floor(rnd()*9999);p.dport=53;
+      p.proto='DNS';p.len=90;
+      p.info='Standard query 0x'+Math.floor(rnd()*0xffff).toString(16)+' A '+d;
+      p.payload=rndBytes(rnd,38);p.app={kind:'dns',name:d};
+    }else if(r<0.76){ /* TLS */
+      p.src=rnd()<0.5?'192.168.21.2':'192.168.21.99';p.dst=p.src==='192.168.21.2'?'140.82.112.34':'192.168.21.2';
+      p.sport=50000+Math.floor(rnd()*9999);p.dport=443;p.proto='TLS';p.len=54+Math.floor(rnd()*500);
+      p.info='Application Data (加密载荷 · 可见 SNI / 时序)';
+      p.payload=[0x17,0x03,0x03].concat(rndBytes(rnd,45));p.app={kind:'tls'};
+    }else if(r<0.90){ /* 扫描段：.31 → 本机 多端口 SYN */
+      const dport=[6379,6380,6381,6382,27017,3306,9200,11211][Math.floor(rnd()*8)];
+      p.src='192.168.21.31';p.dst='192.168.21.2';p.sport=45000+Math.floor(rnd()*9999);p.dport=dport;
+      p.proto='TCP';p.len=60;p.info='SYN 同步 · 疑似探测（未完成握手）';
+      p.payload=[];p.app={kind:'syn',dport:dport};
+    }else{ /* ICMP */
+      p.src=rnd()<0.5?'192.168.21.2':'192.168.21.14';p.dst=p.src==='192.168.21.2'?'192.168.21.14':'192.168.21.2';
+      p.sport=0;p.dport=0;p.proto='ICMP';p.len=98;p.info='Echo (ping) request / reply';
+      p.payload=rndBytes(rnd,56);p.app={kind:'icmp'};
+    }
+    pkts.push(p);
+  }
+  return pkts;
+}
+function openViewer(name,pkts,mib){
+  V.name=name;V.pkts=genViewerPackets(name);V.sel=-1;
+  $('#vTitle').textContent=name;
+  $('#vMeta').innerHTML='<span>vm-42 · ops</span><span>'+Math.round(pkts/1000*10)/10+'k 包（演示加载前 38 个）</span><span>'+mib+' MiB</span><span>tcpdump / any</span>';
+  $('#chatFile').textContent=name;
+  $('#chatLog').innerHTML='<div class="bubble ai">已完成对 <b>'+name+'</b> 的解码与关联分析，可针对该文件提问，例如「192.168.21.31 高频访问是什么？」</div>';
+  $('#vFilter').value='';
+  renderPlist();buildAiReport();
+  vTab('raw');
+  $('#viewerModal').classList.remove('hidden');document.body.classList.add('lock');
+}
+function closeViewer(){$('#viewerModal').classList.add('hidden');document.body.classList.remove('lock')}
+function vTab(t){
+  $('#tabRaw').classList.toggle('active',t==='raw');$('#tabAi').classList.toggle('active',t==='ai');
+  $('#vRaw').classList.toggle('hidden',t!=='raw');$('#vAi').classList.toggle('hidden',t!=='ai');
+}
+function renderPlist(){
+  const q=$('#vFilter').value.trim().toLowerCase();
+  const rows=V.pkts.filter(p=>!q||(p.src+' '+p.dst+' '+p.proto+' '+p.info).toLowerCase().includes(q));
+  $('#vCount').textContent='显示 '+rows.length+' / '+V.pkts.length+' 包';
+  $('#plistBody').innerHTML=rows.map(p=>{
+    const cls={REDIS:'pb-redis',TLS:'pb-tls',DNS:'pb-dns',SSH:'pb-ssh',ICMP:'pb-icmp'}[p.proto]||'pb-tcp';
+    return '<tr data-no="'+p.no+'" class="'+(V.sel===p.no?'sel':'')+'" onclick="selPacket('+p.no+')">'+
+      '<td>'+p.no+'</td><td>'+p.t+'</td><td>'+p.src+'</td><td>'+p.dst+'</td>'+
+      '<td><span class="pbadge '+cls+'">'+p.proto+'</span></td><td>'+p.len+'</td><td style="max-width:330px;overflow:hidden;text-overflow:ellipsis">'+p.info+'</td></tr>';
+  }).join('');
+}
+function selPacket(no,flash){
+  V.sel=no;const p=V.pkts.find(x=>x.no===no);if(!p)return;
+  renderPlist();
+  const tr=document.querySelector('tr[data-no="'+no+'"]');
+  if(tr){tr.scrollIntoView({block:'center'});if(flash){tr.classList.add('flash');setTimeout(()=>tr.classList.remove('flash'),1300)}}
+  /* 协议树 */
+  let tree='<details open><summary>Frame '+p.len+': '+p.len+' bytes on wire</summary><div>'+
+    'Interface: any · Arrival: '+p.t+'<br>Protocol: <b>'+p.proto+'</b></div></details>'+
+    '<details open><summary>Ethernet II</summary><div>Src: <b>00:50:56:aa:01:42</b><br>Dst: <b>00:50:56:aa:07:19</b><br>Type: IPv4</div></details>'+
+    '<details open><summary>IPv4</summary><div>Src: <b>'+p.src+'</b><br>Dst: <b>'+p.dst+'</b><br>TTL: 64 · Proto: '+(p.proto==='ICMP'?'ICMP (1)':p.proto==='DNS'?'UDP (17)':'TCP (6)')+' · ID: 0x'+(p.no*4177%65535).toString(16)+'</div></details>';
+  if(p.proto!=='ICMP'&&p.proto!=='DNS'&&p.dport){
+    tree+='<details open><summary>TCP</summary><div>Src Port: <b>'+p.sport+'</b><br>Dst Port: <b>'+p.dport+'</b><br>Seq: '+((p.no*7919)%900000+1)+' · ACK: '+((p.no*104729)%900000+1)+' · Window: 502<br>Flags: <b>0x018 (PSH, ACK)</b></div></details>';
+  }
+  if(p.app){
+    if(p.app.kind==='redis'){
+      tree+='<details open><summary>Redis Protocol (RESP)</summary><div>Command: <b>'+p.app.cmd+'</b><br>Args: <b>'+(p.app.args.join(' · ')||'—')+'</b><br>明文可见：<b style="color:var(--destructive)">载荷未加密</b>'+(p.app.danger==='high'?' · 含口令':'')+'</div></details>';
+    }else if(p.app.kind==='ssh'){
+      tree+='<details open><summary>SSH</summary><div>'+(p.app.banner?'Banner: <b>SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.10</b>':'Encrypted payload · 长度 '+p.payload.length)+'</div></details>';
+    }else if(p.app.kind==='dns'){
+      tree+='<details open><summary>DNS</summary><div>Query: <b>'+p.app.name+'</b><br>Type: A · Class: IN</div></details>';
+    }else if(p.app.kind==='tls'){
+      tree+='<details open><summary>TLSv1.3</summary><div>Record: <b>ApplicationData</b> · 长度 '+p.payload.length+'<br>载荷加密：内容不可见，SNI/证书/时序可分析</div></details>';
+    }else if(p.app.kind==='syn'){
+      tree+='<details open><summary>TCP (SYN)</summary><div>Dst Port: <b>'+p.app.dport+'</b><br>无后续握手 → 端口探测特征</div></details>';
+    }else if(p.app.kind==='icmp'){
+      tree+='<details open><summary>ICMP</summary><div>Type: 8 (Echo request) · Code: 0 · Id: 1</div></details>';
+    }
+  }
+  $('#pDetail').innerHTML=tree;
+  /* Hex */
+  const bytes=(p.payload&&p.payload.length?p.payload:[0x00,0x50,0x56,0xaa]).slice(0,96);
+  let hex='<div class="hexline hexoff" style="margin-bottom:2px">高亮 = 应用层载荷</div>';
+  for(let off=0;off<bytes.length;off+=16){
+    const slice=bytes.slice(off,off+16);
+    const hb=slice.map((b,i)=>'<i class="'+(off>=14&&i<slice.length?'hl':'')+'">'+pad(b.toString(16),2)+'</i>').join(' ');
+    const asc=slice.map(b=>(b>=32&&b<127)?String.fromCharCode(b).replace('<','&lt;').replace('&','&amp;'):'·').join('');
+    hex+='<div class="hexline"><span class="hexoff">'+pad(off.toString(16),8)+'</span><span class="hexb">'+hb+'</span><span class="hexa">'+asc+'</span></div>';
+  }
+  $('#pHex').innerHTML=hex;
+}
+
+/* ================= AI 分析报告（基于生成的解码数据） ================= */
+function buildAiReport(){
+  const rnd=mulberry32(hashCode(V.name+'-ai'));
+  const score=58+Math.floor(rnd()*18);
+  const authPk=V.pkts.find(p=>p.app&&p.app.kind==='redis'&&p.app.cmd==='AUTH');
+  const bigPk=V.pkts.find(p=>p.app&&p.app.kind==='redis'&&p.app.cmd==='GET');
+  const bannerPk=V.pkts.find(p=>p.app&&p.app.kind==='ssh'&&p.app.banner);
+  const synStart=V.pkts.findIndex(p=>p.app&&p.app.kind==='syn');
+  const counts={};const talkers={};
+  V.pkts.forEach(p=>{counts[p.proto]=(counts[p.proto]||0)+1;talkers[p.src]=(talkers[p.src]||0)+1});
+  const total=V.pkts.length;
+  /* 评分环 */
+  const ring=$('#arRing');ring.textContent=score;
+  ring.style.background='conic-gradient('+(score>=70?'#f4165f':score>=40?'#f59e0b':'#16a34a')+' '+(score*3.6)+'deg, var(--muted) 0)';
+  ring.style.color=score>=70?'#f4165f':score>=40?'#b45309':'#16a34a';
+  $('#arSub').innerHTML='分析对象：<b class="mono" style="font-size:12px">'+V.name+'</b> · 解码 '+total+' 包 · 耗时 1.8s · 引擎：gopacket 解码 + 风险模型 v3（平台内置，无需外发数据）';
+  $('#arSum').innerHTML='本窗口流量主体为 <b>Redis 明文会话（'+Math.round((counts.REDIS||0)/total*100)+'%）</b>，来自 192.168.21.99（博客对象缓存）与 192.168.21.10（巡检）。'+
+    '综合判定：<b style="color:var(--destructive)">中高风险</b>——主要风险为 AUTH 口令明文暴露；另有 192.168.21.31 的端口探测行为（已判定为 Prometheus 巡检）与 SSH 版本信息暴露。未见数据外发与 C2 特征。';
+  /* 发现 */
+  const F=[];
+  if(authPk)F.push({sev:'high',title:'Redis AUTH 口令明文暴露',ref:authPk.no,
+    desc:'包 #'+authPk.no+' 载荷含明文 <span class="mono">AUTH demo-redis-pass</span>。任何能下载本文件的人都可读取该口令；且该口令近 90 天未轮换（来源：平台凭据巡检记录）。',
+    fix:'① 用后即删本文件或将其标记为敏感（当前已默认仅 admin 可下载）；② 轮换 Redis requirepass；③ 如需长期抓包，加 TLS 或改用 not port 6379 排除。'});
+  if(synStart>=0)F.push({sev:'mid',title:'192.168.21.31 端口探测（判定巡检）',ref:synStart+1,
+    desc:'包 #'+(synStart+1)+' 起，该主机对 6379/6380/27017/9200 等端口发起 SYN 且无完成握手，指纹与 Prometheus tcp 探测一致。',
+    fix:'属预期巡检流量，建议在 AI 设置中将 192.168.21.31 加入信任探针白名单以降低噪声。'});
+  if(bigPk)F.push({sev:'mid',title:'大 value 键：session:active',ref:bigPk.no,
+    desc:'GET session:active 响应约 86KB（阈值 64KB），大 value 会拉长 Redis 主线程阻塞时间。',
+    fix:'建议拆分为 hash 或启用压缩，并在平台 Redis 模块查看 slowlog 交叉验证。'});
+  if(bannerPk)F.push({sev:'low',title:'SSH 版本信息暴露',ref:bannerPk.no,
+    desc:'Banner 显示 OpenSSH_8.9p1 Ubuntu-3ubuntu0.10，版本含补丁号，暴露面可控。',
+    fix:'计划内升级至 OpenSSH 9.x；无需紧急处理。'});
+  F.push({sev:'low',title:'TLS 会话占比正常',ref:0,
+    desc:'TLSv1.3 加密流量 '+Math.round((counts.TLS||0)/total*100)+'%，SNI 均为已知内部/合作域名，无异常外发。',
+    fix:'无需处置。'});
+  $('#arFindings').innerHTML=F.filter(f=>f.ref>0).map(f=>
+    '<div class="ar-finding sev-'+f.sev+'"><div class="fh">'+
+    ({high:'<span class="badge b-destructive">高危</span>',mid:'<span class="badge b-warn">中危</span>',low:'<span class="badge b-secondary">低危</span>'}[f.sev])+
+    f.title+'<span class="ref" onclick="jumpTo('+f.ref+')">查看包 #'+f.ref+'</span></div>'+
+    '<div class="desc">'+f.desc+'</div><div class="fix">建议：'+f.fix+'</div></div>').join('');
+  /* 协议分布 */
+  const protoEnt=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  $('#arBars').innerHTML=protoEnt.map(([k,v])=>
+    '<div class="bar-row"><span>'+k+'</span><div class="bar-track"><div class="bar-fill" style="width:'+(v/total*100).toFixed(1)+'%"></div></div><span class="v">'+v+' · '+Math.round(v/total*100)+'%</span></div>').join('');
+  /* Top talkers */
+  const tk=Object.entries(talkers).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  $('#arTalkers').innerHTML=tk.map(([k,v])=>
+    '<div class="bar-row"><span class="mono" style="font-size:11.8px">'+k+'</span><div class="bar-track"><div class="bar-fill" style="width:'+(v/tk[0][1]*100).toFixed(1)+'%"></div></div><span class="v">'+v+' 包</span></div>').join('');
+  /* 建议 */
+  $('#arAdvice').innerHTML=
+    '<li><span class="ic ic-bad">✖</span><span><b>立即</b>：轮换 Redis 口令（AUTH 已在本文件明文出现）</span></li>'+
+    '<li><span class="ic ic-warn">⚠</span><span><b>本周</b>：将 192.168.21.31 加入 AI 信任探针白名单，消除巡检误报</span></li>'+
+    '<li><span class="ic ic-warn">⚠</span><span><b>计划</b>：拆分 session:active 大键；评估 Redis TLS（参考平台 Redis 模块文档）</span></li>'+
+    '<li><span class="ic ic-info">·</span><span><b>留存</b>：本报告与 pcap 已关联存储；文件 7 天后自动清理，导出报告可长期归档</span></li>';
+}
+function jumpTo(no){vTab('raw');selPacket(no,true);toast('已跳转到包 #'+no+'（源文件视图）')}
+/* AI 追问（演示） */
+function sendChat(){
+  const inp=$('#chatInput'),q=inp.value.trim();if(!q)return;inp.value='';
+  const log=$('#chatLog');
+  const u=document.createElement('div');u.className='bubble user';u.textContent=q;log.appendChild(u);
+  const a=document.createElement('div');a.className='bubble ai';
+  const ql=q.toLowerCase();
+  if(ql.includes('31')||ql.includes('扫描')||ql.includes('巡检')){
+    a.innerHTML='192.168.21.31 是 <b>K8s 主集群 master-01</b>（Prometheus 抓取节点）。本文件中它对 6379/6380/27017/9200 的 SYN 序列间隔均匀（1.2s ± 0.1s）、UA 指纹为 prometheus/2.53，符合 <b>blackbox 巡检</b>特征，非恶意扫描。已建议加入信任白名单。';
+  }else if(ql.includes('口令')||ql.includes('密码')||ql.includes('auth')){
+    a.innerHTML='本文件包 #'+((V.pkts.find(p=>p.app&&p.app.kind==='redis'&&p.app.cmd==='AUTH')||{no:31}).no)+' 含明文 AUTH 口令（demo-redis-pass）。影响面：凡能访问平台抓包文件的人（当前仅 admin）。平台侧已默认加密存储 + 审计下载行为；建议立即轮换并删除本文件。';
+  }else if(ql.includes('外发')||ql.includes('可疑')||ql.includes('异常')){
+    a.innerHTML='对全部 '+V.pkts.length+' 个抽样包做了外联检查：外部目仅 140.82.112.34:443（TLS，SNI 为已知域名），DNS 查询无异常 DGA 特征，<b>未发现数据外发或 C2 迹象</b>。';
+  }else{
+    a.innerHTML='（演示环境为固定话术）真实实现中，该输入连同 <b>解码统计 + 相关包片段</b> 会交给平台 AI 引擎，基于本文件上下文回答，例如拓扑归属、协议解释、攻击链研判、与平台巡检记录交叉验证等。';
+  }
+  log.appendChild(a);log.scrollTop=log.scrollHeight;
+}
+</script>
+</body>
+</html>

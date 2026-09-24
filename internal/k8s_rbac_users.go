@@ -394,7 +394,7 @@ func handleK8sRBACQuickReadonlyUserCreate(c *gin.Context, k8s *kubernetes.Client
 
 	crName := "super-reader"
 	suffix := randomHexSuffix(4)
-	base := fmt.Sprintf("kbts-ro-%s", suffix)
+	base := fmt.Sprintf("labplane-ro-%s", suffix)
 	if err := validateK8sMetaName("ServiceAccount", base); err != nil {
 		RespondAPIError500(c, "内部生成名称无效: "+err.Error())
 		return

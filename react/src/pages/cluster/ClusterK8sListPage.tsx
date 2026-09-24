@@ -43,6 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ResponsiveTableShell from "@/components/ResponsiveTableShell";
 import { apiDelete, apiGetJson, apiPostJson } from "@/lib/api";
 import { toast } from "sonner";
 import { parseAge } from "./parseAge";
@@ -281,9 +282,9 @@ export const ClusterK8sListPage: React.FC<ClusterK8sListPageProps> = ({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
         {(description || (dataQ.data && dataQ.data.length > 0)) && (
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-slate-500">
             {description}
             {dataQ.data && dataQ.data.length > 0 ? (
               <>
@@ -331,32 +332,178 @@ export const ClusterK8sListPage: React.FC<ClusterK8sListPageProps> = ({
         </div>
       </div>
 
-      {dataQ.isLoading && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm text-slate-500">
-          加载中…
-        </div>
-      )}
-      {dataQ.error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {(dataQ.error as Error).message}
-        </div>
-      )}
+      <ResponsiveTableShell
+        loading={dataQ.isLoading}
+        error={dataQ.error ? (dataQ.error as Error).message : null}
+        onRetry={() => void dataQ.refetch()}
+        emptyHint={
+          dataQ.data && dataQ.data.length === 0 ? "当前过滤条件下没有资源" : undefined
+        }
+        cards={
+          <>
+            {(dataQ.data ?? []).map((row, idx) => {
+              const name = String(row.name ?? "");
+              const ls = typeof row.labelSelector === "string" ? row.labelSelector : "";
+              const podsHref =
+                showPodsCol && namespaceFixed && ls
+                  ? {
+                      pathname: `/cluster/ns/${encodeURIComponent(namespaceFixed)}/pods`,
+                      search: `?labelSelector=${encodeURIComponent(ls)}`,
+                    }
+                  : null;
+              const cardDetailHref =
+                nameLinksToWorkloadDetail && workloadDetailSegment
+                  ? `/cluster/ns/${encodeURIComponent(namespaceFixed!)}/${workloadDetailSegment}/${encodeURIComponent(name)}`
+                  : null;
+              const cardPvcFilesHref =
+                apiSuffix === "pvcs" && namespaceFixed
+                  ? `/cluster/ns/${encodeURIComponent(namespaceFixed)}/pvcs/${encodeURIComponent(name)}/files`
+                  : null;
+              const cardCmSecretHref =
+                namespaceFixed && (apiSuffix === "configmaps" || apiSuffix === "secrets")
+                  ? `/cluster/ns/${encodeURIComponent(namespaceFixed)}/${apiSuffix}/${encodeURIComponent(name)}`
+                  : null;
+              const cardTitleHref = cardDetailHref ?? cardPvcFilesHref ?? cardCmSecretHref;
+              const cardTitleTip = cardDetailHref
+                ? "打开工作负载详情（概览 / 容器组 / YAML）"
+                : cardPvcFilesHref
+                  ? "浏览 PVC 内文件（需 Pod 挂载该卷）"
+                  : "打开详情与关联资源";
+              const nsText =
+                !namespaceFixed && row.namespace != null ? String(row.namespace) : "";
+              const ageCol = displayColumns.find((c) => c.kind === "age");
+              const ageText =
+                ageCol && !ageCol.format && typeof row[ageCol.key] === "string"
+                  ? parseAge(String(row[ageCol.key]))
+                  : "";
+              const subtitle = [nsText, ageText].filter(Boolean).join(" · ");
+              const cardFields = displayColumns
+                .filter((c) => c.key !== "name" && c.key !== "namespace" && c.kind !== "age")
+                .slice(0, 3);
+              return (
+                <article
+                  key={`${String(row.namespace ?? idx)}-${String(row.name ?? idx)}-${idx}`}
+                  className="min-w-0 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      {cardTitleHref ? (
+                        <Link
+                          to={cardTitleHref}
+                          className="block break-all font-mono text-sm font-semibold text-slate-900"
+                          title={cardTitleTip}
+                        >
+                          {name}
+                        </Link>
+                      ) : (
+                        <h3 className="break-all font-mono text-sm font-semibold text-slate-900">
+                          {name}
+                        </h3>
+                      )}
+                      <p className="mt-0.5 break-all text-xs text-slate-500">{subtitle || "—"}</p>
+                    </div>
+                  </div>
 
-      {dataQ.data && dataQ.data.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
-          当前过滤条件下没有资源
-        </div>
-      )}
+                  {cardFields.length > 0 && (
+                    <dl className="mt-3 grid min-w-0 gap-2 text-xs">
+                      {cardFields.map((c) => (
+                        <div key={c.key} className="flex min-w-0 items-start justify-between gap-3">
+                          <dt className="shrink-0 text-slate-400">{c.header}</dt>
+                          <dd
+                            className={cn(
+                              "min-w-0 break-all text-right text-slate-700",
+                              c.mono && "font-mono"
+                            )}
+                          >
+                            {cellValue(row, c)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
 
-      {dataQ.data && dataQ.data.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 sm:px-5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              资源列表
-            </span>
-            <span className="text-xs text-slate-500">共 {dataQ.data.length} 条</span>
-          </div>
-          <div className="overflow-x-auto">
+                  {(canCrud || podsHref) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                      {podsHref && (
+                        <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" asChild>
+                          <Link to={podsHref}>
+                            <Boxes className="h-3.5 w-3.5" />
+                            Pods
+                          </Link>
+                        </Button>
+                      )}
+                      {canGraphic && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs"
+                          title="图形编辑"
+                          onClick={() => {
+                            setGraphicName(name);
+                            setGraphicOpen(true);
+                          }}
+                        >
+                          <LayoutGrid className="h-3.5 w-3.5" />
+                          图形
+                        </Button>
+                      )}
+                      {showPvcExpand && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-violet-700 hover:text-violet-800"
+                          title="扩容 PVC（须 StorageClass 允许扩容）"
+                          onClick={() => {
+                            const cap = String(row.capacity ?? "").trim();
+                            setExpandTarget({ name, capacity: cap });
+                            setExpandSizeDraft(cap && cap !== "—" ? cap : "");
+                          }}
+                        >
+                          <Maximize2 className="h-3.5 w-3.5" />
+                          扩容
+                        </Button>
+                      )}
+                      {canCrud && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs"
+                          onClick={() => void openEditYaml(name)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          YAML
+                        </Button>
+                      )}
+                      {canCrud && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-red-600 hover:text-red-700"
+                          onClick={() => setDelTarget({ name })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          删除
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </>
+        }
+        table={
+          <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 sm:px-5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                资源列表
+              </span>
+              <span className="text-xs text-slate-500">共 {(dataQ.data ?? []).length} 条</span>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-100 hover:bg-transparent">
@@ -600,8 +747,8 @@ export const ClusterK8sListPage: React.FC<ClusterK8sListPageProps> = ({
               </TableBody>
             </Table>
           </div>
-        </div>
-      )}
+        }
+      />
 
       {canGraphic && graphicKind && namespaceFixed && (
         <K8sGraphicEditDialog

@@ -16,7 +16,7 @@ import (
 
 const (
 	defaultRedisExporterImage = "oliver006/redis_exporter:v1.69.0"
-	redisExporterMetricsPort    = int32(9121)
+	redisExporterMetricsPort  = int32(9121)
 )
 
 // RedisK8sDeployOpts 应用中心 Redis 一键部署到当前集群。
@@ -67,6 +67,8 @@ type RedisK8sDeployOpts struct {
 	NodePortRedis int32
 	/** NodePortClusterBus Cluster 模式下 cluster-bus 端口的 NodePort（仅 cluster + nodeport 时有效） */
 	NodePortClusterBus int32
+	/** HostNetwork 为 true 时 Pod 使用宿主机网络命名空间（cluster 模式常用于外部直接访问） */
+	HostNetwork bool
 	/** RdbSaveLines RDB 快照规则，每行「秒 变更数」；单行 off/none 表示关闭 RDB；nil 使用 redis 默认 save */
 	RdbSaveLines []string
 	/** ImagePullSecret 本部署使用的 imagePullSecrets 名称（通常来自模版）；空则回退进程级环境变量 */
@@ -180,7 +182,7 @@ func buildRedisAuthSecret(opts RedisK8sDeployOpts) *corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      redisAuthSecretName(name),
 			Namespace: ns,
-			Labels:    map[string]string{"app": name, "kube-bt-sync.io/redis": "true"},
+			Labels:    map[string]string{"app": name, "labplane.io/redis": "true"},
 		},
 		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{
@@ -558,7 +560,7 @@ func applyRedisStandaloneStack(ctx context.Context, k8s *kubernetes.Clientset, c
 			return fmt.Errorf("StorageClass: %w", err)
 		}
 		pvcName := redisDataPVCName(name)
-		pvc, err := buildRedisPVC(ns, pvcName, sc, size, map[string]string{"app": name, "kube-bt-sync.io/redis-data": "true"})
+		pvc, err := buildRedisPVC(ns, pvcName, sc, size, map[string]string{"app": name, "labplane.io/redis-data": "true"})
 		if err != nil {
 			return fmt.Errorf("PVC: %w", err)
 		}

@@ -18,18 +18,18 @@ import (
 
 // OpenSearchK8sDeployOpts 应用中心 OpenSearch：3 master + 3 data + 1 dashboards（副本数可覆盖）。
 type OpenSearchK8sDeployOpts struct {
-	Namespace       string
-	BaseName        string
-	ClusterName     string
-	OpenSearchImage string
-	DashboardsImage string
-	ImagePullSecret string
-	ServiceType     string
-	NodePortHTTP    int32
-	NodePortDash    int32
-	JavaOptsMaster  string
-	JavaOptsData    string
-	ExtraYml        string
+	Namespace         string
+	BaseName          string
+	ClusterName       string
+	OpenSearchImage   string
+	DashboardsImage   string
+	ImagePullSecret   string
+	ServiceType       string
+	NodePortHTTP      int32
+	NodePortDash      int32
+	JavaOptsMaster    string
+	JavaOptsData      string
+	ExtraYml          string
 	IndexTemplateJSON string
 	MasterStorageSize string
 	DataStorageSize   string
@@ -140,8 +140,8 @@ func openSearchLabels(base, component string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":       strings.TrimSpace(base),
 		"app.kubernetes.io/component":  component,
-		"app.kubernetes.io/managed-by": "kube-bt-sync",
-		"kube-bt-sync.io/opensearch":   "true",
+		"app.kubernetes.io/managed-by": "labplane",
+		"labplane.io/opensearch":   "true",
 	}
 }
 
@@ -408,7 +408,7 @@ for i in $(seq 1 120); do
   fi
   sleep 5
 done
-curl -sS -X PUT "$URL/_index_template/kubebt-%s" -H 'Content-Type: application/json' --data-binary @/tpl/body.json
+curl -sS -X PUT "$URL/_index_template/labplane-%s" -H 'Content-Type: application/json' --data-binary @/tpl/body.json
 echo OK
 `, dataSvc, ns, strings.TrimSpace(base))},
 						VolumeMounts: []corev1.VolumeMount{{Name: "tpl", MountPath: "/tpl", ReadOnly: true}},
@@ -480,7 +480,7 @@ func buildOpenSearchMasterStatefulSet(ns, base, image string, replicas int32, st
 				ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: labels},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: q}},
+					Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: q}},
 					StorageClassName: func() *string {
 						s := strings.TrimSpace(storageClass)
 						if s == "" {
@@ -548,7 +548,7 @@ func buildOpenSearchDataStatefulSet(ns, base, image string, replicas int32, stor
 				ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: labels},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: q}},
+					Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: q}},
 					StorageClassName: func() *string {
 						s := strings.TrimSpace(storageClass)
 						if s == "" {

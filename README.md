@@ -1,201 +1,288 @@
-<p align="center">
-  <h1 align="center">Kube-BT-Sync</h1>
-  <p align="center">
-    面向自建 Kubernetes 与家庭宽带的 <strong>Ingress ↔ 宝塔面板</strong> 同步与 Web 控制台
-  </p>
-  <p align="center">
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-    <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go" alt="Go">
-    <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React">
-    <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5?logo=kubernetes" alt="Kubernetes">
-  </p>
-</p>
+<div align="center">
+
+<img src="react/public/app-icon.svg" width="112" alt="LabPlane logo">
+
+# LabPlane
+
+**面向 HomeLab 与自建集群的一体化运维控制台**
+
+_Your HomeLab Control Plane_
+
+[![CI](https://github.com/abcdocker/labplane/actions/workflows/ci.yml/badge.svg)](https://github.com/abcdocker/labplane/actions/workflows/ci.yml)
+[![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+[中文](#功能概览) | [English](#overview)
+
+**工作台总览** | **Kubernetes 集群** | **Headscale 异地组网** | **堡垒机**
+
+<img src="docs/screenshots/dashboard.png" width="808" alt="工作台总览">
+<img src="docs/screenshots/kubernetes.png" width="808" alt="Kubernetes 集群概览">
+<img src="docs/screenshots/mesh.png" width="808" alt="Headscale 异地组网">
+<img src="docs/screenshots/bastion.png" width="808" alt="堡垒机">
+
+</div>
 
 ---
 
-## 📖 简介
+## 功能概览
 
-**Kube-BT-Sync** 是一个面向 Homelab / 自建集群的边缘网关同步中心。它在 Kubernetes 集群内部监听 Ingress 变化，自动将路由规则同步到公网宝塔面板（或任意 Nginx）；同时提供一个内置的 React Web 控制台，支持：
+LabPlane 是一个面向 HomeLab 和自建 Kubernetes 集群的一体化运维平台，从 Ingress 自动发布到 Headscale 组网管理、Authentik SSO 用户治理，到 vCenter 控制台、堡垒机 SSH、AI 智能巡检——登录后按角色加载各模块。
 
-- **Kubernetes** 资源可视化管理（Pods、Nodes、Services、工作负载、RBAC 等）
-- **宝塔面板** 对接与 HTTPS 证书管理
-- **应用中心**（Redis、Kafka、OpenSearch、云主机）一键部署与纳管
-- **vCenter / 公有云** 虚拟机列表、WebMKS 控制台与 SSH 终端
-- **可观测性** Prometheus / VictoriaMetrics / VictoriaLogs 统一查询入口
-- **文档中心** Markdown 知识库与附件管理
+### 🌐 异地组网（Headscale）
 
-## 🚀 核心功能
+- 多实例 Headscale 控制面管理：节点、子网路由、预授权密钥
+- Windows 一键加入工具（.bat + .ps1 + .json 自动打包下载）
+- 默认可复用密钥（绑定 Authentik 用户，旧密钥自动过期）
+- 重复节点自动检测与一键清理（保留最新在线）
+- 站点间链路拓扑可视化（直连/DERP 中继 + 流量统计）
+- 流量采集器服务发现（自动探测子网路由节点 SSH 可达性）
+- 节点真实 LAN 地址展示（采集器回传）
 
-| 模块 | 说明 |
-| :--- | :--- |
-| **工作台** | 首页汇总，支持 Kubernetes、vCenter、宝塔、应用中心、文档等多工作区切换 |
-| **Kubernetes** | 集群概览、按命名空间浏览资源、Pods 日志/终端、Nodes、Services、工作负载、RBAC 只读视图 |
-| **宝塔** | Ingress 列表、与宝塔 Nginx 的自动同步、SSL 证书设置 |
-| **应用中心** | Redis / Kafka / OpenSearch / 云主机 的模板化部署与生命周期管理 |
-| **vCenter / 公有云** | 虚拟机资产、WebMKS 控制台、SSH 终端、云主机纳管（需配置 vCenter 或 SSH 凭据） |
-| **可观测性** | 集群/虚拟机/公有云监控统一查询、日志检索（VictoriaLogs）、巡检报告 |
-| **账户与权限** | 本地登录、TOTP 双因素认证、OIDC（Authentik 等）、平台用户与角色管理 |
-| **文档中心** | Markdown 编辑器、分类与标签、附件存储（本地或腾讯云 COS） |
+### 🔐 Authentik SSO 用户治理
 
-## 🏗️ 技术栈
+- 用户创建/管理、应用对接、OIDC 提供程序管理
+- 事件审计日志
+- 与 Headscale 组网联动（用户加入 Headscale 组即开通）
 
-### 后端
+### ☸️ Kubernetes 集群管理
 
-| 技术 | 用途 |
-| :--- | :--- |
-| [Go 1.25+](https://go.dev/) | 主服务语言 |
-| [Gin](https://github.com/gin-gonic/gin) | HTTP Web 框架 |
-| [client-go](https://github.com/kubernetes/client-go) | Kubernetes API 交互 |
-| [MySQL](https://github.com/go-sql-driver/mysql) | 业务持久化（用户、审计、应用实例、文档等） |
-| [Redis](https://github.com/redis/go-redis) | 缓存、会话、运行时配置镜像 |
-| [go-oidc](https://github.com/coreos/go-oidc) | OIDC / OAuth2 认证 |
-| [govmomi](https://github.com/vmware/govmomi) | vSphere / vCenter 集成 |
-| [franz-go](https://github.com/twmb/franz-go) | Kafka Admin 客户端 |
-| [x/crypto](https://golang.org/x/crypto) | SSH / SFTP / 加密存储 |
+- 集群态 → 命名空间 → Pod 全链路资源管理
+- Ingress / Gateway API 管理与自动发布
+- Pod 终端（WebSocket SSH）、日志查看
+- Deployment / StatefulSet / DaemonSet 滚动更新与回滚
+- PVC / ConfigMap / Service 管理
+- etcd 备份与恢复
+- Pod 重启关联分析与报告
 
-### 前端
+### 🖥️ 堡垒机
 
-| 技术 | 用途 |
-| :--- | :--- |
-| [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) | UI 框架 |
-| [Vite](https://vitejs.dev/) | 构建工具 |
-| [Tailwind CSS v4](https://tailwindcss.com/) + [Radix UI](https://www.radix-ui.com/) | 样式与组件基础 |
-| [shadcn/ui](https://ui.shadcn.com/) 风格 | 组件设计体系 |
-| [TanStack Query](https://tanstack.com/query) | 服务端状态管理 |
-| [React Router v7](https://reactrouter.com/) | 路由 |
-| [XTerm.js](https://xtermjs.org/) | Web SSH 终端 |
-| [Recharts](https://recharts.org/) | 图表 |
-| [ByteMD](https://github.com/bytedance/bytemd) | Markdown 编辑器 |
-| [Excalidraw](https://excalidraw.com/) | 白板绘图 |
+- 原生 SSH 终端（WebSocket）、SFTP 文件传输
+- 会话审计录像与回放
+- 主机凭据加密存储
+- 多协议跳板（SSH / RDP / VNC）
 
-## 📦 快速开始
+### 🤖 AI 智能巡检
 
-### 前置要求
+- 集群异常自动检测与报告
+- 日志智能分析与告警
+- 自然语言运维查询
 
-- Kubernetes 集群（1.28+）
-- 集群内可访问的 **MySQL** 与 **Redis**
-- （可选）宝塔面板（用于 Ingress 同步）
-- （可选）vCenter（用于虚拟机管理）
+### 🖥️ vCenter / 虚拟化
 
-### 方式一：一键部署（推荐）
+- 虚拟机列表、控制台、电源管理
+- GPU 直通设备管理
+- Cloud Host 统一管理
 
-```bash
-kubectl apply -f deploy/kube-bt-sync-all.yaml
-```
+### 📊 监控与可观测
 
-清单包含：Namespace、RBAC、PVC（5Gi）、Deployment、ClusterIP Service、**NodePort 32080**。
-
-1. 等待 Pod Running：`kubectl -n kube-bt-sync get pod,pvc`
-2. 浏览器访问 `http://<任意节点IP>:32080/setup` 完成向导
-3. （可选）配置 Ingress + HTTPS：`kubectl apply -f deploy/ingress.yaml`
-
-> 若私有仓库需登录拉取镜像，参考 `deploy/kube-bt-sync-all.yaml` 文件头注释创建 `docker-registry` Secret。
-
-### 方式二：Helm
-
-```bash
-helm install kube-bt-sync ./charts/kube-bt-sync \
-  --namespace kube-bt-sync --create-namespace \
-  --set app.image.repository=your-registry/kube-bt-sync \
-  --set app.image.tag=latest
-```
-
-### 方式三：本地开发
-
-```bash
-# 一键启动后端 + 构建前端
-./run.sh
-
-# 前端独立开发（热更新）
-cd react && npm ci && npm run dev
-```
-
-默认监听 `http://127.0.0.1:8080/`；若 8080 被占用，脚本会自动改用其他端口。
-
-## ⚙️ 关键环境变量
-
-完整解析见 `internal/config.go` 中 `LoadConfig()`。
-
-| 变量 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `DASHBOARD_HTTP_ADDR` | 监听地址 | `:8080` |
-| `DASHBOARD_PASSWORD` | Web 登录密码（空则禁用本地登录） | 来自 Secret |
-| `DASHBOARD_SESSION_SECRET` | 会话签名密钥（**多副本必填**） | 随机 64 位 hex |
-| `DASHBOARD_COOKIE_SECURE` | HTTPS 时设为 `true` | `true` |
-| `DASHBOARD_TRUSTED_PROXIES` | 可信代理 CIDR | `10.0.0.0/8,172.16.0.0/12` |
-| `BAOTA_URL` / `BAOTA_API_KEY` | 宝塔 API 地址与密钥 | — |
-| `VCENTER_URL` / `VCENTER_USER` / `VCENTER_PASSWORD` | vCenter 连接信息 | — |
-| `MYSQL_DSN` 或 `MYSQL_HOST` 系列 | MySQL 连接 | — |
-| `REDIS_ADDR` / `REDIS_PASSWORD` | Redis 连接 | — |
-| `KUBEBT_DATA_DIR` | 数据目录（建议挂载 PVC） | `/data` |
-| `KUBEBT_ENCRYPTION_KEY` | 加密 SSH/SFTP 等敏感信息的密钥 | 随机长串 |
-| `OIDC_ISSUER_URL` 等 | OIDC 配置（四项同时配置才生效） | — |
-| `KUBEBT_ENABLE_BACKGROUND_JOBS` | 是否启用后台同步/巡检 | `true` |
-
-更多变量（Prometheus、Harbor、COS、TOTP、性能模式等）请参考源码 `internal/config.go` 注释或部署清单中的示例。
-
-## 🔒 安全建议
-
-- **敏感配置**（密码、API Key）请使用 Kubernetes `Secret` 注入，**不要**直接写入镜像或 ConfigMap。
-- **多副本**时务必显式设置 `DASHBOARD_SESSION_SECRET`，并确保仅 1 个 Pod 的 `KUBEBT_ENABLE_BACKGROUND_JOBS=true`。
-- 生产环境建议通过 **Ingress + HTTPS** 暴露，设置 `DASHBOARD_COOKIE_SECURE=true`。
-- 配置可信代理 `DASHBOARD_TRUSTED_PROXIES` 以正确获取客户端真实 IP；裸机/公网直连时保持默认（不信任 XFF）。
-- 详细安全策略与漏洞报告方式见 [SECURITY.md](./SECURITY.md)。
-
-## 🏗️ 镜像构建
-
-```bash
-# 单架构
-docker build -t your-registry/kube-bt-sync:latest .
-
-# 多架构（Buildx）
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t your-registry/kube-bt-sync:latest --push .
-```
-
-构建特性：
-- 多阶段构建，最终镜像不含 Node/npm
-- 运行时基于 `distroless/static-debian12:nonroot`（无 shell，攻击面小）
-- 静态链接，`-trimpath`、`-ldflags="-s -w"` 去除符号表
-- 镜像内无 `curl`/`wget`，健康检查请使用 HTTP 探针 `/api/health`
-
-## 🧩 接管存量 Ingress
-
-为已有 Ingress 打上注解即可被纳管：
-
-```bash
-kubectl annotate ingress <name> -n <namespace> i4t.com/baota-sync="true"
-```
-
-如需宝塔侧同时启用 HTTPS，可增加：
-
-```yaml
-annotations:
-  i4t.com/baota-sync: "true"
-  i4t.com/baota-https: "true"
-  i4t.com/baota-ssl-cert-name: "example-cert"
-```
-
-## 📁 配置持久化说明
-
-| 数据类型 | 存储位置 | 说明 |
-| :--- | :--- | :--- |
-| **核心运行时配置** | `dataDir/runtime-config.json`（PVC） | 宝塔、vCenter、MySQL/Redis 连接等 |
-| **平台 KV** | `dataDir/platform_kv.json`（PVC）+ 可选 Redis 镜像 | 侧边栏菜单、登录安全状态等 |
-| **业务数据** | MySQL | 用户、审计日志、Redis/Kafka/CloudVM 实例、文档中心等 |
-| **SSH 凭据** | `dataDir/ssh-settings/`（PVC，推荐）或预留 MySQL | 私钥与密码（经 `KUBEBT_ENCRYPTION_KEY` 加密） |
-| **审计与日志** | 本地文件（PVC）+ MySQL `kubebt_audit_log` | 访问日志与操作审计 |
-
-> **权威配置仍以 PVC 文件为准**，Redis 双写为灾备镜像。启动时若本地未初始化，可尝试从 Redis 拉回。
-
-## 🤝 贡献
-
-欢迎 Issue 和 Pull Request！请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
-
-## 📄 许可证
-
-[MIT License](./LICENSE)
+- Prometheus / VictoriaMetrics 集成
+- Grafana 面板跳转
+- 导出器指标可视化
 
 ---
 
-> **免责声明**：本项目主要面向 Homelab 与自建基础设施场景。生产环境使用前请充分评估安全与可靠性需求。
+## Overview
+
+LabPlane is an all-in-one operations platform for HomeLab and self-hosted Kubernetes clusters. From automated Ingress publishing to Headscale mesh networking, Authentik SSO user governance, vCenter consoles, bastion SSH, and AI-powered inspection — modules are loaded by role after login.
+
+### Key Features
+
+| Module | Description |
+|--------|-------------|
+| **Mesh Networking** | Multi-instance Headscale management, Windows one-click join tool, reusable auth keys, duplicate node cleanup, traffic topology |
+| **Authentik SSO** | User provisioning, app integration, OIDC provider management, event audit |
+| **Kubernetes** | Full resource management, Ingress publishing, Pod terminal, etcd backup, restart analysis |
+| **Bastion** | Native SSH terminal, SFTP, session recording, encrypted credentials |
+| **AI Inspection** | Automated anomaly detection, log analysis, natural language queries |
+| **vCenter** | VM list, console, power management, GPU passthrough |
+| **Monitoring** | Prometheus / VictoriaMetrics integration, exporter dashboards |
+
+---
+
+## 🚀 Quick Start / 快速开始
+
+### Prerequisites
+
+- **MySQL 8.0+ 与 Redis 5+（必选）**：平台元数据存储与缓存/KV 双写，初始化向导（`/setup`）会校验两者连通性。
+  没有现成实例？用仓库自带的一键环境（自动生成随机密码到 `.env`）：
+
+  ```bash
+  bash scripts/init-compose-env.sh   # 生成 .env（MySQL/Redis/控制台密码，0600）
+  docker compose up -d --build       # MySQL + Redis + 控制台，一次起齐
+  ```
+
+- Kubernetes 1.28+（或 k3s）：集群管理模块需要；仅用堡垒机/vCenter 等模块可跳过
+- `kubectl` 已配置集群访问
+- 可选：Authentik（SSO）、Headscale（异地组网）、vCenter、Harbor、云厂商凭证
+
+### Docker Compose（推荐，含依赖）
+
+```bash
+bash scripts/init-compose-env.sh && docker compose up -d --build
+# 打开 http://127.0.0.1:18081 完成初始化向导
+```
+
+### Helm
+
+```bash
+# 子 chart（ingress-nginx / metallb）默认关闭，但安装前仍需拉取依赖；
+# 离线环境可在有网机器执行后连同 charts/ 目录一起拷贝：
+helm dependency build charts/labplane
+
+helm install labplane ./charts/labplane
+```
+
+### Kubectl
+
+```bash
+kubectl apply -f deploy/labplane-all.yaml   # 单文件模板（NodePort 32080）
+# 或模块化：kubectl apply -k deploy/
+```
+
+### Local Development
+
+```bash
+# Backend
+go build -o labplane .
+./labplane
+
+# Frontend (dev)
+cd react && npm install && npm run dev
+
+# Full build + run
+./run.sh local
+```
+
+### Docker
+
+```bash
+docker build -t labplane:latest .
+docker run -d -p 8080:8080 -v ./data:/app/data labplane:latest
+# 需自行提供可达的 MySQL / Redis（见上方 docker compose 方案）
+```
+
+公开镜像发布后可直接拉取：
+
+```bash
+docker pull ghcr.io/abcdocker/labplane:latest
+```
+
+维护者在本机发布 `linux/amd64` 镜像时，`prod` 默认只推送既有的 Prod
+仓库；增加 `--public` 后会复用同一次构建，将相同 Tag 同时推送到公共仓库：
+
+```bash
+# 私有/本地 Registry；旧 KUBEBT_PROD_REGISTRY 仍兼容
+export LABPLANE_PROD_REGISTRY=registry.example.com/homelab/labplane
+export LABPLANE_PUBLIC_REGISTRY=ghcr.io/abcdocker/labplane
+export LABPLANE_IMAGE_TAG=v2.0.0
+
+docker login registry.example.com
+docker login ghcr.io
+./run.sh prod --public
+```
+
+正式开源版本以 Git Tag `v*` 触发 `.github/workflows/release.yml`，自动构建并发布
+`linux/amd64`、`linux/arm64` 公共镜像及 Release 附件；本机脚本只用于手动发布
+`linux/amd64` 镜像。GHCR 首次创建包后还需在 GitHub Package 设置中将可见性改为
+**Public**，否则匿名用户无法拉取。
+
+---
+
+## ⚙️ Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LABPLANE_DATA_DIR` | `./data` | Data directory |
+| `DASHBOARD_HTTP_ADDR` | `:8080` | Listen address |
+| `DASHBOARD_PASSWORD` | — | Local password (enables auth) |
+| `MYSQL_DSN` | — | MySQL DSN (multi-user/HA) |
+| `REDIS_ADDR` | — | Redis (session cache) |
+| `PLATFORM_PUBLIC_URL` | — | Public URL |
+| `LABPLANE_ENCRYPTION_KEY` | — | AES encryption key |
+| `LABPLANE_ENABLE_BACKGROUND_JOBS` | `true` | Background tasks |
+| `OIDC_ISSUER_URL` | — | OIDC Issuer URL |
+| `HEADSCALE_URL` | — | Headscale control plane |
+
+<details><summary>Full config (100+ vars)</summary>
+See <code>internal/config.go</code> LoadConfig() or use the Web wizard at <code>/setup</code>.
+</details>
+
+---
+
+## 🏗️ Architecture
+
+```
+labplane/
+├── main.go                    # Entry point
+├── cmd/
+│   ├── connectivity-check/    # Connectivity CLI
+│   └── tsjoin-gui/            # Windows Tailscale join tool
+├── internal/                  # Backend logic (~250 files)
+├── react/                     # React 19 + TypeScript + shadcn/ui
+├── deploy/                    # K8s manifests
+├── charts/                    # Helm Chart
+└── internal/mesh_joingoing/   # Windows join tool packaging
+```
+
+| Layer | Tech |
+|-------|------|
+| Backend | Go 1.25 / Gin / client-go / WebSocket |
+| Frontend | React 19 / TypeScript / Tailwind CSS 4 / shadcn/ui |
+| Data | MySQL (required) / Redis (required) |
+| Security | bcrypt / AES-GCM / HMAC-SHA256 / TOTP 2FA |
+| Mesh | Headscale / Tailscale |
+
+---
+
+## 🔐 Authentication
+
+| Method | Description |
+|--------|-------------|
+| **Local Password** | `DASHBOARD_PASSWORD` env or Web wizard, supports TOTP 2FA |
+| **Authentik OIDC** | Configure OIDC Issuer for SSO |
+| **MySQL Users** | Multi-user mode with role permissions (admin/viewer) and IP allowlist |
+
+---
+
+## 🛡️ Security Notes / 安全须知
+
+- **RBAC 权限收窄**：默认 ClusterRole 为功能完整而较宽（含全命名空间 Secret 只读、Pod exec）。
+  生产环境建议收窄：Helm 通过 `charts/labplane/values.yaml` 中
+  `rbac.allowClusterSecretRead` / `rbac.readAllClusterResources` 开关控制；
+  原生清单见 `deploy/rbac.yaml` 内注释示例（将 Secret 读取限制到指定命名空间）。
+- **数据与备份**：`{dataDir}/runtime-config.json` 以 0600 权限落盘，内含加密密钥与数据库凭据
+  （无 KMS 场景下的务实取舍）。请管控 PVC 快照、etcd 备份与该文件的访问权限；加密密钥丢失后
+  已加密数据（SSH 私钥、云凭证等）无法恢复。
+- **安全响应头**：内置 CSP / X-Frame-Options / nosniff / Referrer-Policy 中间件，
+  WebSocket 终端与文档中心 CDN 资源已纳入白名单。
+- **品牌标识**：Ingress 注解统一使用 `labplane.io/*`，环境变量使用 `LABPLANE_*`，
+  Cookie 使用 `labplane_session`，Prometheus 指标使用 `labplane_` 前缀。
+
+---
+
+## 🤝 Contributing
+
+```bash
+git clone https://github.com/abcdocker/labplane.git
+cd labplane
+go build ./...
+cd react && npm install && npm run build
+```
+
+---
+
+## 📄 License
+
+[MIT](LICENSE)
+
+---
+
+<div align="center">
+
+**🔐 Secure · Private · Self-Controlled**
+
+LabPlane — Your infrastructure, your rules.
+
+</div>

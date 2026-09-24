@@ -41,11 +41,11 @@ func bastionSftpCleanPath(p string) (string, error) {
 }
 
 type sftpClientMsg struct {
-	Op     string `json:"op"`
-	Path   string `json:"path"`
-	To     string `json:"to"`
+	Op      string `json:"op"`
+	Path    string `json:"path"`
+	To      string `json:"to"`
 	DataB64 string `json:"dataB64"`
-	Mode   uint32 `json:"mode"`
+	Mode    uint32 `json:"mode"`
 }
 
 func bastionVMDialSSHClient(ctx context.Context, app *ServerApp, moref string) (*ssh.Client, error) {

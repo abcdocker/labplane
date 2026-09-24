@@ -1,6 +1,6 @@
 /** SSH 终端主题 id（本机 localStorage，与 sshTerminalPresets 中 id 对应） */
 
-const KEY_THEME = "kubebt-ssh-term-theme";
+const KEY_THEME = "labplane-ssh-term-theme";
 
 export const DEFAULT_SSH_TERM_THEME_ID = "orion-one-half-dark";
 

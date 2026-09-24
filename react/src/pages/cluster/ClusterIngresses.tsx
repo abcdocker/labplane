@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { YamlEditor } from "@/components/YamlEditor";
+import IngressAnnotations from "@/components/IngressAnnotations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IngressGraphicalForm from "@/components/IngressGraphicalForm";
 import { defaultK8sIngressYamlExample } from "@/lib/buildK8sIngressYaml";
@@ -34,11 +35,13 @@ import {
 } from "@/components/ui/dialog";
 import { apiDelete, apiGetJson, apiPostJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ingressText } from "@/i18n/ingress";
 
 type IngressRow = {
   namespace: string;
   name: string;
   labels?: string;
+  annotationCount?: number;
   hosts?: string[];
   backends?: string[];
   class?: string;
@@ -49,7 +52,6 @@ const ClusterIngresses: React.FC = () => {
   const { namespace: nsEncoded } = useParams<{ namespace: string }>();
   const namespace = nsEncoded ? decodeURIComponent(nsEncoded) : "";
   const queryClient = useQueryClient();
-  if (!namespace) return null;
 
   const base = `/cluster/ns/${encodeURIComponent(namespace)}`;
 
@@ -66,6 +68,7 @@ const ClusterIngresses: React.FC = () => {
     queryKey: ["k8s-ingresses", namespace],
     queryFn: ({ signal }) =>
       apiGetJson<IngressRow[]>(`/api/k8s/ingresses?namespace=${encodeURIComponent(namespace)}`, { signal }),
+    enabled: Boolean(namespace),
   });
 
   const applyMut = useMutation({
@@ -112,6 +115,8 @@ const ClusterIngresses: React.FC = () => {
     }
   };
 
+  if (!namespace) return null;
+
   return (
     <div className="space-y-4">
       <div>
@@ -146,7 +151,72 @@ const ClusterIngresses: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ingress 列表</span>
             <span className="text-xs text-slate-500">共 {ingQ.data.length} 条</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 p-3 md:hidden">
+            {ingQ.data.map((row) => (
+              <article key={`${row.namespace}/${row.name}`} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <Link
+                    to={`${base}/ingresses/${encodeURIComponent(row.name)}`}
+                    className="flex min-w-0 items-start gap-2.5"
+                    title="打开 Ingress 详情与关联资源"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-800">
+                      <Globe className="size-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 break-all font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{row.name}</span>
+                  </Link>
+                  <IngressAnnotations
+                    annotationCount={row.annotationCount}
+                    namespace={row.namespace}
+                    name={row.name}
+                    resourceName={`${row.namespace}/${row.name}`}
+                  />
+                </div>
+
+                <dl className="mt-4 grid min-w-0 gap-3 text-xs">
+                  <div className="min-w-0">
+                    <dt className="mb-1 text-slate-400">{ingressText.mobileHosts}</dt>
+                    <dd className="flex min-w-0 flex-wrap gap-1">
+                      {(row.hosts ?? []).length
+                        ? row.hosts?.map((host) => <span key={host} className="max-w-full break-all rounded bg-slate-100 px-2 py-1 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200">{host}</span>)
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="mb-1 text-slate-400">{ingressText.mobileBackends}</dt>
+                    <dd className="flex min-w-0 flex-wrap gap-1">
+                      {(row.backends ?? []).length
+                        ? row.backends?.map((backend) => {
+                            const serviceName = backend.split(":")[0];
+                            return (
+                              <Link key={backend} to={`${base}/services/${encodeURIComponent(serviceName)}`} className="max-w-full break-all rounded bg-blue-50 px-2 py-1 font-mono text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                {backend}
+                              </Link>
+                            );
+                          })
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400">{ingressText.mobileClass}</dt>
+                    <dd className="break-all text-slate-700 dark:text-slate-200">{row.class || "—"}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <Button type="button" variant="outline" size="sm" onClick={() => void openEditYaml(row.name)}>
+                    <Pencil className="size-3.5" />
+                    {ingressText.edit}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="text-red-600" onClick={() => setDelName(row.name)}>
+                    <Trash2 className="size-3.5" />
+                    {ingressText.remove}
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-100 hover:bg-transparent">
@@ -154,6 +224,7 @@ const ClusterIngresses: React.FC = () => {
                   <TableHead className="text-xs font-semibold text-slate-500">Hosts</TableHead>
                   <TableHead className="min-w-[200px] text-xs font-semibold text-slate-500">后端 Service</TableHead>
                   <TableHead className="text-xs font-semibold text-slate-500">Class</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500">{ingressText.annotations}</TableHead>
                   <TableHead className="pr-5 text-right text-xs font-semibold text-slate-500">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -206,6 +277,14 @@ const ClusterIngresses: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">{row.class || "—"}</TableCell>
+                    <TableCell>
+                      <IngressAnnotations
+                        annotationCount={row.annotationCount}
+                        namespace={row.namespace}
+                        name={row.name}
+                        resourceName={`${row.namespace}/${row.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="pr-5 text-right align-middle">
                       <div className="flex justify-end gap-1">
                         <Button

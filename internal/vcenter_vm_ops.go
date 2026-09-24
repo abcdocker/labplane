@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 )
@@ -230,6 +231,59 @@ func handleVCenterVMHardware(c *gin.Context, app *ServerApp) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+func handleVCenterVMSetScreenResolution(c *gin.Context, app *ServerApp) {
+	vc := app.VCenter()
+	vm, ctx, err := getVCenterVMObject(c, vc)
+	if err != nil {
+		if err.Error() == "vCenter 未配置" {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var body struct {
+		Width  int32 `json:"width"`
+		Height int32 `json:"height"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体须为 JSON，包含 width 与 height"})
+		return
+	}
+	if body.Width < 640 || body.Height < 480 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "分辨率过小，建议 >= 640x480"})
+		return
+	}
+	if body.Width > 7680 || body.Height > 4320 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "分辨率过大"})
+		return
+	}
+
+	var vmMo mo.VirtualMachine
+	err = vm.Properties(ctx, vm.Reference(), []string{"runtime.powerState"}, &vmMo)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	if vmMo.Runtime.PowerState != types.VirtualMachinePowerStatePoweredOn {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "虚拟机未开机"})
+		return
+	}
+
+	req := &types.SetScreenResolution{
+		This:   vm.Reference(),
+		Width:  body.Width,
+		Height: body.Height,
+	}
+	if _, err := methods.SetScreenResolution(ctx, vm.Client().Client, req); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "width": body.Width, "height": body.Height})
+}
+
 func handleVCenterVMDiskExpand(c *gin.Context, app *ServerApp) {
 	vc := app.VCenter()
 	vm, ctx, err := getVCenterVMObject(c, vc)
@@ -242,8 +296,8 @@ func handleVCenterVMDiskExpand(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var body struct {
-		DeviceKey  int32   `json:"deviceKey"`
-		TotalGiB   float64 `json:"totalGiB"`
+		DeviceKey int32   `json:"deviceKey"`
+		TotalGiB  float64 `json:"totalGiB"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体须为 JSON，包含 deviceKey 与 totalGiB"})

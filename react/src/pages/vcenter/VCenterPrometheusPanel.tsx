@@ -157,15 +157,15 @@ const VCenterPrometheusPanel: React.FC = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-gray-900">vCenter · Prometheus 全量指标</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-base font-bold text-slate-900">vCenter · Prometheus 全量指标</h2>
+          <p className="text-xs text-slate-500">
             使用同一套快照数据：<strong className="font-semibold text-slate-700">柱长 / 块面积</strong>对应各指标的{" "}
             <code className="rounded bg-slate-100 px-1">sum(...)</code> 数值（非仅罗列名称）。最多 200 个指标名参与聚合。
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <label className="text-xs text-gray-500">job</label>
+            <label className="text-xs text-slate-500">job</label>
             <Input
               className="h-8 w-[140px] font-mono text-xs"
               value={job}
@@ -194,7 +194,7 @@ const VCenterPrometheusPanel: React.FC = () => {
       </div>
 
       {metricsQ.isLoading && (
-        <p className="flex items-center gap-2 text-sm text-gray-500">
+        <p className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           正在从 Prometheus 拉取快照并绘图…
         </p>
@@ -210,26 +210,26 @@ const VCenterPrometheusPanel: React.FC = () => {
 
       {metricsQ.data && (
         <>
-          <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+          <div className="flex flex-wrap gap-3 text-xs text-slate-600">
             <span>
-              序列数: <strong className="text-gray-900">{metricsQ.data.seriesCount}</strong>
+              序列数: <strong className="text-slate-900">{metricsQ.data.seriesCount}</strong>
             </span>
             <span>
-              指标名: <strong className="text-gray-900">{metricsQ.data.metricCount}</strong>
+              指标名: <strong className="text-slate-900">{metricsQ.data.metricCount}</strong>
             </span>
             <span>
               聚合成功: <strong className="text-emerald-700">{metricsQ.data.okCount}</strong>
             </span>
-            <span className="text-gray-400">
+            <span className="text-slate-400">
               发现方式: {metricsQ.data.discovery === "job" ? `job=${metricsQ.data.job}` : "vmware_* 前缀回退"}
             </span>
             {metricsQ.data.generatedAt && (
-              <span className="text-gray-400">快照: {metricsQ.data.generatedAt}</span>
+              <span className="text-slate-400">快照: {metricsQ.data.generatedAt}</span>
             )}
           </div>
 
           <div className="relative max-w-xl">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="筛选指标（图表与明细同步）…"
               className="h-9 pl-8 font-mono text-xs"
@@ -414,7 +414,7 @@ const VCenterPrometheusPanel: React.FC = () => {
           )}
 
           {metricsQ.data.hint && (
-            <p className="text-[11px] leading-relaxed text-gray-500">{metricsQ.data.hint}</p>
+            <p className="text-[11px] leading-relaxed text-slate-500">{metricsQ.data.hint}</p>
           )}
         </>
       )}

@@ -113,5 +113,6 @@ func BuildK8sRedisStoredConfig(cfg Config, opts RedisK8sDeployOpts) (*appRedisSt
 	if strings.TrimSpace(opts.TemplateName) != "" {
 		st.K8sTemplateName = strings.TrimSpace(opts.TemplateName)
 	}
+	st.K8sHostNetwork = opts.HostNetwork
 	return st, nil
 }

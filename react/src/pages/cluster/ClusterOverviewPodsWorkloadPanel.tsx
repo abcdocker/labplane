@@ -37,8 +37,8 @@ import type {
 /** 概览「工作负载 Pod」表仅展示需关注的异常样本的最大行数 */
 const DASHBOARD_ATTENTION_PODS_MAX = 10;
 
-const LS_ADVISOR_OPEN = "kbts.clusterOverview.advisorOpen";
-const LS_ATTENTION_PODS_OPEN = "kbts.clusterOverview.attentionPodsOpen";
+const LS_ADVISOR_OPEN = "labplane.clusterOverview.advisorOpen";
+const LS_ATTENTION_PODS_OPEN = "labplane.clusterOverview.attentionPodsOpen";
 
 function readPanelOpen(key: string): boolean {
   try {
@@ -448,12 +448,6 @@ const ClusterOverviewPodsWorkloadPanel: React.FC = () => {
     setAiBusy(true);
     setAiReply(null);
     try {
-      const inst = await apiGetJson<{ instances?: { id: string }[] }>("/api/app-center/openclaw/instances");
-      const id = inst.instances?.[0]?.id?.trim();
-      if (!id) {
-        setAiErr("无 OpenClaw");
-        return;
-      }
       const json = buildAiPayload(restarts, d, minRestarts);
       if (!json) {
         setAiErr("无效率数据");
@@ -471,10 +465,11 @@ const ClusterOverviewPodsWorkloadPanel: React.FC = () => {
       const msg =
         "K8s：据 JSON（含各 Pod 重启次数与资源行）输出四段 Markdown（高重启优先、缩 req / 防 OOM / 缺 limits / 浪费），每段≤8 行，无寒暄。\n\n" +
         json;
-      const r = await apiPostJson<{ reply?: string }>(
-        `/api/app-center/openclaw/instances/${encodeURIComponent(id)}/chat`,
-        { message: msg }
-      );
+      const r = await apiPostJson<{ reply?: string; error?: string }>("/api/ops/ai-assistant/chat", {
+        question: msg,
+        history: [],
+        mode: "readonly",
+      });
       setAiReply((r.reply ?? "").trim() || "—");
     } catch (e) {
       setAiErr(e instanceof ApiHttpError ? e.serverMessage : String(e));
@@ -506,12 +501,6 @@ const ClusterOverviewPodsWorkloadPanel: React.FC = () => {
     setAdvisoryAiBusy(true);
     setAdvisoryAiReply(null);
     try {
-      const inst = await apiGetJson<{ instances?: { id: string }[] }>("/api/app-center/openclaw/instances");
-      const id = inst.instances?.[0]?.id?.trim();
-      if (!id) {
-        setAdvisoryAiErr("无 OpenClaw");
-        return;
-      }
       const promConnected = Boolean(d?.prometheus) && advisoryQ.data?.prometheus !== false;
       const json = buildAdvisoryAiPayload(advisoryQ.data, d?.cluster, promConnected, summaryQ.data);
       if (!json) {
@@ -522,10 +511,11 @@ const ClusterOverviewPodsWorkloadPanel: React.FC = () => {
         "你是 K8s 值守。JSON 含：集群节点/Pod 计数（粗粒度宿主机压力信号）、Running Pod 合计 requests vs 5m 实际用量、以及控制器级样本与平台 suggested requests/limits。\n" +
         "请逐 workload 输出可落地的 resources.requests / resources.limits（CPU 用 m 或核，内存用 Mi/Gi），说明与 JSON 中 suggested* 的差异与理由，并提示缺 Prometheus 时结论不可靠。Markdown 编号列表，≤28 行，无寒暄。\n\n" +
         json;
-      const r = await apiPostJson<{ reply?: string }>(
-        `/api/app-center/openclaw/instances/${encodeURIComponent(id)}/chat`,
-        { message: msg }
-      );
+      const r = await apiPostJson<{ reply?: string; error?: string }>("/api/ops/ai-assistant/chat", {
+        question: msg,
+        history: [],
+        mode: "readonly",
+      });
       setAdvisoryAiReply((r.reply ?? "").trim() || "—");
     } catch (e) {
       setAdvisoryAiErr(e instanceof ApiHttpError ? e.serverMessage : String(e));

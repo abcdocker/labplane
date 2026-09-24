@@ -146,7 +146,7 @@ const ClusterEtcdPage: React.FC = () => {
   const alertLeader = Boolean(summary?.leaderChangeAlert);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-12">
+    <div className="mx-auto max-w-7xl space-y-6 pb-2 sm:pb-12">
       <div>
         <h1 className="mb-2 text-2xl font-bold text-slate-900 dark:text-slate-100">etcd 管理</h1>
         <p className="text-sm text-slate-600 dark:text-slate-400">

@@ -280,8 +280,8 @@ const VCenterEsxiPrometheusDashboard: React.FC = () => {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-bold text-gray-900">ESXi · Prometheus 监控</h2>
-        <p className="text-xs text-gray-500">
+        <h2 className="text-base font-bold text-slate-900">ESXi · Prometheus 监控</h2>
+        <p className="text-xs text-slate-500">
           与 Grafana「VMware ESXi」看板同源思路：按宿主机过滤 PromQL，展示宿主机利用率与 VM / 存储时序。指标名需与
           exporter（如 vmware_exporter / Telegraf）一致。
         </p>

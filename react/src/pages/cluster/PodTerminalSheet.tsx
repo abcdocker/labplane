@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-import { useKubeBtXtermOptions } from "@/hooks/use-kube-bt-xterm-options";
+import { useLabPlaneXtermOptions } from "@/hooks/use-labplane-xterm-options";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { usePodExecTerminal } from "./usePodExecTerminal";
 
@@ -29,7 +29,7 @@ const PodTerminalSheet: React.FC<PodTerminalSheetProps> = ({
   container,
   shell = "/bin/sh",
 }) => {
-  const xtermOpts = useKubeBtXtermOptions();
+  const xtermOpts = useLabPlaneXtermOptions();
   const { wrapRef, status, errMsg, showConnectOverlay, overlayHint, teardown } = usePodExecTerminal({
     enabled: open && !!container.trim() && !!namespace && !!podName,
     namespace,
@@ -69,16 +69,16 @@ const PodTerminalSheet: React.FC<PodTerminalSheetProps> = ({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="shrink-0 space-y-1 border-b border-slate-200/90 bg-gradient-to-r from-slate-50/95 to-white px-4 py-3 text-left">
-          <DialogTitle className="text-base font-semibold text-gray-900">
+          <DialogTitle className="text-base font-semibold text-slate-900">
             容器终端
           </DialogTitle>
           <DialogDescription asChild>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-gray-600">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-slate-600">
               <span>
                 {namespace} / {podName} / {container}
               </span>
               {statusLabel ? (
-                <span className="tabular-nums text-gray-500">· {statusLabel}</span>
+                <span className="tabular-nums text-slate-500">· {statusLabel}</span>
               ) : null}
               {shell !== "/bin/sh" ? (
                 <span className="text-violet-700/90">· {shell}</span>

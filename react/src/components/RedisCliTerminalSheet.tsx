@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useKubeBtXtermOptions } from "@/hooks/use-kube-bt-xterm-options";
+import { useLabPlaneXtermOptions } from "@/hooks/use-labplane-xterm-options";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { wsUrlForApiPath } from "@/lib/api";
 
@@ -44,7 +44,7 @@ export type RedisCliTerminalSheetProps = {
 
 /** 应用中心 Redis：服务端在 Pod 内执行 redis-cli，通过 REDISCLI_AUTH 注入密码，浏览器不展示明文 */
 const RedisCliTerminalSheet: React.FC<RedisCliTerminalSheetProps> = ({ open, onOpenChange, instanceId }) => {
-  const xtermOpts = useKubeBtXtermOptions();
+  const xtermOpts = useLabPlaneXtermOptions();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"idle" | "connecting" | "open" | "closed" | "error">("idle");
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -173,12 +173,12 @@ const RedisCliTerminalSheet: React.FC<RedisCliTerminalSheetProps> = ({ open, onO
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="!flex !max-h-[min(90vh,880px)] w-[min(96vw,960px)] !max-w-[min(96vw,960px)] flex-col gap-0 overflow-hidden border-gray-200 p-0 sm:!max-w-[min(96vw,960px)]"
+        className="!flex !max-h-[min(90vh,880px)] w-[min(96vw,960px)] !max-w-[min(96vw,960px)] flex-col gap-0 overflow-hidden border-slate-200 p-0 sm:!max-w-[min(96vw,960px)]"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="shrink-0 space-y-1 border-b border-gray-200 bg-white px-4 py-3 text-left">
-          <DialogTitle className="text-base font-semibold text-gray-900">redis-cli</DialogTitle>
-          <DialogDescription className="text-xs text-gray-600">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-200 bg-white px-4 py-3 text-left">
+          <DialogTitle className="text-base font-semibold text-slate-900">redis-cli</DialogTitle>
+          <DialogDescription className="text-xs text-slate-600">
             实例 #{instanceId} · 在 Redis Pod 内交互；认证由服务端注入环境变量，界面不显示密码
             {statusLabel ? ` · ${statusLabel}` : ""}
           </DialogDescription>
@@ -193,7 +193,7 @@ const RedisCliTerminalSheet: React.FC<RedisCliTerminalSheetProps> = ({ open, onO
         )}
         <div
           ref={wrapRef}
-          className="pod-exec-xterm-host h-[min(560px,70vh)] min-h-[280px] flex-1 overflow-hidden rounded-b-lg border-t border-gray-800 bg-[#1e1e1e] p-2"
+          className="pod-exec-xterm-host h-[min(560px,70vh)] min-h-[280px] flex-1 overflow-hidden rounded-b-lg border-t border-slate-800 bg-[#1e1e1e] p-2"
         />
       </DialogContent>
     </Dialog>

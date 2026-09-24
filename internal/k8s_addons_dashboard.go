@@ -24,20 +24,20 @@ const (
 	k8sDashboardAdminBindingYAML = `apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
   namespace: kubernetes-dashboard
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: kube-bt-sync-dashboard-admin
+  name: labplane-dashboard-admin
   namespace: kubernetes-dashboard
 `
 )
@@ -215,7 +215,7 @@ func K8sDashboardMonitoringStackStatus(ctx context.Context, k8s *kubernetes.Clie
 	}
 
 	saExists := false
-	if _, err := k8s.CoreV1().ServiceAccounts(k8sKubernetesDashboardNS).Get(ctx, "kube-bt-sync-dashboard-admin", metav1.GetOptions{}); err == nil {
+	if _, err := k8s.CoreV1().ServiceAccounts(k8sKubernetesDashboardNS).Get(ctx, "labplane-dashboard-admin", metav1.GetOptions{}); err == nil {
 		saExists = true
 	}
 
@@ -237,9 +237,9 @@ func K8sDashboardMonitoringStackStatus(ctx context.Context, k8s *kubernetes.Clie
 			"scraperDeployment":     dashScraper,
 			"installed":             dashboardLikely,
 			"uiPodsLikelyReady":     dmOk && (!dsFound || dsOk),
-			"adminServiceAccount":   "kube-bt-sync-dashboard-admin",
+			"adminServiceAccount":   "labplane-dashboard-admin",
 			"adminBindingInstalled": saExists,
-			"accessHint":            "kubectl proxy 后访问 /api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ ；登录用 kubectl create token kube-bt-sync-dashboard-admin -n kubernetes-dashboard --duration=24h",
+			"accessHint":            "kubectl proxy 后访问 /api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ ；登录用 kubectl create token labplane-dashboard-admin -n kubernetes-dashboard --duration=24h",
 			"allComponentsReady":    allReady,
 		},
 	}
@@ -292,9 +292,9 @@ func WaitVerifyK8sDashboardMonitoringStack(ctx context.Context, k8s *kubernetes.
 			checks = append(checks, IngressAddonCheck{Name: "dashboard-metrics-scraper Deployment", OK: ok, Detail: detail})
 		}
 
-		_, err = k8s.CoreV1().ServiceAccounts(k8sKubernetesDashboardNS).Get(ctx, "kube-bt-sync-dashboard-admin", metav1.GetOptions{})
+		_, err = k8s.CoreV1().ServiceAccounts(k8sKubernetesDashboardNS).Get(ctx, "labplane-dashboard-admin", metav1.GetOptions{})
 		saOk := err == nil
-		checks = append(checks, IngressAddonCheck{Name: "SA kube-bt-sync-dashboard-admin", OK: saOk, Detail: func() string {
+		checks = append(checks, IngressAddonCheck{Name: "SA labplane-dashboard-admin", OK: saOk, Detail: func() string {
 			if saOk {
 				return "已创建"
 			}

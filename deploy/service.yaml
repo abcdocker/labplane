@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: kube-bt-sync
-  namespace: kube-bt-sync
+  name: labplane
+  namespace: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
   ports:
     - name: http
       port: 8080

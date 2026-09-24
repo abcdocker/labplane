@@ -33,15 +33,15 @@ type k8sServicePortSummary struct {
 
 // k8sResourceRelationsResponse 控制台资源互链（同命名空间内推断）。
 type k8sResourceRelationsResponse struct {
-	Services               []string                `json:"services"`
-	Ingresses              []string                `json:"ingresses"`
-	Deployments            []string                `json:"deployments"`
-	StatefulSets           []string                `json:"statefulSets"`
-	DaemonSets             []string                `json:"daemonSets"`
-	Pods                   []string                `json:"pods"`
-	ConfigMaps             []string                `json:"configMaps"`
-	Secrets                []string                `json:"secrets"`
-	MatchingServicePorts   []k8sServicePortSummary `json:"matchingServicePorts,omitempty"`
+	Services             []string                `json:"services"`
+	Ingresses            []string                `json:"ingresses"`
+	Deployments          []string                `json:"deployments"`
+	StatefulSets         []string                `json:"statefulSets"`
+	DaemonSets           []string                `json:"daemonSets"`
+	Pods                 []string                `json:"pods"`
+	ConfigMaps           []string                `json:"configMaps"`
+	Secrets              []string                `json:"secrets"`
+	MatchingServicePorts []k8sServicePortSummary `json:"matchingServicePorts,omitempty"`
 }
 
 func servicePortSummaryFrom(s *corev1.Service) k8sServicePortSummary {

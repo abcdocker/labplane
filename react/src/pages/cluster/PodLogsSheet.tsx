@@ -113,17 +113,17 @@ const PodLogsSheet: React.FC<PodLogsSheetProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[min(88vh,680px)] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-7xl">
-        <DialogHeader className="shrink-0 space-y-1 border-b border-gray-200 px-4 py-3 text-left">
-          <DialogTitle className="text-base font-semibold text-gray-900">容器日志（stdout/stderr）</DialogTitle>
-          <DialogDescription className="font-mono text-xs text-gray-600">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-200 px-4 py-3 text-left">
+          <DialogTitle className="text-base font-semibold text-slate-900">容器日志（stdout/stderr）</DialogTitle>
+          <DialogDescription className="font-mono text-xs text-slate-600">
             {namespace} / {podName}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-100 bg-slate-50/90 px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/90 px-4 py-3">
           {opts.length > 1 && (
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-gray-600">容器</Label>
+              <Label className="text-xs text-slate-600">容器</Label>
               <Select value={activeContainer} onValueChange={setActiveContainer}>
                 <SelectTrigger className="h-8 w-[220px] font-mono text-xs">
                   <SelectValue />
@@ -140,7 +140,7 @@ const PodLogsSheet: React.FC<PodLogsSheetProps> = ({
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600">行数</Label>
+            <Label className="text-xs text-slate-600">行数</Label>
             <Select
               value={String(tailLines)}
               onValueChange={(v) => setTailLines(Number(v))}
@@ -162,7 +162,7 @@ const PodLogsSheet: React.FC<PodLogsSheetProps> = ({
               checked={previous}
               onCheckedChange={setPrevious}
             />
-            <Label htmlFor="podlog-prev" className="cursor-pointer text-xs text-gray-700">
+            <Label htmlFor="podlog-prev" className="cursor-pointer text-xs text-slate-700">
               上轮实例（--previous）
             </Label>
           </div>

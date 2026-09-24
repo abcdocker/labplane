@@ -15,7 +15,7 @@ import (
 const docShareCookieTTL = 30 * 24 * time.Hour
 
 func docShareCookieName(docID uint64) string {
-	return fmt.Sprintf("kubebt_ds_%d", docID)
+	return fmt.Sprintf("labplane_ds_%d", docID)
 }
 
 func docShareHMACSecret(cfg Config) string {
@@ -23,7 +23,7 @@ func docShareHMACSecret(cfg Config) string {
 	if s != "" {
 		return s
 	}
-	return "kubebt-docshare-insecure-set-DASHBOARD_SESSION_SECRET"
+	return "labplane-docshare-insecure-set-DASHBOARD_SESSION_SECRET"
 }
 
 // mintDocShareCookieValue 签发「已验证分享密码」Cookie 值（HMAC），与 docID、过期时间绑定。

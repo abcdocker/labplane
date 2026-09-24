@@ -57,8 +57,8 @@ func VCenterWmksScriptURLCandidates(c Config) []string {
 		return nil
 	}
 	return []string{
-		o + "/ui/web-console/wmks.min.js",            // vSphere 7/8+ H5 常见
-		o + "/vsphere-client/js/wmks.min.js",         // 经典路径（govmomi 社区常用）
+		o + "/ui/web-console/wmks.min.js",    // vSphere 7/8+ H5 常见
+		o + "/vsphere-client/js/wmks.min.js", // 经典路径（govmomi 社区常用）
 		o + "/vsphere-client/web-console/wmks.min.js",
 		o + "/ui/resources/wmks/wmks.min.js",
 	}

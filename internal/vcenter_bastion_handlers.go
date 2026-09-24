@@ -12,17 +12,18 @@ import (
 
 // bastionExtraHostPutJSON 保存策略时可选携带密码字段（不入库 policy JSON，仅校验后写入 SSH 加密存储）。
 type bastionExtraHostPutJSON struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Address     string `json:"address"`
-	Kind        string `json:"kind"`
-	SSHPort     int    `json:"sshPort"`
-	RDPPort     int    `json:"rdpPort"`
-	SSHUser     string `json:"sshUser,omitempty"`
-	RDPUser     string `json:"rdpUser,omitempty"`
-	SSHPassword string `json:"sshPassword,omitempty"`
-	RDPPassword string `json:"rdpPassword,omitempty"`
-	RDPWebURL   string `json:"rdpWebUrl,omitempty"`
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Address               string `json:"address"`
+	Kind                  string `json:"kind"`
+	SSHPort               int    `json:"sshPort"`
+	RDPPort               int    `json:"rdpPort"`
+	SSHUser               string `json:"sshUser,omitempty"`
+	SSHHostKeyFingerprint string `json:"sshHostKeyFingerprint,omitempty"`
+	RDPUser               string `json:"rdpUser,omitempty"`
+	SSHPassword           string `json:"sshPassword,omitempty"`
+	RDPPassword           string `json:"rdpPassword,omitempty"`
+	RDPWebURL             string `json:"rdpWebUrl,omitempty"`
 }
 
 type bastionVmRdpWebPutJSON struct {
@@ -31,14 +32,14 @@ type bastionVmRdpWebPutJSON struct {
 }
 
 type bastionPolicyPutJSON struct {
-	EnableACL          bool                         `json:"enableAcl"`
-	UserVMs            map[string][]string          `json:"userVms"`
-	ExtraHosts         []bastionExtraHostPutJSON     `json:"extraHosts"`
-	ManualVmGroups     []BastionManualVmGroup         `json:"manualVmGroups"`
-	HiddenVmMorefs     []string                       `json:"hiddenVmMorefs"`
-	VmRdpWebEmbeds     []bastionVmRdpWebPutJSON       `json:"vmRdpWebEmbeds"`
-	NativeSshEnabled   *bool                        `json:"nativeSshEnabled"`
-	NativeSshPort      *int                         `json:"nativeSshPort"`
+	EnableACL        bool                      `json:"enableAcl"`
+	UserVMs          map[string][]string       `json:"userVms"`
+	ExtraHosts       []bastionExtraHostPutJSON `json:"extraHosts"`
+	ManualVmGroups   []BastionManualVmGroup    `json:"manualVmGroups"`
+	HiddenVmMorefs   []string                  `json:"hiddenVmMorefs"`
+	VmRdpWebEmbeds   []bastionVmRdpWebPutJSON  `json:"vmRdpWebEmbeds"`
+	NativeSshEnabled *bool                     `json:"nativeSshEnabled"`
+	NativeSshPort    *int                      `json:"nativeSshPort"`
 }
 
 func handleGetVCenterBastionPolicy(c *gin.Context, app *ServerApp) {
@@ -87,13 +88,14 @@ func handlePutVCenterBastionPolicy(c *gin.Context, app *ServerApp) {
 			kind = "linux"
 		}
 		h := BastionExtraHost{
-			ID:       id,
-			Name:     strings.TrimSpace(row.Name),
-			Address:  strings.TrimSpace(row.Address),
-			Kind:     kind,
-			SSHUser:  strings.TrimSpace(row.SSHUser),
-			RDPUser:  strings.TrimSpace(row.RDPUser),
-			RDPWebURL: strings.TrimSpace(row.RDPWebURL),
+			ID:                    id,
+			Name:                  strings.TrimSpace(row.Name),
+			Address:               strings.TrimSpace(row.Address),
+			Kind:                  kind,
+			SSHUser:               strings.TrimSpace(row.SSHUser),
+			SSHHostKeyFingerprint: normalizeSSHHostKeyFingerprint(row.SSHHostKeyFingerprint),
+			RDPUser:               strings.TrimSpace(row.RDPUser),
+			RDPWebURL:             strings.TrimSpace(row.RDPWebURL),
 		}
 		if kind == "windows" {
 			h.SSHPort = 0
@@ -112,7 +114,7 @@ func handlePutVCenterBastionPolicy(c *gin.Context, app *ServerApp) {
 			if u == "" {
 				u = strings.TrimSpace(app.Cfg().VCenterVMSshUser)
 			}
-			if err := bastionTrySSHPasswordDial(h.Address, h.SSHPort, u, row.SSHPassword); err != nil {
+			if err := bastionTrySSHPasswordDial(h.Address, h.SSHPort, u, row.SSHPassword, h.SSHHostKeyFingerprint); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "额外主机 " + id + " SSH 校验失败: " + err.Error()})
 				return
 			}

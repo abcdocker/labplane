@@ -15,8 +15,8 @@
 
 如果您发现了安全漏洞或敏感信息泄露（例如代码中的硬编码密钥、凭据或配置错误），请通过以下方式之一私下报告：
 
-1. **GitHub 私有漏洞报告**：使用 [GitHub Security Advisories](../../security/advisories/new) 提交。
-2. **电子邮件**：向项目维护者发送邮件（如公开了维护者邮箱）。
+1. **GitHub 私有漏洞报告（首选）**：使用 [GitHub Security Advisories](../../security/advisories/new) 提交，维护者会收到通知并可在私有频道沟通。
+2. **电子邮件**：发送至维护者邮箱（待填写：`security@example.com` 占位，公开前请替换为实际邮箱或删除本条）。
 
 请在报告中包含以下信息：
 
@@ -56,7 +56,7 @@
 ### 5. 网络隔离
 
 - 使用 NetworkPolicy 限制本服务仅能与必要的 MySQL、Redis、vCenter、宝塔等端点通信。
-- 后台 Job 副本（`KUBEBT_ENABLE_BACKGROUND_JOBS=true`）应限制为单副本，避免重复执行同步与巡检。
+- 后台 Job 副本（`LABPLANE_ENABLE_BACKGROUND_JOBS=true`）应限制为单副本，避免重复执行同步与巡检。
 
 ### 6. 数据目录权限
 
@@ -66,5 +66,5 @@
 ## 已知安全注意事项
 
 - **SSH 私钥**：当前 `SSH_SETTINGS_BACKEND=file` 模式下，私钥以文件形式存储在 PVC 上；请确保 PVC 的访问控制和备份策略符合安全要求。
-- **运行时配置**：`runtime-config.json` 包含明文密码和密钥；请确保其所在卷不被未授权 Pod 或主机用户读取。
+- **运行时配置**：`runtime-config.json` 以 0600 权限原子写入，包含数据库凭据与加密密钥（登录密码为 bcrypt 哈希）；请确保其所在卷与快照/备份不被未授权读取。
 - **vCenter / 宝塔凭据**：控制台管理员可查看和修改这些凭据；建议为控制台用户启用强密码或 OIDC，并限制管理员数量。

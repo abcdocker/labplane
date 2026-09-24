@@ -15,8 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	sigyaml "sigs.k8s.io/yaml"
 )
@@ -251,23 +251,23 @@ func handleK8sWorkloadPatchContainerResources(c *gin.Context, app *ServerApp) {
 // --- 资源建议（Deployment / StatefulSet 聚合 Pod 用量） ---
 
 type workloadAdvisoryRow struct {
-	Kind                 string  `json:"kind"`
-	Namespace            string  `json:"namespace"`
-	Name                 string  `json:"name"`
-	ReplicasDesired      int32   `json:"replicasDesired"`
-	RunningPods          int     `json:"runningPods"`
-	CpuRequestMilliPod   int64   `json:"cpuRequestMilliPod"`
-	MemRequestBytesPod   int64   `json:"memRequestBytesPod"`
-	CpuUseCoresAgg       float64 `json:"cpuUseCoresAgg"`
-	MemUseBytesAgg       float64 `json:"memUseBytesAgg"`
-	CpuUseRatioAvg       float64 `json:"cpuUseRatioAvg"`
-	MemUseRatioAvg       float64 `json:"memUseRatioAvg"`
-	Risk                 bool    `json:"risk"`
-	SuggestedCpuRequest  string  `json:"suggestedCpuRequest,omitempty"`
-	SuggestedMemoryRequest string `json:"suggestedMemoryRequest,omitempty"`
-	SuggestedCpuLimit    string  `json:"suggestedCpuLimit,omitempty"`
-	SuggestedMemoryLimit string  `json:"suggestedMemoryLimit,omitempty"`
-	Note                 string  `json:"note,omitempty"`
+	Kind                   string  `json:"kind"`
+	Namespace              string  `json:"namespace"`
+	Name                   string  `json:"name"`
+	ReplicasDesired        int32   `json:"replicasDesired"`
+	RunningPods            int     `json:"runningPods"`
+	CpuRequestMilliPod     int64   `json:"cpuRequestMilliPod"`
+	MemRequestBytesPod     int64   `json:"memRequestBytesPod"`
+	CpuUseCoresAgg         float64 `json:"cpuUseCoresAgg"`
+	MemUseBytesAgg         float64 `json:"memUseBytesAgg"`
+	CpuUseRatioAvg         float64 `json:"cpuUseRatioAvg"`
+	MemUseRatioAvg         float64 `json:"memUseRatioAvg"`
+	Risk                   bool    `json:"risk"`
+	SuggestedCpuRequest    string  `json:"suggestedCpuRequest,omitempty"`
+	SuggestedMemoryRequest string  `json:"suggestedMemoryRequest,omitempty"`
+	SuggestedCpuLimit      string  `json:"suggestedCpuLimit,omitempty"`
+	SuggestedMemoryLimit   string  `json:"suggestedMemoryLimit,omitempty"`
+	Note                   string  `json:"note,omitempty"`
 }
 
 func suggestQuantityMilli(headroom float64, useCores float64, nPods int) string {
@@ -418,13 +418,13 @@ func appendWorkloadRows(
 			}
 			if riskMem {
 				row.SuggestedMemoryRequest = suggestQuantityMem(headroom, memU, run)
-			if memL > 0 {
-				limMi := int64(math.Ceil(float64(memL) * 0.85 / float64(1024*1024)))
-				if limMi < 32 {
-					limMi = 32
+				if memL > 0 {
+					limMi := int64(math.Ceil(float64(memL) * 0.85 / float64(1024*1024)))
+					if limMi < 32 {
+						limMi = 32
+					}
+					row.SuggestedMemoryLimit = fmt.Sprintf("%dMi", limMi)
 				}
-				row.SuggestedMemoryLimit = fmt.Sprintf("%dMi", limMi)
-			}
 			}
 		}
 		*out = append(*out, row)
@@ -547,18 +547,18 @@ func handleK8sWorkloadsResourceAdvisory(c *gin.Context, k8s *kubernetes.Clientse
 // --- 高重启 + Events 粗分析 ---
 
 type restartInsightRow struct {
-	Namespace       string   `json:"namespace"`
-	Name            string   `json:"name"`
-	Phase           string   `json:"phase"`
-	Restarts        int32    `json:"restarts"`
-	OomKilledSuspect bool    `json:"oomKilledSuspect"`
-	EvictedSuspect  bool     `json:"evictedSuspect"`
-	BackOffSuspect  bool     `json:"backOffSuspect"`
-	RecentReasons   []string `json:"recentReasons,omitempty"`
-	TopOwnerKind    string   `json:"topOwnerKind,omitempty"`
-	TopOwnerName    string   `json:"topOwnerName,omitempty"`
-	HelmRelease     string   `json:"helmRelease,omitempty"`
-	Hints           []string `json:"hints,omitempty"`
+	Namespace        string   `json:"namespace"`
+	Name             string   `json:"name"`
+	Phase            string   `json:"phase"`
+	Restarts         int32    `json:"restarts"`
+	OomKilledSuspect bool     `json:"oomKilledSuspect"`
+	EvictedSuspect   bool     `json:"evictedSuspect"`
+	BackOffSuspect   bool     `json:"backOffSuspect"`
+	RecentReasons    []string `json:"recentReasons,omitempty"`
+	TopOwnerKind     string   `json:"topOwnerKind,omitempty"`
+	TopOwnerName     string   `json:"topOwnerName,omitempty"`
+	HelmRelease      string   `json:"helmRelease,omitempty"`
+	Hints            []string `json:"hints,omitempty"`
 }
 
 func podTopOwnerRef(p *corev1.Pod) (kind, name string) {

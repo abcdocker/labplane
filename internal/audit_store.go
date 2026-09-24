@@ -68,7 +68,7 @@ func appendAuditToLocalFile(dataDir string, rec AuditRecord) {
 	_, _ = f.Write(append(b, '\n'))
 }
 
-// AppendAuditRecord 写入本地 audit.jsonl；若已连接 MySQL 则同时写入 kubebt_audit_log，供多副本下审计列表一致。
+// AppendAuditRecord 写入本地 audit.jsonl；若已连接 MySQL 则同时写入 labplane_audit_log，供多副本下审计列表一致。
 func AppendAuditRecord(app *ServerApp, rec AuditRecord) {
 	if app == nil {
 		return

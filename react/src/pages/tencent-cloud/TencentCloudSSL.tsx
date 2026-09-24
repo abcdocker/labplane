@@ -1,0 +1,334 @@
+import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, AlertCircle, Plus, Upload } from "lucide-react";
+import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { apiDeleteJson, apiGetJson, apiPostJson } from "@/lib/api";
+import { CloudAuthGuide } from "./CloudAuthGuide";
+
+function fmtErr(e: unknown) {
+  return (e as Error).message ?? String(e);
+}
+
+type Account = { id: number; name: string; provider: string };
+
+type SSLCertificate = {
+  CertificateId: string;
+  Alias?: string;
+  CertificateType?: string; // CA=上传 SVR=域名型
+  ProductZhName?: string;
+  Domain?: string;
+  SubjectAltName?: string[];
+  Status: number; // 1已颁发 0审核中 2审核失败 3已过期 4已添加DNS 5吊销中 6已吊销 7已重颁发
+  CertBeginTime?: string;
+  CertEndTime?: string;
+  InsertTime?: string;
+  IsDeployed?: string;
+};
+
+const STATUS_MAP: Record<number, { label: string; cls: string }> = {
+  0: { label: "审核中", cls: "bg-amber-50 text-amber-700" },
+  1: { label: "已颁发", cls: "bg-emerald-50 text-emerald-700" },
+  2: { label: "审核失败", cls: "bg-red-50 text-red-700" },
+  3: { label: "已过期", cls: "bg-slate-100 text-slate-600" },
+  4: { label: "已添加DNS记录", cls: "bg-amber-50 text-amber-700" },
+  5: { label: "吊销中", cls: "bg-amber-50 text-amber-700" },
+  6: { label: "已吊销", cls: "bg-slate-100 text-slate-600" },
+  7: { label: "已重颁发", cls: "bg-emerald-50 text-emerald-700" },
+};
+
+export default function TencentCloudSSL() {
+  const qc = useQueryClient();
+  const [accountId, setAccountId] = useState<string>("");
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [applyDomain, setApplyDomain] = useState("");
+  const [applyMethod, setApplyMethod] = useState("DNS_AUTO");
+  const [applyAlias, setApplyAlias] = useState("");
+  const [uploadAlias, setUploadAlias] = useState("");
+  const [uploadCert, setUploadCert] = useState("");
+  const [uploadKey, setUploadKey] = useState("");
+  const [busy, setBusy] = useState("");
+
+  const accountsQ = useQuery({
+    queryKey: ["dns-accounts"],
+    queryFn: ({ signal }) => apiGetJson<{ accounts: Account[] }>("/api/dns/accounts", { signal }),
+  });
+  const tencentAccounts = (accountsQ.data?.accounts ?? []).filter((a) =>
+    ["tencent", "tencentcloud", "dnspod"].includes(a.provider)
+  );
+
+  React.useEffect(() => {
+    if (tencentAccounts.length > 0 && !accountId) setAccountId(String(tencentAccounts[0].id));
+  }, [tencentAccounts, accountId]);
+
+  const certsQ = useQuery({
+    queryKey: ["tencent-cloud-ssl", accountId],
+    queryFn: ({ signal }) =>
+      apiGetJson<{ certificates: SSLCertificate[]; total: number }>(
+        `/api/tencent-cloud/ssl/certificates?account_id=${accountId}`,
+        { signal }
+      ),
+    enabled: accountId !== "",
+  });
+
+  const certs = certsQ.data?.certificates ?? [];
+
+  const run = async (key: string, fn: () => Promise<void>) => {
+    setBusy(key);
+    try {
+      await fn();
+      void qc.invalidateQueries({ queryKey: ["tencent-cloud-ssl"] });
+      void qc.invalidateQueries({ queryKey: ["tencent-cloud-ssl-quota"] });
+    } catch (e) {
+      toast.error(fmtErr(e));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const doApply = () => {
+    if (!applyDomain.trim()) {
+      toast.error("请填写域名");
+      return;
+    }
+    void run("apply", async () => {
+      const res = await apiPostJson<{ message?: string; certificateId?: string }>(
+        `/api/tencent-cloud/ssl/apply?account_id=${accountId}`,
+        { domain: applyDomain.trim(), dvAuthMethod: applyMethod, alias: applyAlias.trim() }
+      );
+      toast.success(res.message || `已提交申请 ${res.certificateId ?? ""}`);
+      setApplyOpen(false);
+      setApplyDomain("");
+      setApplyAlias("");
+    });
+  };
+
+  const doUpload = () => {
+    if (!uploadCert.trim() || !uploadKey.trim()) {
+      toast.error("请填写证书与私钥内容");
+      return;
+    }
+    void run("upload", async () => {
+      const res = await apiPostJson<{ message?: string }>(`/api/tencent-cloud/ssl/upload?account_id=${accountId}`, {
+        alias: uploadAlias.trim(),
+        certificate: uploadCert,
+        privateKey: uploadKey,
+      });
+      toast.success(res.message || "已上传");
+      setUploadOpen(false);
+      setUploadCert("");
+      setUploadKey("");
+      setUploadAlias("");
+    });
+  };
+
+  const doDelete = (cert: SSLCertificate) => {
+    if (!window.confirm(`确认删除证书 ${cert.Alias || cert.Domain || cert.CertificateId}？删除后已绑定域名将失去 HTTPS。`)) return;
+    void run("del" + cert.CertificateId, async () => {
+      await apiDeleteJson(`/api/tencent-cloud/ssl/certificates/${cert.CertificateId}?account_id=${accountId}`);
+      toast.success("已删除");
+    });
+  };
+
+  const doCancel = (cert: SSLCertificate) => {
+    if (!window.confirm("确认取消该审核中的申请？")) return;
+    void run("cancel" + cert.CertificateId, async () => {
+      await apiPostJson(`/api/tencent-cloud/ssl/certificates/${cert.CertificateId}/cancel?account_id=${accountId}`, {});
+      toast.success("已取消申请");
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">SSL 证书</h2>
+          <p className="text-sm text-slate-500">
+            证书列表、免费 DV 证书申请（TrustAsia，支持 DNS 自动/手动/文件验证）、上传自有证书、删除
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-48">
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="选择账号" />
+              </SelectTrigger>
+              <SelectContent>
+                {tencentAccounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" size="sm" className="h-9 gap-1" onClick={() => setApplyOpen((v) => !v)}>
+            <Plus className="h-4 w-4" /> 申请免费证书
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-9 gap-1" onClick={() => setUploadOpen((v) => !v)}>
+            <Upload className="h-4 w-4" /> 上传证书
+          </Button>
+        </div>
+      </div>
+
+      <CloudAuthGuide provider="tencent" />
+
+      {applyOpen ? (
+        <div className="space-y-3 rounded-xl border border-cyan-200 bg-cyan-50/50 p-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>域名（免费 DV 单域名）</Label>
+              <Input value={applyDomain} placeholder="ssl.example.com" onChange={(e) => setApplyDomain(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>验证方式</Label>
+              <Select value={applyMethod} onValueChange={setApplyMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DNS_AUTO">DNS 自动验证（域名在腾讯云 DNSPod 时）</SelectItem>
+                  <SelectItem value="DNS">DNS 手动验证</SelectItem>
+                  <SelectItem value="FILE">文件验证</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>备注名（可选）</Label>
+              <Input value={applyAlias} placeholder="如：官网证书" onChange={(e) => setApplyAlias(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              免费额度：个人/企业账号各 50 张 TrustAsia DV 单域名证书（2024 年起不限腾讯云域名）
+            </p>
+            <Button type="button" size="sm" onClick={doApply} disabled={busy === "apply"}>
+              {busy === "apply" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              提交申请
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {uploadOpen ? (
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>备注名</Label>
+              <Input value={uploadAlias} onChange={(e) => setUploadAlias(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>证书公钥（PEM）</Label>
+              <Input value={uploadCert} placeholder="-----BEGIN CERTIFICATE-----" onChange={(e) => setUploadCert(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>证书私钥（PEM）</Label>
+              <Input value={uploadKey} placeholder="-----BEGIN PRIVATE KEY-----" onChange={(e) => setUploadKey(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" size="sm" onClick={doUpload} disabled={busy === "upload"}>
+              {busy === "upload" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              上传证书
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {accountId === "" ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-sm text-slate-400">
+          请选择腾讯云账号
+        </div>
+      ) : null}
+
+      {certsQ.isLoading && accountId !== "" ? (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+        </div>
+      ) : null}
+      {certsQ.isError ? (
+        <div className="flex items-center gap-2 text-sm text-red-600">
+          <AlertCircle className="h-4 w-4" /> {fmtErr(certsQ.error)}
+        </div>
+      ) : null}
+
+      {accountId !== "" && !certsQ.isLoading && certs.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-sm text-slate-400">
+          该账号暂无 SSL 证书
+        </div>
+      ) : null}
+
+      {certs.length > 0 ? (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50/80">
+                <TableHead>证书</TableHead>
+                <TableHead>域名</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>生效时间</TableHead>
+                <TableHead>到期时间</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {certs.map((cert) => {
+                const st = STATUS_MAP[cert.Status] ?? { label: String(cert.Status), cls: "bg-slate-100 text-slate-600" };
+                return (
+                  <TableRow key={cert.CertificateId}>
+                    <TableCell className="font-medium text-slate-800">
+                      {cert.Alias || cert.CertificateId}
+                      {cert.IsDeployed === "1" ? (
+                        <Badge variant="outline" className="ml-2 text-[10px] text-emerald-700">已部署</Badge>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="max-w-[260px] truncate text-sm text-slate-600">
+                      {cert.Domain}
+                      {cert.SubjectAltName && cert.SubjectAltName.length > 1 ? (
+                        <span className="ml-1 text-[10px] text-slate-400">+{cert.SubjectAltName.length - 1}</span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`text-xs ${st.cls}`}>{st.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600">{cert.ProductZhName || (cert.CertificateType === "CA" ? "上传" : "域名型")}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{cert.CertBeginTime?.replace("T", " ").slice(0, 10) || "—"}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{cert.CertEndTime?.replace("T", " ").slice(0, 10) || "—"}</TableCell>
+                    <TableCell className="space-x-1 text-right">
+                      {cert.Status === 1 ? (
+                        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs text-cyan-700"
+                          onClick={() => {
+                            const accId = accountId !== "all" ? accountId : tencentAccounts[0]?.id;
+                            window.open(`/api/tencent-cloud/ssl/certificates/${cert.CertificateId}/download?account_id=${accId}`, "_blank");
+                          }}>
+                          下载
+                        </Button>
+                      ) : null}
+                      {cert.Status === 0 || cert.Status === 4 ? (
+                        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={busy === "cancel" + cert.CertificateId} onClick={() => doCancel(cert)}>
+                          取消申请
+                        </Button>
+                      ) : null}
+                      {busy === "del" + cert.CertificateId ? (
+                        <Loader2 className="inline h-3.5 w-3.5 animate-spin text-slate-400" />
+                      ) : (
+                        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs text-red-600" onClick={() => doDelete(cert)}>
+                          删除
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      ) : null}
+    </div>
+  );
+}

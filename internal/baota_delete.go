@@ -82,7 +82,7 @@ func isBenignBaotaDeleteErr(err error) bool {
 		strings.Contains(s, "没有这个")
 }
 
-// removeBaotaProxy 删除本站下由 kube-bt-sync 创建的反代；失败不阻塞删站点（面板版本参数不一）。
+// removeBaotaProxy 删除本站下由 labplane 创建的反代；失败不阻塞删站点（面板版本参数不一）。
 func removeBaotaProxy(cfg Config, domain string) {
 	pname := ProxyNameForDomain(domain)
 	_, err := CallBaotaAPI(cfg, "/site?action=RemoveProxy", map[string]string{

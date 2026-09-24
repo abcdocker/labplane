@@ -35,11 +35,12 @@ func sshDialCloudHostClient(ctx context.Context, cfg Config, store SSHSettingsSt
 	var st *SSHVMStored
 	if strings.TrimSpace(password) != "" || strings.TrimSpace(privateKeyPem) != "" {
 		st = &SSHVMStored{
-			User:            host.SSHUser,
-			Password:        password,
-			PrivateKeyPEM:   privateKeyPem,
-			Port:            host.SSHPort,
-			InsecureHostKey: true,
+			User:               host.SSHUser,
+			Password:           password,
+			PrivateKeyPEM:      privateKeyPem,
+			Port:               host.SSHPort,
+			InsecureHostKey:    cfg.VCenterVMSshInsecureHostKey,
+			HostKeyFingerprint: cfg.VCenterVMSshHostKeyFingerprint,
 		}
 	} else if store != nil && len(key) > 0 {
 		var err error

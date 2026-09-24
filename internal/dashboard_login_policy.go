@@ -30,7 +30,7 @@ func DashboardUserRequestGate(db *sql.DB, ctx context.Context, username, clientI
 	var dis int
 	var ips sql.NullString
 	err := db.QueryRowContext(ctx,
-		`SELECT disabled, COALESCE(allowed_login_ips,'') FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`,
+		`SELECT disabled, COALESCE(allowed_login_ips,'') FROM labplane_dashboard_users WHERE username = ? LIMIT 1`,
 		u,
 	).Scan(&dis, &ips)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -64,7 +64,7 @@ func LoadDashboardUserLoginPolicy(db *sql.DB, ctx context.Context, username stri
 	var mul sql.NullInt64
 	var ips sql.NullString
 	e := db.QueryRowContext(ctx,
-		`SELECT COALESCE(allow_multi_ip_login,0), COALESCE(allowed_login_ips,'') FROM kubebt_dashboard_users WHERE LOWER(username) = LOWER(?) LIMIT 1`,
+		`SELECT COALESCE(allow_multi_ip_login,0), COALESCE(allowed_login_ips,'') FROM labplane_dashboard_users WHERE LOWER(username) = LOWER(?) LIMIT 1`,
 		u,
 	).Scan(&mul, &ips)
 	if errors.Is(e, sql.ErrNoRows) {
@@ -172,4 +172,3 @@ func NormalizeClientIPForSessionKey(clientIP string) string {
 	}
 	return ip.String()
 }
-

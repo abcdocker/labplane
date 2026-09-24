@@ -144,7 +144,7 @@ func appKafkaCreateTopic(ctx context.Context, cl *kgo.Client, topic string, part
 	}
 	for _, t := range cr.Topics {
 		if t.Topic == topic && t.ErrorCode != 0 {
-			return fmt.Errorf("创建主题失败: %s (code=%d)", t.ErrorMessage, t.ErrorCode)
+			return fmt.Errorf("创建主题失败: %s (code=%d)", kafkaDerefStrPtr(t.ErrorMessage), t.ErrorCode)
 		}
 	}
 	return nil
@@ -164,7 +164,7 @@ func appKafkaDeleteTopic(ctx context.Context, cl *kgo.Client, topic string) erro
 	}
 	for _, t := range dr.Topics {
 		if kafkaDerefTopic(t.Topic) == topic && t.ErrorCode != 0 {
-			return fmt.Errorf("删除主题失败: %s (code=%d)", t.ErrorMessage, t.ErrorCode)
+			return fmt.Errorf("删除主题失败: %s (code=%d)", kafkaDerefStrPtr(t.ErrorMessage), t.ErrorCode)
 		}
 	}
 	return nil
@@ -186,7 +186,7 @@ func appKafkaDescribeACLs(ctx context.Context, cl *kgo.Client) ([]map[string]int
 		return nil, fmt.Errorf("非 DescribeACLs 响应")
 	}
 	if ar.ErrorCode != 0 {
-		return nil, fmt.Errorf("DescribeACLs: %s (%d)", ar.ErrorMessage, ar.ErrorCode)
+		return nil, fmt.Errorf("DescribeACLs: %s (%d)", kafkaDerefStrPtr(ar.ErrorMessage), ar.ErrorCode)
 	}
 	var out []map[string]interface{}
 	for _, r := range ar.Resources {
@@ -227,7 +227,7 @@ func appKafkaCreateACL(ctx context.Context, cl *kgo.Client, resourceType kmsg.AC
 	}
 	for _, r := range cr.Results {
 		if r.ErrorCode != 0 {
-			return fmt.Errorf("CreateACL: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return fmt.Errorf("CreateACL: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 	}
 	return nil
@@ -248,7 +248,7 @@ func appKafkaDeleteACLs(ctx context.Context, cl *kgo.Client, filters []kmsg.Dele
 	for _, r := range dr.Results {
 		for _, m := range r.MatchingACLs {
 			if m.ErrorCode != 0 {
-				return fmt.Errorf("DeleteACL: %s (%d)", m.ErrorMessage, m.ErrorCode)
+				return fmt.Errorf("DeleteACL: %s (%d)", kafkaDerefStrPtr(m.ErrorMessage), m.ErrorCode)
 			}
 		}
 	}
@@ -272,7 +272,7 @@ func appKafkaAlterScramUser(ctx context.Context, cl *kgo.Client, username, passw
 	}
 	for _, r := range ar.Results {
 		if r.ErrorCode != 0 {
-			return fmt.Errorf("AlterUserSCRAM: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return fmt.Errorf("AlterUserSCRAM: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 	}
 	return nil
@@ -298,7 +298,7 @@ func appKafkaDeleteScramUser(ctx context.Context, cl *kgo.Client, username, clus
 	}
 	for _, r := range ar.Results {
 		if r.ErrorCode != 0 {
-			return fmt.Errorf("DeleteUserSCRAM: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return fmt.Errorf("DeleteUserSCRAM: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 	}
 	return nil

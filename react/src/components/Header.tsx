@@ -9,7 +9,9 @@ import {
   LayoutDashboard,
   LogOut,
   Monitor,
-  Server,
+  Network,
+  Fingerprint,
+  Waypoints,
   Sparkles,
   Settings,
   SquareTerminal,
@@ -40,10 +42,11 @@ const Header: React.FC = () => {
   const isHub = workspace === "hub";
   const isK8s = workspace === "kubernetes";
   const isVcenter = workspace === "vcenter";
-  const isBaota = workspace === "baota";
   const isAppcenter = workspace === "appcenter";
   const isBastion = workspace === "bastion";
   const isAiInspect = workspace === "aiinspect";
+  const isMesh = workspace === "mesh";
+  const isAuthentik = workspace === "authentik";
   const isDocs = workspace === "docs";
 
   const cfgQ = useAppConfig();
@@ -53,7 +56,7 @@ const Header: React.FC = () => {
   const isViewer = cfg?.dashboardRole === "viewer" || cfg?.viewer === true;
   const headerShowK8s = menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
   const headerShowVc = menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
-  const headerShowBaota = menuItemVisible(perm, "baota", navRole, moduleVisible(perm, "baota"));
+  const headerShowGateway = headerShowK8s;
   const headerShowApp = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
   const headerShowBastion = menuItemVisible(
     perm,
@@ -62,6 +65,8 @@ const Header: React.FC = () => {
     moduleVisible(perm, "vcenter") || moduleVisible(perm, "appcenter")
   );
   const headerShowAiInspect = menuItemVisible(perm, "aiInspect", navRole, true);
+  const headerShowMesh = menuItemVisible(perm, "mesh", navRole, true);
+  const headerShowAuthentik = menuItemVisible(perm, "authentik", navRole, true);
 
   /** 与 MySQL 是否连通无关：管理员应始终看到入口；无库时页面内会提示配置 MySQL */
   const showPlatformUsers =
@@ -126,7 +131,7 @@ const Header: React.FC = () => {
                 "border-slate-200 bg-slate-50/90 text-slate-800 hover:bg-slate-100",
                 "focus-visible:ring-2 focus-visible:ring-blue-500/30"
               )}
-              aria-label="切换工作区：Kubernetes、vCenter、宝塔、应用中心、堡垒机、AI 巡检、文档仓库"
+              aria-label="切换工作区：Kubernetes、Gateway API、vCenter、应用中心、堡垒机、AI 巡检、异地组网、Authentik、文档仓库"
             >
               <span
                 className={cn(
@@ -139,13 +144,15 @@ const Header: React.FC = () => {
                         ? "from-blue-600 to-blue-700"
                         : isVcenter
                           ? "from-violet-600 to-violet-700"
-                          : isBaota
-                            ? "from-amber-600 to-orange-600"
-                            : isBastion
+                          : isBastion
                               ? "from-teal-600 to-emerald-800"
                               : isAiInspect
                                 ? "from-cyan-600 to-teal-700"
-                                : "from-emerald-600 to-emerald-700"
+                                : isMesh
+                                  ? "from-indigo-600 to-violet-700"
+                                  : isAuthentik
+                                    ? "from-fuchsia-600 to-purple-700"
+                                    : "from-emerald-600 to-emerald-700"
                 )}
               >
                 {isHub ? (
@@ -156,12 +163,14 @@ const Header: React.FC = () => {
                   <Hexagon size={18} strokeWidth={2.5} />
                 ) : isVcenter ? (
                   <Monitor size={18} strokeWidth={2.25} />
-                ) : isBaota ? (
-                  <Server size={17} strokeWidth={2.25} />
                 ) : isBastion ? (
                   <SquareTerminal size={17} strokeWidth={2.25} />
                 ) : isAiInspect ? (
                   <Sparkles size={17} strokeWidth={2.25} />
+                ) : isMesh ? (
+                  <Network size={17} strokeWidth={2.25} />
+                ) : isAuthentik ? (
+                  <Fingerprint size={17} strokeWidth={2.25} />
                 ) : (
                   <AppWindow size={17} strokeWidth={2.25} />
                 )}
@@ -175,13 +184,15 @@ const Header: React.FC = () => {
                       ? "Kubernetes"
                       : isVcenter
                         ? "vCenter"
-                        : isBaota
-                          ? "宝塔"
-                          : isBastion
+                        : isBastion
                             ? "堡垒机"
                             : isAiInspect
                               ? "AI 巡检"
-                              : "应用中心"}
+                              : isMesh
+                                ? "异地组网"
+                                : isAuthentik
+                                  ? "Authentik"
+                                  : "应用中心"}
               </span>
               <ChevronDown size={16} className="text-slate-500" aria-hidden />
             </button>
@@ -215,17 +226,17 @@ const Header: React.FC = () => {
               </div>
             </DropdownMenuItem>
             ) : null}
-            {headerShowBaota ? (
+            {headerShowGateway ? (
             <DropdownMenuItem
               className="cursor-pointer gap-2 py-2.5"
-              onSelect={() => navigate("/cluster/baota/sync")}
+              onSelect={() => navigate("/cluster/routes")}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600">
-                <Server className="text-white" size={17} strokeWidth={2.25} />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600">
+                <Waypoints className="text-white" size={17} strokeWidth={2.25} />
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="font-medium">宝塔</span>
-                <span className="text-xs text-muted-foreground">Ingress 同步与面板</span>
+                <span className="font-medium">Gateway API</span>
+                <span className="text-xs text-muted-foreground">Ingress 与 Gateway 路由</span>
               </div>
             </DropdownMenuItem>
             ) : null}
@@ -267,7 +278,35 @@ const Header: React.FC = () => {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium">AI 巡检</span>
-                <span className="text-xs text-muted-foreground">监控中心 · 告警 · OpenClaw</span>
+                <span className="text-xs text-muted-foreground">监控中心 · 告警 · AI 助手</span>
+              </div>
+            </DropdownMenuItem>
+            ) : null}
+            {headerShowMesh ? (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 py-2.5"
+              onSelect={() => navigate("/cluster/mesh")}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700">
+                <Network className="text-white" size={17} strokeWidth={2.25} />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">异地组网</span>
+                <span className="text-xs text-muted-foreground">Headscale · 路由 · 流量</span>
+              </div>
+            </DropdownMenuItem>
+            ) : null}
+            {headerShowAuthentik ? (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 py-2.5"
+              onSelect={() => navigate("/cluster/authentik")}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-600 to-purple-700">
+                <Fingerprint className="text-white" size={17} strokeWidth={2.25} />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">Authentik</span>
+                <span className="text-xs text-muted-foreground">SSO · 用户 · 应用对接</span>
               </div>
             </DropdownMenuItem>
             ) : null}
@@ -288,13 +327,13 @@ const Header: React.FC = () => {
 
         <HeaderNotificationsSheet />
 
-        <div className="h-8 w-px bg-gray-200" />
+        <div className="h-8 w-px bg-slate-200" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center space-x-3 rounded-xl px-2 py-1.5 outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-blue-500/30"
+              className="flex items-center space-x-3 rounded-xl px-2 py-1.5 outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500/30"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-blue-200 bg-gradient-to-tr from-blue-100 to-indigo-100 text-blue-600">
                 {userAvatarUrl ? (
@@ -304,14 +343,14 @@ const Header: React.FC = () => {
                 )}
               </div>
               <div className="hidden text-left sm:flex sm:flex-col">
-                <span className="leading-none text-sm font-semibold text-gray-900">
+                <span className="leading-none text-sm font-semibold text-slate-900">
                   {displayName}
                 </span>
-                <span className="mt-0.5 text-xs text-gray-500">
+                <span className="mt-0.5 text-xs text-slate-500">
                   {status?.authRequired ? "已登录" : "控制台"}
                 </span>
               </div>
-              <ChevronDown size={16} className="text-gray-400" />
+              <ChevronDown size={16} className="text-slate-400" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[200px]">

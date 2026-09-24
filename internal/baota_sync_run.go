@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const baotaIngressSyncKVKey = "kubebt_baota_ingress_sync_report_v1"
+const baotaIngressSyncKVKey = "labplane_baota_ingress_sync_report_v1"
 
 // BaotaSyncStepResult 单次同步中某一步（站点 / 反代 / HTTPS）的结果。
 type BaotaSyncStepResult struct {
@@ -25,12 +25,12 @@ type BaotaSyncStepResult struct {
 
 // BaotaSyncDomainReport 单个域名在宝塔侧的同步摘要。
 type BaotaSyncDomainReport struct {
-	Domain           string                `json:"domain"`
-	BaotaTargetID     string                `json:"baotaTargetId,omitempty"`
-	TargetURL        string                `json:"targetUrl,omitempty"`
-	BaotaHTTPS       bool                  `json:"baotaHttps,omitempty"`
-	OverallOK        bool                  `json:"overallOk"`
-	Steps            []BaotaSyncStepResult `json:"steps"`
+	Domain        string                `json:"domain"`
+	BaotaTargetID string                `json:"baotaTargetId,omitempty"`
+	TargetURL     string                `json:"targetUrl,omitempty"`
+	BaotaHTTPS    bool                  `json:"baotaHttps,omitempty"`
+	OverallOK     bool                  `json:"overallOk"`
+	Steps         []BaotaSyncStepResult `json:"steps"`
 	// 对应集群中的 Ingress（多 host 同一 Ingress 时多条报告共享相同引用）
 	IngressNamespace string `json:"ingressNamespace,omitempty"`
 	IngressName      string `json:"ingressName,omitempty"`
@@ -57,12 +57,16 @@ func baotaSyncRetryDelays() []time.Duration {
 }
 
 // baotaPOSTWithRetry 对宝塔 API 做有限次重试（与删除重试节奏类似）。
-func baotaPOSTWithRetry(cfg Config, apiPath string, params map[string]string, opHint string) (body string, ok bool, attempts int, errMsg string) {
+func baotaPOSTWithRetry(ctx context.Context, cfg Config, apiPath string, params map[string]string, opHint string) (body string, ok bool, attempts int, errMsg string) {
 	var lastErr error
 	lastBody := ""
 	for attemptIdx, d := range baotaSyncRetryDelays() {
 		if d > 0 {
-			time.Sleep(d)
+			select {
+			case <-ctx.Done():
+				return lastBody, false, attempts, ctx.Err().Error()
+			case <-time.After(d):
+			}
 		}
 		attempts = attemptIdx + 1
 		b, err := CallBaotaAPI(cfg, apiPath, params)
@@ -79,7 +83,7 @@ func baotaPOSTWithRetry(cfg Config, apiPath string, params map[string]string, op
 	return lastBody, false, attempts, errMsg
 }
 
-func ensureBaotaSiteAndProxyWithReport(app *ServerApp, cfg Config, target ProxyTarget) BaotaSyncDomainReport {
+func ensureBaotaSiteAndProxyWithReport(ctx context.Context, app *ServerApp, cfg Config, target ProxyTarget) BaotaSyncDomainReport {
 	tid := strings.TrimSpace(target.BaotaTargetID)
 	if tid == "" {
 		tid = DefaultBaotaTargetID(cfg)
@@ -97,11 +101,11 @@ func ensureBaotaSiteAndProxyWithReport(app *ServerApp, cfg Config, target ProxyT
 	}
 	webnameMap := map[string]interface{}{"domain": target.Domain, "domainlist": []string{}, "count": 0}
 	webnameJSON, _ := json.Marshal(webnameMap)
-	_, ok, n, errMsg := baotaPOSTWithRetry(cfgUse, "/site?action=AddSite", map[string]string{
+	_, ok, n, errMsg := baotaPOSTWithRetry(ctx, cfgUse, "/site?action=AddSite", map[string]string{
 		"webname": string(webnameJSON),
 		"path":    "/www/wwwroot/" + target.Domain,
 		"type_id": "0", "type": "PHP", "version": "00", "port": "80",
-		"ps": "[kube-bt-sync]",
+		"ps": "[labplane]",
 	}, "AddSite:"+target.Domain)
 	step := BaotaSyncStepResult{Name: "site", OK: ok, Attempts: n, Error: errMsg}
 	rep.Steps = append(rep.Steps, step)
@@ -111,7 +115,7 @@ func ensureBaotaSiteAndProxyWithReport(app *ServerApp, cfg Config, target ProxyT
 
 	// 官方/社区 SDK（bt-api）路径为 /site?action=CreateProxy；/proxy?action=CreateProxy 在新版面板上常为 HTTP 404。
 	proxyName := ProxyNameForDomain(target.Domain)
-	_, ok, n, errMsg = baotaPOSTWithRetry(cfgUse, "/site?action=CreateProxy", map[string]string{
+	_, ok, n, errMsg = baotaPOSTWithRetry(ctx, cfgUse, "/site?action=CreateProxy", map[string]string{
 		"sitename":  target.Domain,
 		"proxyname": proxyName,
 		"proxysite": target.TargetURL,
@@ -135,7 +139,15 @@ func ensureBaotaSiteAndProxyWithReport(app *ServerApp, cfg Config, target ProxyT
 		var httpsAttempts int
 		for attemptIdx, d := range baotaSyncRetryDelays() {
 			if d > 0 {
-				time.Sleep(d)
+				select {
+				case <-ctx.Done():
+					httpsErr = ctx.Err().Error()
+					break
+				case <-time.After(d):
+				}
+				if ctx.Err() != nil {
+					break
+				}
 			}
 			httpsAttempts = attemptIdx + 1
 			if err := EnsureBaotaHTTPS(app, cfgUse, target.Domain, target.BaotaHTTPSConfig); err == nil {
@@ -285,7 +297,11 @@ func RunBaotaIngressSync(ctx context.Context, app *ServerApp, trigger string) *B
 
 	okAll := true
 	for _, target := range targets {
-		dr := ensureBaotaSiteAndProxyWithReport(app, cfg, target)
+		if err := ctx.Err(); err != nil {
+			okAll = false
+			break
+		}
+		dr := ensureBaotaSiteAndProxyWithReport(ctx, app, cfg, target)
 		rep.Domains = append(rep.Domains, dr)
 		if !dr.OverallOK {
 			okAll = false

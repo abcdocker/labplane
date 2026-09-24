@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSshKubeBtXtermOptions } from "@/hooks/use-ssh-kube-bt-xterm-options";
+import { useSshLabPlaneXtermOptions } from "@/hooks/use-ssh-labplane-xterm-options";
 import { tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { ApiHttpError, apiGetJson, wsUrlForApiPath } from "@/lib/api";
@@ -106,7 +106,7 @@ const CloudVmSshTerminalSheet: React.FC<CloudVmSshTerminalSheetProps> = ({
   onOpenChange,
   instanceId,
 }) => {
-  const xtermOpts = useSshKubeBtXtermOptions();
+  const xtermOpts = useSshLabPlaneXtermOptions();
   const wrapRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
@@ -493,7 +493,7 @@ const CloudVmSshTerminalSheet: React.FC<CloudVmSshTerminalSheetProps> = ({
           }
         >
           <DialogTitle
-            className={fullBleed ? "text-sm font-semibold text-slate-100" : "text-base font-semibold text-gray-900"}
+            className={fullBleed ? "text-sm font-semibold text-slate-100" : "text-base font-semibold text-slate-900"}
           >
             云主机 SSH（root）
           </DialogTitle>
@@ -511,15 +511,15 @@ const CloudVmSshTerminalSheet: React.FC<CloudVmSshTerminalSheetProps> = ({
             ) : (
               <div className="space-y-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600">
-                    <span className="font-mono text-gray-700">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+                    <span className="font-mono text-slate-700">
                       实例 #{instanceId} · Pod {podHint}
                     </span>
                     {sshMeta?.sshFailCount != null && sshMeta.sshFailCount > 0 ? (
                       <span className="text-amber-800/90">· 近期失败 {sshMeta.sshFailCount} 次</span>
                     ) : null}
                     {statusLabel ? (
-                      <span className="tabular-nums text-gray-500">· {statusLabel}</span>
+                      <span className="tabular-nums text-slate-500">· {statusLabel}</span>
                     ) : null}
                   </div>
                   <Button

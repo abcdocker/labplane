@@ -8,53 +8,54 @@ import (
 )
 
 const (
-	kvKeyOpsOpenClaw       = "kubebt_ops_openclaw_v1"
-	kvKeyOpsGrafanaMeta    = "kubebt_ops_grafana_meta_v1"
-	kvKeyOpsAlertCenter    = "kubebt_ops_alert_center_v1"
-	kvKeyOpsAlertState     = "kubebt_ops_alert_state_v1"
-	kvKeyOpsInspectReports   = "kubebt_ops_inspect_reports_v1"
-	kvKeyOpsInspectCron      = "kubebt_ops_inspect_cron_v1"
-	kvKeyOpsMonitoringPanels = "kubebt_ops_monitoring_panels_v1"
+	// kvKeyOpsAIInspect 沿用历史 KV key（含 openclaw 字样）保证既有配置数据兼容。
+	kvKeyOpsAIInspect        = "labplane_ops_openclaw_v1"
+	kvKeyOpsGrafanaMeta      = "labplane_ops_grafana_meta_v1"
+	kvKeyOpsAlertCenter      = "labplane_ops_alert_center_v1"
+	kvKeyOpsAlertState       = "labplane_ops_alert_state_v1"
+	kvKeyOpsInspectReports   = "labplane_ops_inspect_reports_v1"
+	kvKeyOpsInspectCron      = "labplane_ops_inspect_cron_v1"
+	kvKeyOpsMonitoringPanels = "labplane_ops_monitoring_panels_v1"
 )
-
-// OpenClawConfig OpenClaw / 兼容 OpenAI 接口的巡检对话端点。
-type OpenClawConfig struct {
-	Enabled       bool   `json:"enabled"`
-	BaseURL       string `json:"baseUrl"`       // 如 https://api.openai.com/v1 或自建网关
-	APIKeyEnc     string `json:"apiKeyEnc"`     // AES 加密
-	Model         string `json:"model"`         // 默认模型
-	SystemPrompt  string `json:"systemPrompt"`  // 系统提示
-	UserTemplate  string `json:"userTemplate"`  // 用户消息模板，{{report}} 占位
-	TimeoutSec    int    `json:"timeoutSec"`
-	SkipTLSVerify bool   `json:"skipTlsVerify"`
-	// EndpointSource：custom=使用 BaseURL；appInstance=使用应用中心登记的 OpenClaw（填 AppInstanceID）。
-	EndpointSource string `json:"endpointSource"`
-	AppInstanceID  string `json:"appInstanceId"`
-}
 
 // OpsAIModelExtra 模型相关扩展（温度、最大 token 等）。
 type OpsAIModelExtra struct {
-	Temperature     float64 `json:"temperature"`
-	MaxTokens       int     `json:"maxTokens"`
-	TopP            float64 `json:"topP"`
+	Temperature      float64 `json:"temperature"`
+	MaxTokens        int     `json:"maxTokens"`
+	TopP             float64 `json:"topP"`
 	FrequencyPenalty float64 `json:"frequencyPenalty"`
 }
 
 // OpsAIInspectConfig 巡检与调度。
 type OpsAIInspectConfig struct {
-	DailyReportHour   int  `json:"dailyReportHour"`   // 0-23，默认 8；调度按 Asia/Shanghai
-	DailyReportMinute int  `json:"dailyReportMinute"` // 0-59；与 DailyReportHour 同为东八区
-	InspectK8s        bool `json:"inspectK8s"`
-	InspectVCenter    bool `json:"inspectVCenter"`
-	InspectVCenterEvents bool `json:"inspectVCenterEvents"` // vCenter VM 事件与告警巡检
-	InspectPrometheus bool `json:"inspectPrometheus,omitempty"` // 兼容旧配置：读到后会同步到 k8s / vcenter 两项
-	InspectPrometheusK8s bool `json:"inspectPrometheusK8s"`
-	InspectPrometheusVCenter bool `json:"inspectPrometheusVcenter"`
-	InspectVMLog       bool `json:"inspectVmLog"`
-	InspectRedis      bool `json:"inspectRedis"`
-	InspectSSH        bool `json:"inspectSSH"`
-	InspectCloudVm    bool `json:"inspectCloudVm"`
-	ModelExtra        OpsAIModelExtra `json:"modelExtra"`
+	DailyReportHour          int             `json:"dailyReportHour"`   // 0-23，默认 8；调度按 Asia/Shanghai
+	DailyReportMinute        int             `json:"dailyReportMinute"` // 0-59；与 DailyReportHour 同为东八区
+	InspectK8s               bool            `json:"inspectK8s"`
+	InspectVCenter           bool            `json:"inspectVCenter"`
+	InspectVCenterEvents     bool            `json:"inspectVCenterEvents"`        // vCenter VM 事件与告警巡检
+	InspectPrometheus        bool            `json:"inspectPrometheus,omitempty"` // 兼容旧配置：读到后会同步到 k8s / vcenter 两项
+	InspectPrometheusK8s     bool            `json:"inspectPrometheusK8s"`
+	InspectPrometheusVCenter bool            `json:"inspectPrometheusVcenter"`
+	InspectVMLog             bool            `json:"inspectVmLog"`
+	InspectRedis             bool            `json:"inspectRedis"`
+	InspectSSH               bool            `json:"inspectSSH"`
+	InspectCloudVm           bool            `json:"inspectCloudVm"`
+	InspectBastion           bool            `json:"inspectBastion"`
+	InspectHeadscale         bool            `json:"inspectHeadscale"`
+	InspectAuthentik         bool            `json:"inspectAuthentik"`
+	ModelExtra               OpsAIModelExtra `json:"modelExtra"`
+	// JudgeModel 内嵌判读模型（OpenAI 兼容直连，默认 GLM）；巡检摘要与 findings 根因判读均走它，
+	// 不再依赖 OpenClaw 网关。
+	JudgeModel InspectJudgeModelConfig `json:"judgeModel"`
+	// Playbooks 剧本化 VM/服务巡检开关；nil 视为启用。
+	Playbooks *bool `json:"playbooksEnabled,omitempty"`
+	// DailyTokenLimit 判读模型每日 token 预算（0=不限）；当日累计首次越线时记入告警中心。
+	DailyTokenLimit int64 `json:"dailyTokenLimit,omitempty"`
+}
+
+// PlaybooksEnabled 剧本化巡检是否启用（未配置时默认启用）。
+func (ai *OpsAIInspectConfig) PlaybooksEnabled() bool {
+	return ai == nil || ai.Playbooks == nil || *ai.Playbooks
 }
 
 func normalizeOpsAIInspectConfig(ai *OpsAIInspectConfig) {
@@ -65,14 +66,13 @@ func normalizeOpsAIInspectConfig(ai *OpsAIInspectConfig) {
 		ai.InspectPrometheusK8s = true
 		ai.InspectPrometheusVCenter = true
 	}
+	normalizeInspectJudgeConfig(&ai.JudgeModel)
 }
 
-// OpsOpenClawBundle 合并保存。
-type OpsOpenClawBundle struct {
-	OpenClaw OpenClawConfig `json:"openclaw"`
-	// OpenClawProfiles 可选：按场景覆盖 OpenClaw（键见 OpsOpenClawRole*）；未配置或未填写 Base URL / 应用中心实例时回退到 OpenClaw。
-	OpenClawProfiles map[string]OpenClawConfig `json:"openclawProfiles,omitempty"`
-	AI               OpsAIInspectConfig        `json:"ai"`
+// OpsAIInspectBundle AI 巡检配置（原 OpenClaw 联动配置瘦身后仅保留 AI 字段；
+// 旧 JSON 中的 openclaw/openclawProfiles 字段读取时自动忽略）。
+type OpsAIInspectBundle struct {
+	AI OpsAIInspectConfig `json:"ai"`
 }
 
 type grafanaDashboardRef struct {
@@ -87,7 +87,7 @@ type OpsMonitoringCustomPanel struct {
 	Title     string   `json:"title"`
 	Category  string   `json:"category"`
 	PromQL    string   `json:"promql"`
-	Scope     string   `json:"scope"` // k8s | vcenter | inherit（inherit 表示跟随页面所选数据源）
+	Scope     string   `json:"scope"`   // k8s | vcenter | inherit（inherit 表示跟随页面所选数据源）
 	Display   string   `json:"display"` // single | matrix
 	LabelKeys []string `json:"labelKeys,omitempty"`
 }
@@ -124,8 +124,8 @@ type OpsAlertRule struct {
 
 // OpsAlertChannel 告警媒介。
 type OpsAlertChannel struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"` // email | wecom | wecom_app
+	ID   string `json:"id"`
+	Type string `json:"type"` // email | wecom | wecom_app | dingtalk | feishu
 	// email
 	SMTPHost    string `json:"smtpHost"`
 	SMTPPort    int    `json:"smtpPort"`
@@ -137,10 +137,14 @@ type OpsAlertChannel struct {
 	// wecom 群机器人 webhook
 	WeComWebhook string `json:"wecomWebhook"`
 	// wecom_app 企业微信「自建应用」API（非 webhook）
-	WeComCorpID       string `json:"wecomCorpId"`
-	WeComAgentID      int    `json:"wecomAgentId"`
+	WeComCorpID        string `json:"wecomCorpId"`
+	WeComAgentID       int    `json:"wecomAgentId"`
 	WeComCorpSecretEnc string `json:"wecomCorpSecretEnc"`
-	WeComToUser       string `json:"wecomToUser"` // 多个 userid 用 | 分隔，或 @all
+	WeComToUser        string `json:"wecomToUser"` // 多个 userid 用 | 分隔，或 @all
+	// dingtalk 群机器人 webhook
+	DingTalkWebhook string `json:"dingtalkWebhook"`
+	// feishu 群机器人 webhook
+	FeishuWebhook string `json:"feishuWebhook"`
 }
 
 // OpsAlertSilence 告警抑制（标签全匹配则静默至 Until）。
@@ -166,8 +170,8 @@ type OpsAlertCenterBundle struct {
 // OpsAlertPendingState 规则待触发计时（内存+KV 简化：仅存 pendingSince key）。
 type OpsAlertPendingState struct {
 	PendingSince map[string]int64 `json:"pendingSince"` // ruleId -> unix
-	LastFiring   map[string]bool    `json:"lastFiring"`
-	LastNotifyAt map[string]int64   `json:"lastNotifyAt"`
+	LastFiring   map[string]bool  `json:"lastFiring"`
+	LastNotifyAt map[string]int64 `json:"lastNotifyAt"`
 }
 
 // InspectionReportItem 一项检查结果。
@@ -180,10 +184,11 @@ type InspectionReportItem struct {
 
 // InspectionSection 分项详情（Markdown，供前端折叠渲染）。
 type InspectionSection struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Status   string `json:"status"` // ok | warn | fail | skip
-	Markdown string `json:"markdown"`
+	ID       string               `json:"id"`
+	Title    string               `json:"title"`
+	Status   string               `json:"status"` // ok | warn | fail | skip
+	Markdown string               `json:"markdown"`
+	Judge    *InspectJudgeVerdict `json:"judge,omitempty"` // 剧本 findings 的 AI 判读结论
 }
 
 // InspectionLLMProbe OpenClaw / OpenAI 兼容接口连通性与模型响应探针。
@@ -199,12 +204,14 @@ type InspectionLLMProbe struct {
 // InspectionReport 巡检报告。
 type InspectionReport struct {
 	ID                   string                 `json:"id"`
+	Domain               string                 `json:"domain,omitempty"`
 	CreatedAt            string                 `json:"createdAt"`
 	Summary              string                 `json:"summary"`
 	Items                []InspectionReportItem `json:"items"`
 	AISummary            string                 `json:"aiSummary,omitempty"`
 	AISummaryError       string                 `json:"aiSummaryError,omitempty"`
 	AISummaryErrorDetail string                 `json:"aiSummaryErrorDetail,omitempty"`
+	AIJudge              *InspectJudgeVerdict   `json:"aiJudge,omitempty"`
 	Sections             []InspectionSection    `json:"sections,omitempty"`
 	LLMProbe             *InspectionLLMProbe    `json:"llmProbe,omitempty"`
 }
@@ -213,12 +220,12 @@ type inspectReportsPayload struct {
 	Reports []InspectionReport `json:"reports"`
 }
 
-func loadOpsOpenClawBundle(kv PlatformKV) (OpsOpenClawBundle, error) {
-	var out OpsOpenClawBundle
+func loadOpsAIInspectBundle(kv PlatformKV) (OpsAIInspectBundle, error) {
+	var out OpsAIInspectBundle
 	if kv == nil {
 		return out, errors.New("kv nil")
 	}
-	raw, ok := kv.Get(kvKeyOpsOpenClaw)
+	raw, ok := kv.Get(kvKeyOpsAIInspect)
 	if !ok || strings.TrimSpace(raw) == "" {
 		return out, nil
 	}
@@ -229,7 +236,7 @@ func loadOpsOpenClawBundle(kv PlatformKV) (OpsOpenClawBundle, error) {
 	return out, nil
 }
 
-func saveOpsOpenClawBundle(kv PlatformKV, b OpsOpenClawBundle) error {
+func saveOpsAIInspectBundle(kv PlatformKV, b OpsAIInspectBundle) error {
 	if kv == nil {
 		return errors.New("kv nil")
 	}
@@ -239,7 +246,7 @@ func saveOpsOpenClawBundle(kv PlatformKV, b OpsOpenClawBundle) error {
 	if err != nil {
 		return err
 	}
-	return kv.Set(kvKeyOpsOpenClaw, string(js))
+	return kv.Set(kvKeyOpsAIInspect, string(js))
 }
 
 func loadOpsGrafanaMeta(kv PlatformKV) (OpsGrafanaMeta, error) {

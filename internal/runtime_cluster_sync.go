@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// StartCrossPodRuntimeSync 在配置 MySQL 时轮询 kubebt_schema_meta.runtime_config_revision；
+// StartCrossPodRuntimeSync 在配置 MySQL 时轮询 labplane_schema_meta.runtime_config_revision；
 // 任意 Pod 保存 runtime 后修订号变化，其余 Pod 自动 Reload，使多副本内存配置与连接态一致。
 func StartCrossPodRuntimeSync(ctx context.Context, getApp func() *ServerApp) {
 	go func() {

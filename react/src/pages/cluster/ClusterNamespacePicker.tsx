@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, FolderTree, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,9 @@ const ClusterNamespacePicker: React.FC = () => {
   const statsQ = useQuery({
     queryKey: ["k8s-namespaces-stats"],
     queryFn: ({ signal }) => apiGetJson<NamespaceStatsResponse>("/api/k8s/namespace-stats", { signal }),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 
   const itemsWithData = useMemo(() => {

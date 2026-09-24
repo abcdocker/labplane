@@ -40,10 +40,11 @@ type DeleteIngressRequest struct {
 func StartWebServer(ctx context.Context, app *ServerApp) {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(securityHeadersMiddleware())
 	cfg := app.Cfg()
 	if cfg.PerformanceMode {
 		gin.SetMode(gin.ReleaseMode)
-		log.Printf("config: KUBEBT_PERFORMANCE_MODE 已启用（Gin release；Redis 可用时 /api/namespaces 缓存约 %d 秒）", cfg.NamespacesCacheTTLSec)
+		log.Printf("config: LABPLANE_PERFORMANCE_MODE 已启用（Gin release；Redis 可用时 /api/namespaces 缓存约 %d 秒）", cfg.NamespacesCacheTTLSec)
 	}
 	configureGinTrustedProxies(r, cfg)
 	r.Use(auditAccessLogMiddleware(app))
@@ -53,6 +54,8 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 	})
 
 	// 无需登录：探活、初始化向导、登录态
+	r.GET("/livez", handleLiveness)
+	r.GET("/readyz", handleReadiness(app))
 	r.GET("/api/health", handleHealth(app))
 	// 文档中心：公开预览与附件直链（无需登录）
 	r.GET("/r/*rp", func(c *gin.Context) { HandleDocPublicRoute(c, app) })
@@ -90,6 +93,15 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		api.GET("/ingress/raw", func(c *gin.Context) { handleGetIngressRaw(c, app.K8s()) })
 		api.POST("/ingress/yaml", func(c *gin.Context) { handleApplyYaml(c, app.K8s()) })
 		api.POST("/ingress/delete", func(c *gin.Context) { handleDeleteIngress(c, app.K8s(), app.Cfg()) })
+		// 路由管理面板：Gateway API（动态客户端）+ IngressClass
+		api.GET("/k8s/gwapi/status", func(c *gin.Context) { handleK8sGatewayAPIStatus(c, app.K8s(), app.K8sREST()) })
+		api.GET("/k8s/gwapi/list", func(c *gin.Context) { handleK8sGatewayAPIList(c, app.K8s(), app.K8sREST()) })
+		api.GET("/k8s/gwapi/yaml", func(c *gin.Context) { handleK8sGatewayAPIYAML(c, app.K8s(), app.K8sREST()) })
+		api.POST("/k8s/gwapi/apply", AdminOnlyMiddleware(app), func(c *gin.Context) { handleK8sGatewayAPIApply(c, app.K8s(), app.K8sREST()) })
+		api.DELETE("/k8s/gwapi/resource/:type/:namespace/:name", AdminOnlyMiddleware(app), func(c *gin.Context) {
+			handleK8sGatewayAPIDelete(c, app.K8s(), app.K8sREST())
+		})
+		api.GET("/k8s/ingressclasses", func(c *gin.Context) { handleK8sIngressClasses(c, app.K8s()) })
 		api.GET("/baota/ingress-sync/status", func(c *gin.Context) { handleBaotaIngressSyncStatus(app)(c) })
 		api.POST("/baota/ingress-sync/run", func(c *gin.Context) { handleBaotaIngressSyncRun(app)(c) })
 
@@ -159,10 +171,10 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		api.DELETE("/k8s/pods/:namespace/:name", func(c *gin.Context) { handleK8sPodDelete(c, app.K8s()) })
 		api.GET("/k8s/pod-restarts", func(c *gin.Context) { handleK8sPodRestarts(c, app.K8s()) })
 		api.GET("/k8s/pod-restart-insights", func(c *gin.Context) { handleK8sPodRestartInsights(c, app.K8s()) })
+		api.GET("/k8s/pod-restart-ai/correlation-latest", func(c *gin.Context) { handleK8sPodRestartAICorrelationLatest(c, app) })
 		api.GET("/k8s/pod-restart-ai/reports", func(c *gin.Context) { handleK8sPodRestartAIReportsList(c, app) })
 		api.DELETE("/k8s/pod-restart-ai/reports/:id", AdminOnlyMiddleware(app), func(c *gin.Context) { handleK8sPodRestartAIReportDelete(c, app) })
 		api.POST("/k8s/pod-restart-ai/reports", func(c *gin.Context) { handleK8sPodRestartAIReportSave(c, app) })
-		api.GET("/k8s/pod-restart-ai/correlation-latest", func(c *gin.Context) { handleK8sPodRestartAICorrelationLatest(c, app) })
 		api.GET("/k8s/pod-restart-ai/rollup-summary", func(c *gin.Context) { handleK8sPodRestartAIRollupSummary(c, app) })
 		api.GET("/k8s/workloads/resource-advisory", func(c *gin.Context) {
 			handleK8sWorkloadsResourceAdvisory(c, app.K8s(), app.Cfg())
@@ -205,6 +217,7 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		api.POST("/k8s/apply-yaml", func(c *gin.Context) { handleK8sApplyYamlGeneric(c, app) })
 		api.GET("/k8s/object-yaml", func(c *gin.Context) { handleK8sGetObjectYAML(c, app.K8s()) })
 		api.GET("/k8s/object-json", func(c *gin.Context) { handleK8sGetObjectJSON(c, app.K8s()) })
+		api.GET("/k8s/secret-data", func(c *gin.Context) { handleK8sGetSecretData(c, app.K8s()) })
 		api.PUT("/k8s/object-json", func(c *gin.Context) { handleK8sPutObjectJSON(c, app) })
 		api.GET("/k8s/object-revisions", func(c *gin.Context) { handleK8sObjectRevisionsList(c, app) })
 		api.GET("/k8s/object-revisions/yaml", func(c *gin.Context) { handleK8sObjectRevisionYAML(c, app) })
@@ -214,6 +227,8 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 
 		api.GET("/settings/runtime", handleGetRuntimeSettings(app))
 		api.PUT("/settings/runtime", handlePutRuntimeSettings(app))
+		api.GET("/settings/modules", handleModuleVisibilityGet(app))
+		api.PUT("/settings/modules", AdminOnlyMiddleware(app), handleModuleVisibilityPut(app))
 		api.GET("/audit/logs", AdminOnlyMiddleware(app), handleGetAuditLogs(app))
 		api.GET("/audit/summary", AdminOnlyMiddleware(app), handleGetAuditSummary(app))
 		api.GET("/audit/site-stats", AdminOnlyMiddleware(app), handleGetSiteStats(app))
@@ -242,6 +257,8 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		registerAdminUserRoutes(api, app)
 		registerAccountProfileRoutes(api, app)
 		registerOpsCenterRoutes(api, app)
+		registerMeshRoutes(api, app)
+		registerAuthentikRoutes(api, app)
 		registerDocsRoutes(api, app)
 	}
 	log.Println("Dashboard: WebSocket /api/k8s/pods/.../exec/ws、/api/app-center/redis/instances/:id/redis-cli/ws、/api/vcenter/vms/.../console-ws、/api/vcenter/vms/.../ssh/ws、/api/cloud-hosts/:id/ssh/ws、/api/app-center/redis/runtime/ws；GET/DELETE pods；GET summary、namespaces/stats、pods、deployments、statefulsets、daemonsets、pvcs、configmaps、services、nodes；GET/POST prometheus；vCenter API、cloud-hosts")
@@ -264,7 +281,7 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 		WriteTimeout:      5 * time.Minute,
 	}
 
-	log.Printf("kube-bt-sync Dashboard 已启动，监听 %s", addr)
+	log.Printf("labplane Dashboard 已启动，监听 %s", addr)
 	errCh := make(chan error, 1)
 	go func() {
 		err := srv.ListenAndServe()
@@ -613,19 +630,19 @@ func buildConfigMapResponse(app *ServerApp, role string, eff *EffectiveDashboard
 		dashDays = 7
 	}
 	out := gin.H{
-		"baotaUrl":                    cfg.BaotaURL,
-		"ddnsHost":                    cfg.DDNSHost,
-		"defaultPort":                 cfg.DefaultPort,
-		"baotaUpstreamHost":           func() string { h, _, _ := BaotaOriginTarget(cfg, nil); return h }(),
-		"baotaUpstreamPort":           func() string { _, _, p := BaotaOriginTarget(cfg, nil); return p }(),
-		"baotaUpstreamScheme":         func() string { _, s, _ := BaotaOriginTarget(cfg, nil); return s }(),
-		"httpsPort":                   httpsPort,
-		"syncIntervalSec":             int(cfg.SyncInterval.Seconds()),
-		"baotaHttpTimeoutSec":         int(cfg.BaotaHTTPTimeout.Seconds()),
-		"baotaTcpProbeTimeoutSec":     int(cfg.BaotaTCPProbeTimeout.Seconds()),
-		"baotaDisableHttpKeepalive":   cfg.BaotaDisableHTTPKeepAlive,
-		"baotaCheckMinIntervalSec":    int(cfg.BaotaCheckMinInterval.Seconds()),
-		"hasBaotaApiKey":              strings.TrimSpace(cfg.BaotaAPIKey) != "",
+		"baotaUrl":                  cfg.BaotaURL,
+		"ddnsHost":                  cfg.DDNSHost,
+		"defaultPort":               cfg.DefaultPort,
+		"baotaUpstreamHost":         func() string { h, _, _ := BaotaOriginTarget(cfg, nil); return h }(),
+		"baotaUpstreamPort":         func() string { _, _, p := BaotaOriginTarget(cfg, nil); return p }(),
+		"baotaUpstreamScheme":       func() string { _, s, _ := BaotaOriginTarget(cfg, nil); return s }(),
+		"httpsPort":                 httpsPort,
+		"syncIntervalSec":           int(cfg.SyncInterval.Seconds()),
+		"baotaHttpTimeoutSec":       int(cfg.BaotaHTTPTimeout.Seconds()),
+		"baotaTcpProbeTimeoutSec":   int(cfg.BaotaTCPProbeTimeout.Seconds()),
+		"baotaDisableHttpKeepalive": cfg.BaotaDisableHTTPKeepAlive,
+		"baotaCheckMinIntervalSec":  int(cfg.BaotaCheckMinInterval.Seconds()),
+		"hasBaotaApiKey":            strings.TrimSpace(cfg.BaotaAPIKey) != "",
 		"baotaTargets": func() []gin.H {
 			var rows []gin.H
 			for _, t := range EffectiveBaotaTargets(cfg) {
@@ -671,8 +688,8 @@ func buildConfigMapResponse(app *ServerApp, role string, eff *EffectiveDashboard
 		"victoriaLogsConfigured":      strings.TrimSpace(cfg.VictoriaLogsURL) != "",
 		"victoriaLogsUrlHint":         maskPrometheusURL(cfg.VictoriaLogsURL),
 		"prometheusTimeoutSec":        int(cfg.PrometheusTimeout.Seconds()),
-		"kubebtMetricsPath":           "/metrics",
-		"kubebtPrometheusScrapeHint":  "Prometheus 增加 static_configs：targets 为本服务可达地址，metrics_path=/metrics，scheme=http/https 与监听一致；建议仅内网抓取。",
+		"labplaneMetricsPath":           "/metrics",
+		"labplanePrometheusScrapeHint":  "Prometheus 增加 static_configs：targets 为本服务可达地址，metrics_path=/metrics，scheme=http/https 与监听一致；建议仅内网抓取。",
 		"prometheusSkipTls":           cfg.PrometheusSkipTLS,
 		"prometheusHasBearer":         strings.TrimSpace(cfg.PrometheusBearerToken) != "",
 		"vcenterConfigured":           cfg.vCenterConfigured(),
@@ -689,6 +706,9 @@ func buildConfigMapResponse(app *ServerApp, role string, eff *EffectiveDashboard
 		"vcenterWmksCssUrlFromEnv":       strings.TrimSpace(cfg.VCenterWmksCssURL) != "",
 		"vcenterVmSshConfigured":         vcenterSSHConfiguredForUI(cfg, sshStore),
 		"vcenterVmSshGlobalConfigured":   cfg.vCenterVMSshConfigured(),
+		"idracHost":                      strings.TrimSpace(cfg.IdracHost),
+		"idracVncPort":                   cfg.IdracVncPort,
+		"idracVncPassword":               cfg.IdracVncPassword,
 		"sshSettingsBackend":             string(cfg.SSHSettingsBackend),
 		"sshStoreEnabled":                sshStore != nil,
 		"sshEncryptionReady": func() bool {
@@ -818,6 +838,9 @@ func sanitizeConfigMapForViewer(h gin.H) {
 	h["sshStoreEnabled"] = false
 	h["vcenterVmSshConfigured"] = false
 	h["vcenterVmSshGlobalConfigured"] = false
+	h["idracHost"] = ""
+	h["idracVncPort"] = 0
+	h["idracVncPassword"] = ""
 	h["viewer"] = true
 }
 
@@ -858,12 +881,13 @@ func handleListAllIngresses(c *gin.Context, k8sClient *kubernetes.Clientset, cfg
 		}
 		managed := IsManagedIngress(ing.Annotations)
 		item := map[string]interface{}{
-			"namespace": ing.Namespace,
-			"name":      ing.Name,
-			"hosts":     hosts,
-			"class":     className,
-			"createdAt": ing.CreationTimestamp.Format(time.RFC3339),
-			"managed":   managed,
+			"namespace":       ing.Namespace,
+			"name":            ing.Name,
+			"hosts":           hosts,
+			"class":           className,
+			"createdAt":       ing.CreationTimestamp.Format(time.RFC3339),
+			"managed":         managed,
+			"annotationCount": len(ing.Annotations),
 		}
 		if managed {
 			targetHost, scheme, port := BaotaOriginTarget(cfg, ing.Annotations)

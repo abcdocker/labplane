@@ -32,9 +32,9 @@ const (
 
 // CloudVMImageOption 引导配置中的 Ubuntu/自定义镜像条目。
 type CloudVMImageOption struct {
-	ID     string `json:"id"`
-	Label  string `json:"label"`
-	Image  string `json:"image"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Image string `json:"image"`
 	/** 可选：镜像 Dockerfile 中已安装 openssh-server 等，启动脚本检测到 sshd 后会跳过 apt，首次就绪更快（仅说明，不改变脚本逻辑） */
 	BakedInSSH bool `json:"bakedInSSH,omitempty"`
 	/** 可选：覆盖默认启动逻辑（多数镜像用内置脚本安装 sshd） */
@@ -44,9 +44,9 @@ type CloudVMImageOption struct {
 
 // CloudVMBootstrap 应用中心云主机全局引导（首次在页面配置，之后可仅在后台改 platform_kv）。
 type CloudVMBootstrap struct {
-	BootstrapComplete bool               `json:"bootstrapComplete"`
+	BootstrapComplete bool                 `json:"bootstrapComplete"`
 	Images            []CloudVMImageOption `json:"images"`
-	DefaultNamespace  string             `json:"defaultNamespace"`
+	DefaultNamespace  string               `json:"defaultNamespace"`
 	// DefaultAccessNodeName 可选：指定 Kubernetes Node 名称；列表/访问地址展示与该节点主 IP 一致（NodePort SSH）。空则沿用集群内第一个可用节点 IP。
 	DefaultAccessNodeName string `json:"defaultAccessNodeName,omitempty"`
 	// Hysteria2LinuxAmd64URL / Hysteria2LinuxArm64URL：勾选 Hysteria2 时 Pod init 按架构从此 URL 拉取裸二进制（留空则用官方 app/v2.6.5 默认地址，并自动追加 ghproxy 等镜像）。
@@ -57,7 +57,7 @@ type CloudVMBootstrap struct {
 func defaultCloudVMBootstrap() *CloudVMBootstrap {
 	return &CloudVMBootstrap{
 		BootstrapComplete: false,
-		DefaultNamespace:  "kube-bt-cloud-vm",
+		DefaultNamespace:  "labplane-cloud-vm",
 		Images: []CloudVMImageOption{
 			{ID: "ubuntu-2204", Label: "Ubuntu 22.04", Image: "docker.io/library/ubuntu:22.04"},
 			{ID: "ubuntu-2404", Label: "Ubuntu 24.04", Image: "docker.io/library/ubuntu:24.04"},
@@ -78,7 +78,7 @@ func loadCloudVMBootstrap(kv PlatformKV) *CloudVMBootstrap {
 		return defaultCloudVMBootstrap()
 	}
 	if b.DefaultNamespace == "" {
-		b.DefaultNamespace = "kube-bt-cloud-vm"
+		b.DefaultNamespace = "labplane-cloud-vm"
 	}
 	if len(b.Images) == 0 {
 		b.Images = defaultCloudVMBootstrap().Images
@@ -99,27 +99,27 @@ func saveCloudVMBootstrap(kv PlatformKV, b *CloudVMBootstrap) error {
 
 // CloudVMStored 实例持久化字段（config_json）。
 type CloudVMStored struct {
-	DisplayName   string            `json:"displayName"`
-	ImageID       string            `json:"imageId"`
-	Image         string            `json:"image"`
-	CPURequest    string            `json:"cpuRequest"`
-	CPULimit      string            `json:"cpuLimit"`
-	MemRequest    string            `json:"memRequest"`
-	MemLimit      string            `json:"memLimit"`
-	PVCSize       string            `json:"pvcSize"`
-	StorageClass  string            `json:"storageClassName"`
-	NodePort      int32             `json:"nodePort"`
-	Env           []cloudVMEnvVar   `json:"env,omitempty"`
-	Command       []string          `json:"command,omitempty"`
-	Args          []string          `json:"args,omitempty"`
+	DisplayName     string          `json:"displayName"`
+	ImageID         string          `json:"imageId"`
+	Image           string          `json:"image"`
+	CPURequest      string          `json:"cpuRequest"`
+	CPULimit        string          `json:"cpuLimit"`
+	MemRequest      string          `json:"memRequest"`
+	MemLimit        string          `json:"memLimit"`
+	PVCSize         string          `json:"pvcSize"`
+	StorageClass    string          `json:"storageClassName"`
+	NodePort        int32           `json:"nodePort"`
+	Env             []cloudVMEnvVar `json:"env,omitempty"`
+	Command         []string        `json:"command,omitempty"`
+	Args            []string        `json:"args,omitempty"`
 	RootPasswordEnc string          `json:"rootPasswordEnc"`
-	DeploymentName string           `json:"deploymentName"`
-	ServiceName    string           `json:"serviceName"`
-	PVCName        string           `json:"pvcName"`
-	SecretName     string           `json:"secretName"`
-	NodeAccessIP   string           `json:"nodeAccessIP"`
-	SSHPort        int32            `json:"sshPort"`
-	Phase          string           `json:"phase"`
+	DeploymentName  string          `json:"deploymentName"`
+	ServiceName     string          `json:"serviceName"`
+	PVCName         string          `json:"pvcName"`
+	SecretName      string          `json:"secretName"`
+	NodeAccessIP    string          `json:"nodeAccessIP"`
+	SSHPort         int32           `json:"sshPort"`
+	Phase           string          `json:"phase"`
 	/** InitScript 用户自定义 bash（不含预选软件块）；与 Software 合并后写入 Secret */
 	InitScript string `json:"initScript,omitempty"`
 	/** Software 创建向导勾选的自动化安装（国内源、数据在 /data） */
@@ -215,10 +215,10 @@ func cloudVMStartupScript(sw CloudVMSoftwareOpts) string {
 	head := `set -e
 export DEBIAN_FRONTEND=noninteractive
 mkdir -p /data
-mkdir -p /data/.kubebt/apt-archive /data/.kubebt/apt-lists/partial
-cat > /etc/apt/apt.conf.d/99-kubebt-persist <<'APTEOF'
-Dir::Cache::archives "/data/.kubebt/apt-archive";
-Dir::State::lists "/data/.kubebt/apt-lists";
+mkdir -p /data/.labplane/apt-archive /data/.labplane/apt-lists/partial
+cat > /etc/apt/apt.conf.d/99-labplane-persist <<'APTEOF'
+Dir::Cache::archives "/data/.labplane/apt-archive";
+Dir::State::lists "/data/.labplane/apt-lists";
 APTEOF
 if ! command -v sshd >/dev/null 2>&1; then
   apt-get update -qq
@@ -226,13 +226,13 @@ if ! command -v sshd >/dev/null 2>&1; then
 fi
 mkdir -p /var/run/sshd
 mkdir -p /etc/profile.d
-echo "export POD_NAME=\"${POD_NAME:-$(hostname)}\"" > /etc/profile.d/50-kube-bt-pod.sh
-echo "export PS1=\"\${POD_NAME}# \"" >> /etc/profile.d/50-kube-bt-pod.sh
-chmod 644 /etc/profile.d/50-kube-bt-pod.sh
+echo "export POD_NAME=\"${POD_NAME:-$(hostname)}\"" > /etc/profile.d/50-labplane-pod.sh
+echo "export PS1=\"\${POD_NAME}# \"" >> /etc/profile.d/50-labplane-pod.sh
+chmod 644 /etc/profile.d/50-labplane-pod.sh
 `
 	if sw.InstallHysteria2 {
 		hp := NormalizeHysteria2ListenPort(sw.Hysteria2ListenPort)
-		head += fmt.Sprintf(`cat > /etc/profile.d/51-kube-bt-hysteria-proxy.sh <<'HYPROXYEOF'
+		head += fmt.Sprintf(`cat > /etc/profile.d/51-labplane-hysteria-proxy.sh <<'HYPROXYEOF'
 export http_proxy=http://127.0.0.1:%d
 export https_proxy=http://127.0.0.1:%d
 export HTTP_PROXY=http://127.0.0.1:%d
@@ -240,10 +240,10 @@ export HTTPS_PROXY=http://127.0.0.1:%d
 HYPROXYEOF
 `, hp, hp, hp, hp)
 		if sp := hysteriaSocksListenPortFromClientYAML(sw.Hysteria2ConfigYAML); sp > 0 {
-			head += fmt.Sprintf(`printf 'export all_proxy=socks5://127.0.0.1:%d\nexport ALL_PROXY=socks5://127.0.0.1:%d\n' >> /etc/profile.d/51-kube-bt-hysteria-proxy.sh
+			head += fmt.Sprintf(`printf 'export all_proxy=socks5://127.0.0.1:%d\nexport ALL_PROXY=socks5://127.0.0.1:%d\n' >> /etc/profile.d/51-labplane-hysteria-proxy.sh
 `, sp, sp)
 		}
-		head += "chmod 644 /etc/profile.d/51-kube-bt-hysteria-proxy.sh\n"
+		head += "chmod 644 /etc/profile.d/51-labplane-hysteria-proxy.sh\n"
 	}
 	return head + `echo "root:${ROOT_PASSWORD}" | chpasswd
 sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config || true
@@ -260,9 +260,9 @@ exec /usr/sbin/sshd -D -e
 func buildCloudVMDeployment(ns, depName, secretName, pvcName, image string, cpuR, cpuL, memR, memL string, env []cloudVMEnvVar, cmd, args []string, initScript string, id int64, sw CloudVMSoftwareOpts) *appsv1.Deployment {
 	privileged := sw.InstallDocker
 	labels := map[string]string{
-		"app.kubernetes.io/name":       "kube-bt-cloud-vm",
-		"app.kubernetes.io/instance":   depName,
-		"kube-bt-sync.io/cloud-vm-id":  fmt.Sprintf("%d", id),
+		"app.kubernetes.io/name":      "labplane-cloud-vm",
+		"app.kubernetes.io/instance":  depName,
+		"labplane.io/cloud-vm-id": fmt.Sprintf("%d", id),
 	}
 	script := cloudVMStartupScript(sw)
 	containerEnv := []corev1.EnvVar{
@@ -310,7 +310,7 @@ func buildCloudVMDeployment(ns, depName, secretName, pvcName, image string, cpuR
 				Secret: &corev1.SecretVolumeSource{SecretName: secretName, DefaultMode: &mode},
 			},
 		})
-		podAnn = map[string]string{"kube-bt-sync.io/cloud-vm-init-hash": initScriptHash(initScript)}
+		podAnn = map[string]string{"labplane.io/cloud-vm-init-hash": initScriptHash(initScript)}
 	}
 
 	ports := []corev1.ContainerPort{{Name: "ssh", ContainerPort: cloudVMSSHPort, Protocol: corev1.ProtocolTCP}}
@@ -403,7 +403,7 @@ func buildCloudVMService(ns, svcName, depName string, nodePort int32) *corev1.Se
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: svcName, Namespace: ns},
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeNodePort,
+			Type:     corev1.ServiceTypeNodePort,
 			Selector: map[string]string{"app.kubernetes.io/instance": depName},
 			Ports: []corev1.ServicePort{{
 				Name:       "ssh",
@@ -517,7 +517,7 @@ func handleCloudVMSSHPreflight(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var cfgj, ns string
-	err = db.QueryRow(`SELECT namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
+	err = db.QueryRow(`SELECT namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -545,25 +545,25 @@ func handleCloudVMSSHPreflight(c *gin.Context, app *ServerApp) {
 	}
 	fc := getCloudVMSSHFailCount(id, pu, visitorIP)
 	c.JSON(http.StatusOK, gin.H{
-		"ok":                   true,
+		"ok":                    true,
 		"requireManualPassword": !canDecryptStored,
-		"canDecryptStored":     canDecryptStored,
-		"encryptionKeyReady":   kerr == nil,
-		"podName":              podName,
-		"readiness":            readiness,
-		"sshFailCount":         fc,
-		"needCaptcha":          fc >= cloudVMSSHMaxFailsBeforeCaptcha,
+		"canDecryptStored":      canDecryptStored,
+		"encryptionKeyReady":    kerr == nil,
+		"podName":               podName,
+		"readiness":             readiness,
+		"sshFailCount":          fc,
+		"needCaptcha":           fc >= cloudVMSSHMaxFailsBeforeCaptcha,
 	})
 }
 
 func handleCloudVMBootstrapGet(c *gin.Context, app *ServerApp) {
 	b := loadCloudVMBootstrap(app.PlatformKV())
 	c.JSON(http.StatusOK, gin.H{
-		"bootstrapComplete":       b.BootstrapComplete,
-		"images":                  b.Images,
-		"defaultNamespace":        b.DefaultNamespace,
-		"defaultAccessNodeName":   b.DefaultAccessNodeName,
-		"hysteria2LinuxAmd64Url":  b.Hysteria2LinuxAmd64URL,
+		"bootstrapComplete":      b.BootstrapComplete,
+		"images":                 b.Images,
+		"defaultNamespace":       b.DefaultNamespace,
+		"defaultAccessNodeName":  b.DefaultAccessNodeName,
+		"hysteria2LinuxAmd64Url": b.Hysteria2LinuxAmd64URL,
 		"hysteria2LinuxArm64Url": b.Hysteria2LinuxArm64URL,
 	})
 }
@@ -579,7 +579,7 @@ func handleCloudVMBootstrapPut(c *gin.Context, app *ServerApp) {
 		return
 	}
 	if strings.TrimSpace(body.DefaultNamespace) == "" {
-		body.DefaultNamespace = "kube-bt-cloud-vm"
+		body.DefaultNamespace = "labplane-cloud-vm"
 	}
 	if len(body.Images) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "至少配置一条镜像"})
@@ -691,7 +691,7 @@ func handleCloudVMRevealHysteriaClient(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var cfgj string
-	err = db.QueryRowContext(ctx, `SELECT config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&cfgj)
+	err = db.QueryRowContext(ctx, `SELECT config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&cfgj)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -722,7 +722,7 @@ func handleCloudVMList(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 	eff := getEffectiveDashboardPermissionsFromGin(c)
-	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json, created_by, created_at FROM kubebt_app_cloud_vm_instances ORDER BY id DESC`)
+	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json, created_by, created_at FROM labplane_app_cloud_vm_instances ORDER BY id DESC`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -762,8 +762,8 @@ func handleCloudVMList(c *gin.Context, app *ServerApp) {
 			"createdAt": r.CreatedAt.UTC().Format(time.RFC3339),
 			"summary": gin.H{
 				"nodeIP": nodeIP, "sshPort": st.SSHPort, "phase": phase,
-				"image": st.Image,
-				"installHysteria2":           st.Software.InstallHysteria2,
+				"image":                    st.Image,
+				"installHysteria2":         st.Software.InstallHysteria2,
 				"hysteria2ClusterEndpoint": hyHost,
 				"hysteria2Port":            hyPort,
 			},
@@ -786,7 +786,7 @@ func handleCloudVMInstancesUsage(c *gin.Context, app *ServerApp) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 45*time.Second)
 	defer cancel()
-	rows, err := db.QueryContext(ctx, `SELECT id, namespace, config_json FROM kubebt_app_cloud_vm_instances ORDER BY id DESC`)
+	rows, err := db.QueryContext(ctx, `SELECT id, namespace, config_json FROM labplane_app_cloud_vm_instances ORDER BY id DESC`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -880,21 +880,21 @@ type cloudVMEnvVar struct {
 }
 
 type cloudVMCreateBody struct {
-	Name         string         `json:"name"`
-	ImageID      string         `json:"imageId"`
-	CPURequest   string         `json:"cpuRequest"`
-	CPULimit     string         `json:"cpuLimit"`
-	MemRequest   string         `json:"memRequest"`
-	MemLimit     string         `json:"memLimit"`
-	PVCSize      string         `json:"pvcSize"`
-	StorageClass string         `json:"storageClassName"`
-	NodePort     int32          `json:"nodePort"`
-	RootPassword string         `json:"rootPassword"`
+	Name         string          `json:"name"`
+	ImageID      string          `json:"imageId"`
+	CPURequest   string          `json:"cpuRequest"`
+	CPULimit     string          `json:"cpuLimit"`
+	MemRequest   string          `json:"memRequest"`
+	MemLimit     string          `json:"memLimit"`
+	PVCSize      string          `json:"pvcSize"`
+	StorageClass string          `json:"storageClassName"`
+	NodePort     int32           `json:"nodePort"`
+	RootPassword string          `json:"rootPassword"`
 	Env          []cloudVMEnvVar `json:"env"`
-	Command      []string       `json:"command"`
-	Args         []string       `json:"args"`
+	Command      []string        `json:"command"`
+	Args         []string        `json:"args"`
 	/** InitScript 用户自定义 bash；与 software 合并后写入 Secret */
-	InitScript string `json:"initScript"`
+	InitScript string              `json:"initScript"`
 	Software   CloudVMSoftwareOpts `json:"software"`
 }
 
@@ -980,7 +980,7 @@ func handleCloudVMCreate(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
 	defer cancel()
 	if err := ensureNamespace(ctx, k8s, ns); err != nil {
-		RespondAPIError500(c, "创建命名空间: " + err.Error())
+		RespondAPIError500(c, "创建命名空间: "+err.Error())
 		return
 	}
 	slug := name + "-" + strconv.FormatInt(time.Now().Unix()%100000, 10)
@@ -1019,7 +1019,7 @@ func handleCloudVMCreate(c *gin.Context, app *ServerApp) {
 		sec.StringData["hysteria2.yaml"] = NormalizeHysteriaClientSecretYAML(sw.Hysteria2ConfigYAML, sw.Hysteria2ListenPort)
 	}
 	if _, err := k8s.CoreV1().Secrets(ns).Create(ctx, sec, metav1.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
-		RespondAPIError500(c, "创建 Secret: " + err.Error())
+		RespondAPIError500(c, "创建 Secret: "+err.Error())
 		return
 	}
 
@@ -1028,13 +1028,13 @@ func handleCloudVMCreate(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "StorageClass: " + err.Error()})
 		return
 	}
-	pvc, err := buildRedisPVC(ns, pvcName, scResolved, pvcSize, map[string]string{"app": depName, "kube-bt-sync.io/cloud-vm": "true"})
+	pvc, err := buildRedisPVC(ns, pvcName, scResolved, pvcSize, map[string]string{"app": depName, "labplane.io/cloud-vm": "true"})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "PVC: " + err.Error()})
 		return
 	}
 	if err := applyPVC(ctx, k8s, pvc); err != nil {
-		RespondAPIError500(c, "PVC: " + err.Error())
+		RespondAPIError500(c, "PVC: "+err.Error())
 		return
 	}
 
@@ -1072,7 +1072,7 @@ func handleCloudVMCreate(c *gin.Context, app *ServerApp) {
 		SSHPort:         nodePort,
 		Phase:           "deploying",
 	}
-	res, err := db.ExecContext(ctx, `INSERT INTO kubebt_app_cloud_vm_instances (name, namespace, config_json, created_by) VALUES (?,?,?,?)`,
+	res, err := db.ExecContext(ctx, `INSERT INTO labplane_app_cloud_vm_instances (name, namespace, config_json, created_by) VALUES (?,?,?,?)`,
 		name, ns, "{}", user)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
@@ -1085,26 +1085,26 @@ func handleCloudVMCreate(c *gin.Context, app *ServerApp) {
 	id, _ := res.LastInsertId()
 	cfg.NodeAccessIP = resolveNodeAccessIP(ctx, k8s, boot)
 	blob, _ := json.Marshal(cfg)
-	_, _ = db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
+	_, _ = db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
 
 	dep := buildCloudVMDeployment(ns, depName, secName, pvcName, img.Image, cpuR, cpuL, memR, memL, req.Env, cmd, args, fullInit, id, sw)
 	if err := upsertDeployment(ctx, k8s, dep); err != nil {
-		RespondAPIError500(c, "Deployment: " + err.Error())
+		RespondAPIError500(c, "Deployment: "+err.Error())
 		return
 	}
 	svc := buildCloudVMService(ns, svcName, depName, nodePort)
 	if err := upsertService(ctx, k8s, svc); err != nil {
-		RespondAPIError500(c, "Service: " + err.Error())
+		RespondAPIError500(c, "Service: "+err.Error())
 		return
 	}
 	if err := upsertCloudVMHysteria2Service(ctx, k8s, ns, depName, sw); err != nil {
-		RespondAPIError500(c, "Hysteria2 集群内 Service: " + err.Error())
+		RespondAPIError500(c, "Hysteria2 集群内 Service: "+err.Error())
 		return
 	}
 	// 保持 deploying，直至 GET 检测到 Pod Ready 后再写回 running（避免创建完即提示可 SSH）
 	cfg.NodeAccessIP = resolveNodeAccessIP(ctx, k8s, boot)
 	blob, _ = json.Marshal(cfg)
-	_, _ = db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
+	_, _ = db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
 
 	c.JSON(http.StatusOK, gin.H{"id": id, "summary": gin.H{"nodeIP": cfg.NodeAccessIP, "sshPort": nodePort, "phase": cfg.Phase}})
 }
@@ -1268,7 +1268,7 @@ func handleCloudVMGet(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 	var r cloudVMRow
-	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json, created_by, created_at FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON, &r.CreatedBy, &r.CreatedAt)
+	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json, created_by, created_at FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON, &r.CreatedBy, &r.CreatedAt)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1284,7 +1284,7 @@ func handleCloudVMGet(c *gin.Context, app *ServerApp) {
 	if ready, ok := readiness["ready"].(bool); ok && ready && st.Phase != "running" {
 		st.Phase = "running"
 		blob, _ := json.Marshal(st)
-		_, _ = db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
+		_, _ = db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id)
 	}
 
 	accessIP := st.NodeAccessIP
@@ -1382,7 +1382,7 @@ func handleCloudVMUpdatePut(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
 	var r cloudVMRow
-	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
+	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1429,7 +1429,7 @@ func handleCloudVMUpdatePut(c *gin.Context, app *ServerApp) {
 		RespondAPIError500(c, err.Error())
 		return
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
+	if _, err := db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
 		RespondAPIError500(c, err.Error())
 		return
 	}
@@ -1453,23 +1453,23 @@ func handleCloudVMUpdatePut(c *gin.Context, app *ServerApp) {
 		sec.Data["root-password"] = []byte(rootPlain)
 	}
 	if _, err := k8s.CoreV1().Secrets(r.Namespace).Update(ctx, sec, metav1.UpdateOptions{}); err != nil {
-		RespondAPIError500(c, "更新 Secret: " + err.Error())
+		RespondAPIError500(c, "更新 Secret: "+err.Error())
 		return
 	}
 	if len(st.Command) == 0 {
 		dep := buildCloudVMDeployment(r.Namespace, st.DeploymentName, st.SecretName, st.PVCName, st.Image, st.CPURequest, st.CPULimit, st.MemRequest, st.MemLimit, st.Env, st.Command, st.Args, full, id, st.Software)
 		if err := upsertDeployment(ctx, k8s, dep); err != nil {
-			RespondAPIError500(c, "更新 Deployment: " + err.Error())
+			RespondAPIError500(c, "更新 Deployment: "+err.Error())
 			return
 		}
 	}
 	if err := upsertCloudVMHysteria2Service(ctx, k8s, r.Namespace, st.DeploymentName, st.Software); err != nil {
-		RespondAPIError500(c, "Hysteria2 Service: " + err.Error())
+		RespondAPIError500(c, "Hysteria2 Service: "+err.Error())
 		return
 	}
 	if rootPwdChanged {
 		if err := cloudVMTriggerRolloutRestart(ctx, k8s, r, &st); err != nil {
-			RespondAPIError500(c, "滚动重启 Deployment: " + err.Error())
+			RespondAPIError500(c, "滚动重启 Deployment: "+err.Error())
 			return
 		}
 		SetAuditDetail(c, "同步云主机 root 密码 "+r.Name)
@@ -1519,7 +1519,7 @@ func handleCloudVMScale(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
 	defer cancel()
 	var r cloudVMRow
-	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
+	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1588,7 +1588,7 @@ func handleCloudVMScale(c *gin.Context, app *ServerApp) {
 		RespondAPIError500(c, err.Error())
 		return
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
+	if _, err := db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
 		RespondAPIError500(c, err.Error())
 		return
 	}
@@ -1597,7 +1597,7 @@ func handleCloudVMScale(c *gin.Context, app *ServerApp) {
 		full := composeCloudVMUserInitScript(st, boot)
 		dep := buildCloudVMDeployment(r.Namespace, st.DeploymentName, st.SecretName, st.PVCName, st.Image, cpuR, cpuL, memR, memL, st.Env, st.Command, st.Args, full, id, st.Software)
 		if err := upsertDeployment(ctx, k8s, dep); err != nil {
-			RespondAPIError500(c, "更新 Deployment: " + err.Error())
+			RespondAPIError500(c, "更新 Deployment: "+err.Error())
 			return
 		}
 	}
@@ -1619,7 +1619,7 @@ func handleCloudVMDelete(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
 	defer cancel()
 	var r cloudVMRow
-	err := db.QueryRowContext(ctx, `SELECT namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.Namespace, &r.ConfigJSON)
+	err := db.QueryRowContext(ctx, `SELECT namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.Namespace, &r.ConfigJSON)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1646,7 +1646,7 @@ func handleCloudVMDelete(c *gin.Context, app *ServerApp) {
 			_ = k8s.CoreV1().Secrets(r.Namespace).Delete(ctx, sec, metav1.DeleteOptions{})
 		}
 	}
-	_, _ = db.ExecContext(ctx, `DELETE FROM kubebt_app_cloud_vm_instances WHERE id=?`, id)
+	_, _ = db.ExecContext(ctx, `DELETE FROM labplane_app_cloud_vm_instances WHERE id=?`, id)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1692,7 +1692,7 @@ func handleCloudVMResetRootPassword(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
 	var r cloudVMRow
-	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
+	err := db.QueryRowContext(ctx, `SELECT id, name, namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&r.ID, &r.Name, &r.Namespace, &r.ConfigJSON)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1718,7 +1718,7 @@ func handleCloudVMResetRootPassword(c *gin.Context, app *ServerApp) {
 	}
 	sec.Data["root-password"] = []byte(newPlain)
 	if _, err := k8s.CoreV1().Secrets(r.Namespace).Update(ctx, sec, metav1.UpdateOptions{}); err != nil {
-		RespondAPIError500(c, "更新 Secret: " + err.Error())
+		RespondAPIError500(c, "更新 Secret: "+err.Error())
 		return
 	}
 	st.RootPasswordEnc = pwEnc
@@ -1727,7 +1727,7 @@ func handleCloudVMResetRootPassword(c *gin.Context, app *ServerApp) {
 		RespondAPIError500(c, err.Error())
 		return
 	}
-	if _, err := db.ExecContext(ctx, `UPDATE kubebt_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
+	if _, err := db.ExecContext(ctx, `UPDATE labplane_app_cloud_vm_instances SET config_json=? WHERE id=?`, string(blob), id); err != nil {
 		RespondAPIError500(c, err.Error())
 		return
 	}
@@ -1736,12 +1736,12 @@ func handleCloudVMResetRootPassword(c *gin.Context, app *ServerApp) {
 	if len(st.Command) == 0 {
 		dep := buildCloudVMDeployment(r.Namespace, st.DeploymentName, st.SecretName, st.PVCName, st.Image, st.CPURequest, st.CPULimit, st.MemRequest, st.MemLimit, st.Env, st.Command, st.Args, fullInit, id, st.Software)
 		if err := upsertDeployment(ctx, k8s, dep); err != nil {
-			RespondAPIError500(c, "更新 Deployment: " + err.Error())
+			RespondAPIError500(c, "更新 Deployment: "+err.Error())
 			return
 		}
 	} else {
 		if err := cloudVMTriggerRolloutRestart(ctx, k8s, r, &st); err != nil {
-			RespondAPIError500(c, "滚动重启 Deployment: " + err.Error())
+			RespondAPIError500(c, "滚动重启 Deployment: "+err.Error())
 			return
 		}
 	}
@@ -1762,7 +1762,7 @@ func handleCloudVMMetrics(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var ns, cfgj string
-	err := db.QueryRow(`SELECT namespace, config_json FROM kubebt_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
+	err := db.QueryRow(`SELECT namespace, config_json FROM labplane_app_cloud_vm_instances WHERE id=?`, id).Scan(&ns, &cfgj)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return

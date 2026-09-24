@@ -15,15 +15,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { OpenClawChat404RemedyPanel } from "@/components/OpenClawChat404Remedy";
-import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
-import { formatDateTimeShanghai } from "@/lib/datetime-cn";
-import {
-  formatOpenClawClusterChatProbeSnippet,
-  formatOpenClawGatewayHealthInstanceLine,
-  isOpenClawGatewayChatNoHttpStatus,
-  OPENCLAW_GATEWAY_HEALTH_INTERVAL_SEC_DEFAULT,
-} from "@/lib/openclaw-gateway-health";
 import { menuItemVisible, moduleVisible } from "@/lib/platform-permissions";
 
 type HostEgressNotification = {
@@ -58,21 +49,6 @@ type CloudVmSshSecurityEvent = {
   visitorIp: string;
   platformIp: string;
   message: string;
-};
-
-type OpenClawGwHealthItem = {
-  id: string;
-  displayName?: string;
-  namespace?: string;
-  deploymentName?: string;
-  skipped?: boolean;
-  skipReason?: string;
-  k8sPhase?: string;
-  clusterChatOk?: boolean;
-  clusterChatMessage?: string;
-  clusterChatHttpStatus?: number;
-  httpProbeOk?: boolean;
-  httpProbeMessage?: string;
 };
 
 /** 铃铛 + 右侧通知 Sheet（从 Header 拆出以控制单文件体积） */
@@ -123,34 +99,24 @@ const HeaderNotificationsSheet: React.FC = () => {
     staleTime: 30_000,
   });
 
-  const openclawGwHealthQ = useQuery({
-    queryKey: ["openclaw-gateway-service-health"],
-    queryFn: ({ signal }) =>
-      apiGetJson<{
-        enabled?: boolean;
-        workerDisabled?: boolean;
-        lastCheckAt?: string;
-        bellUnread?: boolean;
-        items?: OpenClawGwHealthItem[];
-        intervalSec?: number;
-        healthChatTimeoutSec?: number;
-      }>("/api/app-center/openclaw/gateway-service-health", { signal }),
-    enabled: Boolean(status?.loggedIn) && (headerShowApp || headerShowAiInspect),
-    refetchInterval: 90_000,
-    staleTime: 45_000,
-  });
+  useEffect(() => {
+    setSshEventsReadTs(localStorage.getItem("labplane-ssh-events-read-ts") || "");
+  }, []);
 
-  const openclawGwHealthReadMut = useMutation({
-    mutationFn: () => apiPostJson("/api/app-center/openclaw/gateway-service-health/read", {}),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["openclaw-gateway-service-health"] }),
-  });
+  useEffect(() => {
+    if (!notifyOpen) return;
+    const first = sshSecQ.data?.events?.[0]?.ts;
+    if (first) {
+      localStorage.setItem("labplane-ssh-events-read-ts", first);
+      setSshEventsReadTs(first);
+    }
+  }, [notifyOpen, sshSecQ.data?.events]);
 
   const clusterAdvisoryQ = useQuery({
     queryKey: ["ops-cluster-advisory"],
     queryFn: ({ signal }) =>
       apiGetJson<{
         ok?: boolean;
-        runId?: string;
         updatedAt?: string;
         rating?: string;
         markdown?: string;
@@ -166,29 +132,6 @@ const HeaderNotificationsSheet: React.FC = () => {
     mutationFn: () => apiPostJson("/api/ops/cluster-advisory/dismiss-bell", {}),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["ops-cluster-advisory"] }),
   });
-
-  const openclawGwHealthFailing =
-    openclawGwHealthQ.data?.items?.filter((x) => !x.skipped && x.clusterChatOk === false) ?? [];
-  const openclawGwHealthAny404 = openclawGwHealthFailing.some((x) => x.clusterChatHttpStatus === 404);
-  const openclawGwHealthAllProbedOk =
-    (openclawGwHealthQ.data?.items ?? []).length === 0 ||
-    (openclawGwHealthQ.data?.items ?? []).every((x) => x.skipped || x.clusterChatOk === true);
-  const openclawGwBellForUi =
-    openclawGwHealthFailing.length > 0 ||
-    (Boolean(openclawGwHealthQ.data?.bellUnread) && !openclawGwHealthAllProbedOk);
-
-  useEffect(() => {
-    setSshEventsReadTs(localStorage.getItem("kubebt-ssh-events-read-ts") || "");
-  }, []);
-
-  useEffect(() => {
-    if (!notifyOpen) return;
-    const first = sshSecQ.data?.events?.[0]?.ts;
-    if (first) {
-      localStorage.setItem("kubebt-ssh-events-read-ts", first);
-      setSshEventsReadTs(first);
-    }
-  }, [notifyOpen, sshSecQ.data?.events]);
 
   const auditBellQ = useQuery({
     queryKey: ["audit-logs-bell"],
@@ -213,7 +156,6 @@ const HeaderNotificationsSheet: React.FC = () => {
     (showPlatformUsers && Boolean(egress?.remoteLoginUnread)) ||
     (showPlatformUsers && Boolean(egress?.adminIpBanUnread)) ||
     sshBellUnread ||
-    openclawGwBellForUi ||
     clusterAdvisoryBell;
 
   return (
@@ -221,7 +163,7 @@ const HeaderNotificationsSheet: React.FC = () => {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="relative rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600"
+          className="relative flex size-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           aria-label="通知"
         >
           <Bell size={22} />
@@ -264,133 +206,27 @@ const HeaderNotificationsSheet: React.FC = () => {
             </div>
           ) : null}
 
-          {(headerShowApp || headerShowAiInspect) && openclawGwBellForUi ? (
-            <div className="shrink-0 rounded-xl border border-violet-300 bg-violet-50 px-3 py-3 text-sm shadow-sm">
-              <p className="font-semibold text-violet-950">OpenClaw 网关服务探活</p>
-              <p className="mt-1 text-xs leading-relaxed text-violet-900/90">
-                极简补全探活（与「对话」、AI 巡检同源）。列表里<strong>下一行即原因概括</strong>：
-                <span className="font-mono">404</span>
-                →路由；<span className="font-mono">5xx</span>→上游；无 HTTP→连接层；超时→可调{" "}
-                <span className="font-mono">KUBEBT_OPENCLAW_GATEWAY_HEALTH_CHAT_TIMEOUT_SEC</span>（约{" "}
-                {openclawGwHealthQ.data?.healthChatTimeoutSec ?? 90}s）。
-              </p>
-              {openclawGwHealthQ.data?.workerDisabled ? (
-                <p className="mt-2 text-xs text-amber-900">
-                  当前已设置 <span className="font-mono">KUBEBT_OPENCLAW_GATEWAY_HEALTH_DISABLED</span>
-                  ，后台巡检已关闭；以下为进程内最后一次快照（若有）。
-                </p>
-              ) : null}
-              {openclawGwHealthQ.data?.lastCheckAt ? (
-                <p className="mt-2 text-[11px] text-violet-800/80">
-                  最近巡检：{formatDateTimeShanghai(openclawGwHealthQ.data.lastCheckAt)}（UTC：{" "}
-                  <span className="font-mono">{openclawGwHealthQ.data.lastCheckAt}</span>，约每{" "}
-                  {openclawGwHealthQ.data.intervalSec ?? OPENCLAW_GATEWAY_HEALTH_INTERVAL_SEC_DEFAULT}s）
-                </p>
-              ) : (
-                <p className="mt-2 text-xs text-violet-800/80">尚未完成首次巡检（启动约 20s 后跑第一次）。</p>
-              )}
-              <ul className="mt-2 max-h-[200px] space-y-2 overflow-y-auto text-[11px] leading-relaxed text-violet-950">
-                {(openclawGwHealthFailing.length > 0
-                  ? openclawGwHealthFailing
-                  : (openclawGwHealthQ.data?.items ?? []).filter((x) => !x.skipped)
-                ).map((x) => (
-                  <li key={x.id} className="rounded-lg border border-violet-200/80 bg-white/90 px-2 py-1.5">
-                    <span className="block font-sans text-[11px] font-semibold leading-snug text-slate-900">
-                      {formatOpenClawGatewayHealthInstanceLine(x)}
-                    </span>
-                    {x.clusterChatOk === false ? (
-                      <>
-                        <br />
-                        <span className="text-[10px] font-semibold leading-snug text-red-800">
-                          {isOpenClawGatewayChatNoHttpStatus(x.clusterChatHttpStatus)
-                            ? "无 HTTP · 传输/连接"
-                            : `HTTP ${x.clusterChatHttpStatus}`}{" "}
-                          · {formatOpenClawClusterChatProbeSnippet(x.clusterChatMessage || "失败", 300)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <br />
-                        <span className="font-sans text-[10px] text-emerald-800">chat 探活正常</span>
-                      </>
-                    )}
-                    {x.k8sPhase ? (
-                      <>
-                        <br />
-                        <span className="text-slate-600">K8s 阶段：{x.k8sPhase}</span>
-                      </>
-                    ) : null}
-                    {x.clusterChatOk === false ? (
-                      <>
-                        <br />
-                        <Link
-                          to={`/cluster/apps/openclaw/${encodeURIComponent(x.id)}`}
-                          className="text-violet-700 underline-offset-2 hover:underline"
-                        >
-                          打开实例详情（编辑 openclaw.json）
-                        </Link>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-              {openclawGwHealthAny404 ? <OpenClawChat404RemedyPanel variant="violet" className="mt-3" /> : null}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="mt-2 h-8 border-violet-200"
-                disabled={openclawGwHealthReadMut.isPending}
-                onClick={() => void openclawGwHealthReadMut.mutateAsync()}
-              >
-                已知晓（清除铃铛）
-              </Button>
-              <Button type="button" variant="link" size="sm" className="mt-1 h-auto px-0 text-xs" asChild>
-                <Link to="/cluster/apps/openclaw">前往 OpenClaw 列表</Link>
-              </Button>
-            </div>
-          ) : null}
-
-          {headerShowAiInspect &&
-          (clusterAdvisoryQ.data?.markdown ||
-            clusterAdvisoryQ.data?.runError ||
-            (clusterAdvisoryQ.data?.rating && clusterAdvisoryQ.data.rating !== "ok")) ? (
+          {headerShowAiInspect && clusterAdvisoryBell ? (
             <div className="shrink-0 rounded-xl border border-rose-300/90 bg-rose-50/95 px-3 py-3 text-sm shadow-sm">
-              <p className="font-semibold text-rose-950">K8s 控制平面 · 周期 AI 建议</p>
+              <p className="font-semibold text-rose-950">AI 建议 · kube-system 控制平面</p>
               <p className="mt-1 text-[11px] leading-relaxed text-rose-900/90">
-                后台约每 30 分钟抓取 <span className="font-mono">kube-system</span> 关键组件日志并由巡检 OpenClaw 汇总；与 VictoriaLogs
-                明细互补。完整内容与确认见「AI 巡检 → 总览」。
+                后台周期汇总 kube-system 关键组件日志并由内嵌判读模型（GLM）给出评级；评级为 critical
+                时持续提示。完整内容见「AI 巡检 → Dashboard」。
               </p>
-              {clusterAdvisoryQ.data?.updatedAt ? (
-                <p className="mt-1 font-mono text-[10px] text-rose-800/80">
-                  更新 {formatDateTimeShanghai(clusterAdvisoryQ.data.updatedAt)} · 评级{" "}
-                  <span className="font-semibold uppercase">{clusterAdvisoryQ.data.rating || "—"}</span>
-                </p>
-              ) : null}
-              {clusterAdvisoryQ.data?.runError ? (
-                <p className="mt-2 text-xs text-red-800">{clusterAdvisoryQ.data.runError}</p>
-              ) : null}
-              {clusterAdvisoryQ.data?.markdown ? (
-                <div className="mt-2 max-h-[220px] overflow-y-auto rounded-md border border-rose-200/80 bg-white/90 px-2 py-2 text-[11px] leading-relaxed text-slate-900">
-                  <OpenClawChatMarkdown source={clusterAdvisoryQ.data.markdown} />
-                </div>
-              ) : null}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" size="sm" className="h-8 border-rose-200" asChild>
-                  <Link to="/cluster/ai-inspect/dashboard">打开 AI 巡检总览</Link>
+                  <Link to="/cluster/ai-inspect/dashboard">打开 AI 巡检 Dashboard</Link>
                 </Button>
-                {clusterAdvisoryBell ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 border-rose-300"
-                    disabled={clusterAdvisoryBellReadMut.isPending}
-                    onClick={() => void clusterAdvisoryBellReadMut.mutateAsync()}
-                  >
-                    已读（清除严重告警铃铛）
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-rose-300"
+                  disabled={clusterAdvisoryBellReadMut.isPending}
+                  onClick={() => void clusterAdvisoryBellReadMut.mutateAsync()}
+                >
+                  已读（清除铃铛）
+                </Button>
               </div>
             </div>
           ) : null}

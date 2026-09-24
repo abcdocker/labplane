@@ -118,20 +118,20 @@ type IdracTelemetryPoint struct {
 	Health  string  `json:"health,omitempty"`
 	State   string  `json:"state,omitempty"`
 	// Redfish 温度阈值（°C），便于与 Grafana 面板一致展示
-	UpperWarningC *float64 `json:"upperWarningC,omitempty"`
+	UpperWarningC  *float64 `json:"upperWarningC,omitempty"`
 	UpperCriticalC *float64 `json:"upperCriticalC,omitempty"`
 }
 
 // IdracMemoryModuleRow 单条内存 DIMM（Redfish Memory 资源摘要）。
 type IdracMemoryModuleRow struct {
-	Name             string `json:"name"`
-	Manufacturer     string `json:"manufacturer,omitempty"`
-	PartNumber       string `json:"partNumber,omitempty"`
-	CapacityMiB      int64  `json:"capacityMiB,omitempty"`
-	OperatingMHz     int    `json:"operatingMHz,omitempty"`
-	DeviceType       string `json:"deviceType,omitempty"`
-	Health           string `json:"health,omitempty"`
-	State            string `json:"state,omitempty"`
+	Name         string `json:"name"`
+	Manufacturer string `json:"manufacturer,omitempty"`
+	PartNumber   string `json:"partNumber,omitempty"`
+	CapacityMiB  int64  `json:"capacityMiB,omitempty"`
+	OperatingMHz int    `json:"operatingMHz,omitempty"`
+	DeviceType   string `json:"deviceType,omitempty"`
+	Health       string `json:"health,omitempty"`
+	State        string `json:"state,omitempty"`
 }
 
 type IdracTelemetrySnapshot struct {
@@ -148,7 +148,7 @@ type IdracTelemetrySnapshot struct {
 	DiskSensors      []IdracTelemetryPoint `json:"diskSensors,omitempty"`
 	// 未归类为 CPU/硬盘 的温度点（如进风、主板、PSU 附近等）
 	OtherTemperatures []IdracTelemetryPoint `json:"otherTemperatures,omitempty"`
-	Note             string                `json:"note,omitempty"`
+	Note              string                `json:"note,omitempty"`
 }
 
 // IdracSystemSummary 来自 Redfish ComputerSystem（代外机型与资源摘要）。
@@ -177,14 +177,14 @@ type redfishMemorySummary struct {
 }
 
 type redfishComputerSystemDoc struct {
-	Manufacturer     string                  `json:"Manufacturer"`
-	Model            string                  `json:"Model"`
-	SerialNumber     string                  `json:"SerialNumber"`
-	SKU              string                  `json:"SKU"`
-	UUID             string                  `json:"UUID"`
-	HostName         string                  `json:"HostName"`
-	PartNumber       string                  `json:"PartNumber"`
-	BiosVersion      string                  `json:"BiosVersion"`
+	Manufacturer     string                   `json:"Manufacturer"`
+	Model            string                   `json:"Model"`
+	SerialNumber     string                   `json:"SerialNumber"`
+	SKU              string                   `json:"SKU"`
+	UUID             string                   `json:"UUID"`
+	HostName         string                   `json:"HostName"`
+	PartNumber       string                   `json:"PartNumber"`
+	BiosVersion      string                   `json:"BiosVersion"`
 	ProcessorSummary *redfishProcessorSummary `json:"ProcessorSummary"`
 	MemorySummary    *redfishMemorySummary    `json:"MemorySummary"`
 }
@@ -198,12 +198,12 @@ type odataCollection struct {
 }
 
 type redfishDriveDoc struct {
-	Name               string   `json:"Name"`
-	Model              string   `json:"Model"`
-	MediaType          string   `json:"MediaType"`
-	CapacityBytes      *int64   `json:"CapacityBytes"`
-	TemperatureCelsius *float64 `json:"TemperatureCelsius"`
-	Protocol           string   `json:"Protocol"`
+	Name               string         `json:"Name"`
+	Model              string         `json:"Model"`
+	MediaType          string         `json:"MediaType"`
+	CapacityBytes      *int64         `json:"CapacityBytes"`
+	TemperatureCelsius *float64       `json:"TemperatureCelsius"`
+	Protocol           string         `json:"Protocol"`
 	Status             *redfishStatus `json:"Status"`
 }
 
@@ -213,21 +213,21 @@ type redfishStatus struct {
 }
 
 type redfishReading struct {
-	Reading           *float64       `json:"Reading"`
-	ReadingCelsius    *float64       `json:"ReadingCelsius"`
-	ReadingRPM        *float64       `json:"ReadingRPM"`
-	ReadingUnits      string         `json:"ReadingUnits"`
-	UpperThresholdNonCritical *float64 `json:"UpperThresholdNonCritical"`
-	UpperThresholdCritical    *float64 `json:"UpperThresholdCritical"`
-	LowerThresholdNonCritical *float64 `json:"LowerThresholdNonCritical"`
-	LowerThresholdCritical    *float64 `json:"LowerThresholdCritical"`
-	Status            *redfishStatus `json:"Status"`
-	PhysicalContext   string         `json:"PhysicalContext"`
-	SensorNumber      *int           `json:"SensorNumber"`
-	Name              string         `json:"Name"`
-	MemberID          string         `json:"MemberId"`
-	MemberIDAlt       string         `json:"MemberID"`
-	FanName           string         `json:"FanName"`
+	Reading                   *float64       `json:"Reading"`
+	ReadingCelsius            *float64       `json:"ReadingCelsius"`
+	ReadingRPM                *float64       `json:"ReadingRPM"`
+	ReadingUnits              string         `json:"ReadingUnits"`
+	UpperThresholdNonCritical *float64       `json:"UpperThresholdNonCritical"`
+	UpperThresholdCritical    *float64       `json:"UpperThresholdCritical"`
+	LowerThresholdNonCritical *float64       `json:"LowerThresholdNonCritical"`
+	LowerThresholdCritical    *float64       `json:"LowerThresholdCritical"`
+	Status                    *redfishStatus `json:"Status"`
+	PhysicalContext           string         `json:"PhysicalContext"`
+	SensorNumber              *int           `json:"SensorNumber"`
+	Name                      string         `json:"Name"`
+	MemberID                  string         `json:"MemberId"`
+	MemberIDAlt               string         `json:"MemberID"`
+	FanName                   string         `json:"FanName"`
 }
 
 type redfishThermalDoc struct {
@@ -252,8 +252,8 @@ type redfishPowerSupply struct {
 }
 
 type redfishPowerDoc struct {
-	PowerControl []redfishPowerControl `json:"PowerControl"`
-	PowerSupplies []redfishPowerSupply `json:"PowerSupplies"`
+	PowerControl  []redfishPowerControl `json:"PowerControl"`
+	PowerSupplies []redfishPowerSupply  `json:"PowerSupplies"`
 }
 
 type storageSubsystemDoc struct {
@@ -679,13 +679,13 @@ func FetchIdracSystemSummary(cfg IdracHostConfig) (*IdracSystemSummary, string) 
 		}
 		out := &IdracSystemSummary{
 			Manufacturer: strings.TrimSpace(sys.Manufacturer),
-			Model:          strings.TrimSpace(sys.Model),
-			SerialNumber:   strings.TrimSpace(sys.SerialNumber),
-			PartNumber:     strings.TrimSpace(sys.PartNumber),
-			SKU:            strings.TrimSpace(sys.SKU),
-			UUID:           strings.TrimSpace(sys.UUID),
-			HostName:       strings.TrimSpace(sys.HostName),
-			BiosVersion:    strings.TrimSpace(sys.BiosVersion),
+			Model:        strings.TrimSpace(sys.Model),
+			SerialNumber: strings.TrimSpace(sys.SerialNumber),
+			PartNumber:   strings.TrimSpace(sys.PartNumber),
+			SKU:          strings.TrimSpace(sys.SKU),
+			UUID:         strings.TrimSpace(sys.UUID),
+			HostName:     strings.TrimSpace(sys.HostName),
+			BiosVersion:  strings.TrimSpace(sys.BiosVersion),
 		}
 		if sys.ProcessorSummary != nil {
 			out.ProcessorModel = strings.TrimSpace(sys.ProcessorSummary.Model)

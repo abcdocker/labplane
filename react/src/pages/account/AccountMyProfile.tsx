@@ -123,7 +123,7 @@ const AccountMyProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mb-6 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-6 text-sm text-gray-500 shadow-sm">
+      <div className="mb-6 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500 shadow-sm">
         <Loader2 className="h-4 w-4 animate-spin" />
         加载我的资料…
       </div>
@@ -142,19 +142,19 @@ const AccountMyProfile: React.FC = () => {
   if (!profile) return null;
 
   return (
-    <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
         <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
           <UserCircle size={22} strokeWidth={2} />
         </span>
         <div>
-          <h2 className="text-base font-semibold text-gray-900">我的资料</h2>
-          <p className="text-xs text-gray-500">
-            登录名 <span className="font-mono text-gray-700">{profile.username}</span>
+          <h2 className="text-base font-semibold text-slate-900">我的资料</h2>
+          <p className="text-xs text-slate-500">
+            登录名 <span className="font-mono text-slate-700">{profile.username}</span>
             {profile.role ? (
               <>
                 {" "}
-                · 角色 <span className="font-mono text-gray-700">{profile.role}</span>
+                · 角色 <span className="font-mono text-slate-700">{profile.role}</span>
               </>
             ) : null}
           </p>
@@ -168,11 +168,11 @@ const AccountMyProfile: React.FC = () => {
       ) : (
         <>
           {profile.oidcEnabled ? (
-            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-3 text-sm text-gray-800">
+            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-3 text-sm text-slate-800">
               <p className="font-semibold text-indigo-950">Authentik / OIDC</p>
               {profile.oidcBound ? (
                 <div className="mt-2 space-y-2">
-                  <p className="text-xs text-gray-700">
+                  <p className="text-xs text-slate-700">
                     已与 IdP 身份绑定，退出后可直接使用登录页的「使用 OIDC 登录」。
                   </p>
                   <Button
@@ -193,7 +193,7 @@ const AccountMyProfile: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <p className="mt-1 text-xs text-gray-700">
+                  <p className="mt-1 text-xs text-slate-700">
                     首次使用 OIDC 前，请点击下方按钮在 Authentik 完成授权，将当前账号与 IdP 的 <span className="font-mono">sub</span>{" "}
                     关联。绑定后用户名与邮箱登录仍可用。
                   </p>
@@ -215,7 +215,7 @@ const AccountMyProfile: React.FC = () => {
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://example.com/avatar.png"
               />
-              <p className="text-[11px] text-gray-500">将用于顶栏头像展示；请使用可公网访问的图片链接。</p>
+              <p className="text-[11px] text-slate-500">将用于顶栏头像展示；请使用可公网访问的图片链接。</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile-email">邮箱（可选，用于联系与展示；也可作为登录名）</Label>
@@ -228,10 +228,10 @@ const AccountMyProfile: React.FC = () => {
                 placeholder="name@example.com"
               />
             </div>
-            <div className="border-t border-gray-100 pt-4">
-              <p className="mb-2 text-sm font-medium text-gray-800">修改密码</p>
+            <div className="border-t border-slate-100 pt-4">
+              <p className="mb-2 text-sm font-medium text-slate-800">修改密码</p>
               {!profile.hasPassword ? (
-                <p className="mb-3 text-xs text-gray-600">
+                <p className="mb-3 text-xs text-slate-600">
                   当前账号尚无本地密码。设置密码后，可使用「用户名或邮箱 + 密码」登录（与 OIDC 绑定可同时使用）。
                 </p>
               ) : (

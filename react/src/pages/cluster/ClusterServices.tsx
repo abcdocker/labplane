@@ -28,17 +28,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ResponsiveTableShell from "@/components/ResponsiveTableShell";
 import { apiDelete, apiGetJson, apiPostJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { SvcRow } from "./types";
 import { K8sGraphicEditDialog } from "./k8s/K8sGraphicEditDialog";
 import { normalizePortEntries, servicePortsPreview } from "./servicePortsDisplay";
+import { parseAge } from "./parseAge";
 
 const ClusterServices: React.FC = () => {
   const { namespace: nsEncoded } = useParams<{ namespace: string }>();
   const namespace = nsEncoded ? decodeURIComponent(nsEncoded) : "";
   const queryClient = useQueryClient();
-  if (!namespace) return null;
 
   const base = `/cluster/ns/${encodeURIComponent(namespace)}`;
 
@@ -56,6 +57,7 @@ const ClusterServices: React.FC = () => {
       apiGetJson<SvcRow[]>(
         `/api/k8s/services?namespace=${encodeURIComponent(namespace)}`
       , { signal }),
+    enabled: Boolean(namespace),
   });
 
   const applyMut = useMutation({
@@ -100,6 +102,8 @@ const ClusterServices: React.FC = () => {
     }
   };
 
+  if (!namespace) return null;
+
   return (
     <div className="space-y-4">
       <div>
@@ -141,17 +145,111 @@ const ClusterServices: React.FC = () => {
         </Button>
       </div>
 
-      {svcQ.isLoading && <p className="text-sm text-slate-500">加载中…</p>}
-      {svcQ.error && <p className="text-sm text-red-600">{(svcQ.error as Error).message}</p>}
-      {svcQ.data && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 sm:px-5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Service 列表
-            </span>
-            <span className="text-xs text-slate-500">共 {svcQ.data.length} 条</span>
-          </div>
-          <div className="overflow-x-auto">
+      <ResponsiveTableShell
+        loading={svcQ.isLoading}
+        error={svcQ.error ? (svcQ.error as Error).message : null}
+        onRetry={() => void svcQ.refetch()}
+        emptyHint={svcQ.data && svcQ.data.length === 0 ? "暂无 Service" : undefined}
+        cards={
+          <>
+            {(svcQ.data ?? []).map((s) => {
+              const portEnt = normalizePortEntries(s.portEntries);
+              const preview = servicePortsPreview(portEnt, s.ports ?? []);
+              return (
+                <article
+                  key={`${s.namespace}/${s.name}`}
+                  className="min-w-0 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        to={`${base}/services/${encodeURIComponent(s.name)}`}
+                        className="block break-all font-mono text-sm font-semibold text-slate-900"
+                        title="打开 Service 详情与关联资源"
+                      >
+                        {s.name}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-slate-500">{parseAge(s.age)}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      {s.type}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 grid min-w-0 gap-2 text-xs">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">Cluster IP</dt>
+                      <dd className="min-w-0 break-all text-right font-mono text-slate-700">
+                        {s.clusterIP || "—"}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-slate-400">端口 / NodePort</dt>
+                      <dd>
+                        <p
+                          className="break-all font-mono leading-snug text-slate-700"
+                          title={preview.truncated ? `${preview.text}（详情见 Service 概览）` : preview.text}
+                        >
+                          {preview.text}
+                        </p>
+                        {preview.truncated ? (
+                          <p className="mt-1 text-[10px] text-slate-400">更多端口请打开详情</p>
+                        ) : null}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-xs"
+                      title="图形编辑：切换 ClusterIP / NodePort 等"
+                      onClick={() => {
+                        setGraphicSvcMode("edit");
+                        setGraphicName(s.name);
+                        setGraphicOpen(true);
+                      }}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      图形
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-xs"
+                      title="编辑 YAML"
+                      onClick={() => void openEditYaml(s.name)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      YAML
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-xs text-red-600 hover:text-red-700"
+                      onClick={() => setDelName(s.name)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      删除
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+          </>
+        }
+        table={
+          <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-4 py-3 sm:px-5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Service 列表
+              </span>
+              <span className="text-xs text-slate-500">共 {(svcQ.data ?? []).length} 条</span>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-100 hover:bg-transparent">
@@ -159,7 +257,7 @@ const ClusterServices: React.FC = () => {
                     名称
                   </TableHead>
                   <TableHead className="text-xs font-semibold text-slate-500">类型</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500">Cluster IP</TableHead>
+                  <TableHead className="hidden text-xs font-semibold text-slate-500 lg:table-cell">Cluster IP</TableHead>
                   <TableHead className="w-[220px] max-w-[240px] text-xs font-semibold text-slate-500">
                     端口 / NodePort
                   </TableHead>
@@ -199,7 +297,7 @@ const ClusterServices: React.FC = () => {
                       </Link>
                     </TableCell>
                     <TableCell className="text-sm text-slate-700">{s.type}</TableCell>
-                    <TableCell className="font-mono text-xs text-slate-700">{s.clusterIP}</TableCell>
+                    <TableCell className="hidden font-mono text-xs text-slate-700 lg:table-cell">{s.clusterIP}</TableCell>
                     <TableCell className="max-w-[240px] align-top">
                       <p
                         className="line-clamp-2 font-mono text-[11px] leading-snug text-slate-700"
@@ -255,8 +353,8 @@ const ClusterServices: React.FC = () => {
               </TableBody>
             </Table>
           </div>
-        </div>
-      )}
+        }
+      />
 
       <K8sGraphicEditDialog
         open={graphicOpen}

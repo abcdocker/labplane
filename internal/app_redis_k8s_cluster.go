@@ -157,10 +157,14 @@ func buildClusterRedisContainer(opts RedisK8sDeployOpts, redisImg string, base s
 		)
 	}
 
+	fieldPath := "status.podIP"
+	if opts.HostNetwork {
+		fieldPath = "status.hostIP"
+	}
 	env := []corev1.EnvVar{{
 		Name: "POD_IP",
 		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "status.podIP"},
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: fieldPath},
 		},
 	}}
 	if hasPw {
@@ -201,6 +205,26 @@ func buildRedisClusterStatefulSet(cfg Config, opts RedisK8sDeployOpts, redisImg,
 	podSpec := corev1.PodSpec{
 		ImagePullSecrets: PodImagePullSecrets(cfg),
 		Containers:       []corev1.Container{buildClusterRedisContainer(opts, redisImg, base, podPort)},
+	}
+	if opts.HostNetwork {
+		podSpec.HostNetwork = true
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+		// hostNetwork 下多个 Pod 不能共用同一节点的相同端口，尽量分散到不同节点
+		podSpec.Affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+					{
+						Weight: 100,
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: clusterSelector(base),
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
+			},
+		}
 	}
 
 	stsSpec := appsv1.StatefulSetSpec{

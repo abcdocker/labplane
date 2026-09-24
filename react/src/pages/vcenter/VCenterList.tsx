@@ -29,6 +29,7 @@ import type {
 } from "./types";
 import { VCenterPercentBar } from "./VCenterPercentBar";
 import { vcenterVmPerfRowMbps } from "./vcenterPerfMbps";
+import { vcenterListMobileText } from "./vcenterList.i18n";
 
 function vmDetailPath(moref: string): string {
   return `/cluster/vcenter/${encodeURIComponent(moref)}`;
@@ -223,17 +224,25 @@ const VCenterList: React.FC = () => {
   );
 
   if (statusQ.isLoading) {
-    return <p className="text-gray-500">加载中…</p>;
+    return <p className="text-slate-500">加载中…</p>;
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-[1440px] space-y-3">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
             云主机（虚拟机）
           </h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-500">
+          <details className="mt-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-600 md:hidden">
+            <summary className="flex min-h-11 cursor-pointer select-none items-center font-medium text-slate-700">
+              {vcenterListMobileText.metricHelpTitle}
+            </summary>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              {vcenterListMobileText.metricHelpDescription}
+            </p>
+          </details>
+          <p className="mt-1 hidden max-w-5xl text-sm leading-5 text-slate-500 md:block">
             列表展示 vCenter 中的虚拟机；<strong className="font-medium text-slate-700">电源状态约每 22 秒</strong>向 vCenter 拉取刷新（
             <span className="font-mono text-xs">?refresh=1</span>
             ），便于捕获重启、关机、挂起等变化。
@@ -245,7 +254,7 @@ const VCenterList: React.FC = () => {
           </p>
         </div>
         {allVms.length > 0 && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
             <span className="text-slate-500">共计</span>
             <span className="font-semibold tabular-nums text-slate-900">
               {allVms.length}
@@ -273,7 +282,7 @@ const VCenterList: React.FC = () => {
 
       {vmsQ.data && (
         <>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative max-w-md flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -312,15 +321,133 @@ const VCenterList: React.FC = () => {
             </div>
           </div>
           {allVms.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-12 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-8 text-center text-sm text-slate-500">
               未发现虚拟机（或当前账号无权限）。
             </div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-amber-50/40 px-6 py-10 text-center text-sm text-amber-950">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-amber-50/40 px-6 py-8 text-center text-sm text-amber-950">
               无匹配结果，请调整搜索关键词。
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <>
+              <div className="grid gap-3 md:hidden">
+                {filtered.map((vm) => {
+                  const on = (vm.powerState ?? "").toLowerCase() === "poweredon";
+                  const guestIp = primaryGuestIp(vm);
+                  const ikuaiRate =
+                    on && guestIp && ikuaiStreamQ.data?.ratesByIp
+                      ? ikuaiStreamQ.data.ratesByIp[guestIp]
+                      : undefined;
+                  const ikuaiNet = on
+                    ? vcenterVmPerfRowMbps(ikuaiRate)
+                    : { downloadMbps: "—", uploadMbps: "—" };
+                  const ikuaiLoading = promForVc && on && ikuaiStreamQ.isLoading;
+                  const ikuaiErr = promForVc && ikuaiStreamQ.isError;
+
+                  return (
+                    <article
+                      key={vm.moref}
+                      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                        <div className="min-w-0">
+                          <h3
+                            className="line-clamp-2 break-words text-sm font-semibold leading-snug text-slate-900"
+                            title={vm.name}
+                          >
+                            {vm.name || vcenterListMobileText.unnamed}
+                          </h3>
+                          <p className="mt-1 truncate font-mono text-[10px] text-slate-500" title={vm.moref}>
+                            {vm.moref}
+                          </p>
+                        </div>
+                        <div className="shrink-0">{powerStateBadge(vm.powerState)}</div>
+                      </div>
+
+                      <div className="space-y-4 px-4 py-3.5">
+                        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                          <div className="min-w-0">
+                            <dt className="text-slate-500">{vcenterListMobileText.privateIp}</dt>
+                            <dd
+                              className="mt-0.5 truncate font-mono font-medium text-slate-800"
+                              title={vm.ip || ""}
+                            >
+                              {vm.ip || "—"}
+                            </dd>
+                          </div>
+                          <div className="min-w-0">
+                            <dt className="text-slate-500">{vcenterListMobileText.spec}</dt>
+                            <dd className="mt-0.5 truncate font-medium text-slate-800">
+                              {formatSpec(vm)}
+                            </dd>
+                          </div>
+                          <div className="min-w-0">
+                            <dt className="text-slate-500">{vcenterListMobileText.status}</dt>
+                            <dd className="mt-0.5 truncate font-medium text-slate-800">
+                              {vm.overallStatus ?? "—"}
+                            </dd>
+                          </div>
+                          <div className="min-w-0">
+                            <dt className="text-slate-500">{vcenterListMobileText.system}</dt>
+                            <dd
+                              className="mt-0.5 truncate font-medium text-slate-800"
+                              title={vm.guestId}
+                            >
+                              {vm.guestId || "—"}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        <div className="grid grid-cols-2 gap-3 border-y border-slate-100 py-3">
+                          <div className="min-w-0 space-y-1.5">
+                            <p className="text-xs font-medium text-slate-700">{vcenterListMobileText.cpu}</p>
+                            <VCenterPercentBar value={vmCpuPct(vm)} />
+                            <p className="truncate text-[10px] tabular-nums text-slate-500">
+                              {vm.cpuUsageMHz ?? 0} / {vm.cpuCapacityMHz ?? 0} MHz
+                            </p>
+                          </div>
+                          <div className="min-w-0 space-y-1.5">
+                            <p className="text-xs font-medium text-slate-700">{vcenterListMobileText.memory}</p>
+                            <VCenterPercentBar value={vmMemPct(vm)} />
+                            <p className="truncate text-[10px] tabular-nums text-slate-500">
+                              {vm.memoryUsageMB ?? 0} / {memAllocMB(vm)} MB
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          {promForVc ? (
+                            <p
+                              className="min-w-0 truncate font-mono text-[11px] tabular-nums text-sky-800"
+                              title={
+                                ikuaiErr
+                                  ? vcenterListMobileText.ikuaiLoadFailed
+                                  : guestIp
+                                    ? `${vcenterListMobileText.ikuaiClientPrefix} ${guestIp}`
+                                    : vcenterListMobileText.ikuaiNoGuestIp
+                              }
+                            >
+                              {vcenterListMobileText.ikuaiDownload} {ikuaiLoading || ikuaiErr ? "—" : ikuaiNet.downloadMbps}
+                              <span className="mx-1.5 text-slate-300">|</span>
+                              {vcenterListMobileText.ikuaiUpload} {ikuaiLoading || ikuaiErr ? "—" : ikuaiNet.uploadMbps}
+                            </p>
+                          ) : (
+                            <span />
+                          )}
+                          <Button variant="outline" size="sm" className="min-h-11 shrink-0 gap-1 px-3" asChild>
+                            <Link to={vmDetailPath(vm.moref)}>
+                              {vcenterListMobileText.viewDetail}
+                              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -518,7 +645,8 @@ const VCenterList: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
-            </div>
+              </div>
+            </>
           )}
         </>
       )}

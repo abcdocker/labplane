@@ -9,7 +9,6 @@ export type BuildK8sIngressYamlOpts = {
   enableBaotaSync: boolean;
   enableBaotaHttps: boolean;
   baotaSslCertName: string;
-  syncAnnotation: "i4t" | "kube-bt";
   customDdnsPort: string;
   ddnsScheme: "http" | "https";
   /** 多宝塔实例 id */
@@ -40,51 +39,29 @@ spec:
               number: ${opts.port}
 `;
   }
-  const syncKey =
-    opts.syncAnnotation === "i4t"
-      ? "i4t.com/baota-sync"
-      : "kube-bt-sync.io/baota-sync";
-  const ddnsKube =
-    opts.syncAnnotation === "kube-bt" && opts.customDdnsPort.trim() !== ""
-      ? `    kube-bt-sync.io/ddns-port: "${opts.customDdnsPort.trim()}"\n`
+  const ddnsPort =
+    opts.customDdnsPort.trim() !== ""
+      ? `    labplane.io/ddns-port: "${opts.customDdnsPort.trim()}"\n`
       : "";
-  const ddnsLegacy =
-    opts.syncAnnotation === "i4t" && opts.customDdnsPort.trim() !== ""
-      ? `    i4t.com/ddns-port: "${opts.customDdnsPort.trim()}"\n`
+  const ddnsScheme =
+    opts.ddnsScheme === "https"
+      ? '    labplane.io/ddns-scheme: "https"\n'
       : "";
-  const ddnsSchemeKube =
-    opts.syncAnnotation === "kube-bt" && opts.ddnsScheme === "https"
-      ? '    kube-bt-sync.io/ddns-scheme: "https"\n'
-      : "";
-  const ddnsSchemeLegacy =
-    opts.syncAnnotation === "i4t" && opts.ddnsScheme === "https"
-      ? '    i4t.com/ddns-scheme: "https"\n'
-      : "";
-  const httpsKube =
-    opts.syncAnnotation === "kube-bt" && opts.enableBaotaHttps
-      ? '    kube-bt-sync.io/baota-https: "true"\n'
-      : "";
-  const httpsLegacy =
-    opts.syncAnnotation === "i4t" && opts.enableBaotaHttps
-      ? '    i4t.com/baota-https: "true"\n'
+  const https =
+    opts.enableBaotaHttps
+      ? '    labplane.io/baota-https: "true"\n'
       : "";
   const certName = opts.baotaSslCertName.trim();
   const useCertName = opts.enableBaotaHttps && certName !== "";
-  const certKube =
-    opts.syncAnnotation === "kube-bt" && useCertName
-      ? `    kube-bt-sync.io/baota-ssl-cert-name: "${certName}"\n`
-      : "";
-  const certLegacy =
-    opts.syncAnnotation === "i4t" && useCertName
-      ? `    i4t.com/baota-ssl-cert-name: "${certName}"\n`
+  const cert =
+    useCertName
+      ? `    labplane.io/baota-ssl-cert-name: "${certName}"\n`
       : "";
   const tid = (opts.baotaTargetId ?? "").trim().replace(/"/g, "");
-  const targetKube =
-    tid !== "" && opts.syncAnnotation === "kube-bt"
-      ? `    kube-bt-sync.io/baota-target: "${tid}"\n`
+  const target =
+    tid !== ""
+      ? `    labplane.io/baota-target: "${tid}"\n`
       : "";
-  const targetLegacy =
-    tid !== "" && opts.syncAnnotation === "i4t" ? `    i4t.com/baota-target: "${tid}"\n` : "";
   return `apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -92,8 +69,8 @@ metadata:
   namespace: ${opts.namespace}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    ${syncKey}: "true"
-${targetLegacy}${targetKube}${ddnsLegacy}${ddnsKube}${ddnsSchemeLegacy}${ddnsSchemeKube}${httpsLegacy}${httpsKube}${certLegacy}${certKube}spec:
+    labplane.io/baota-sync: "true"
+${target}${ddnsPort}${ddnsScheme}${https}${cert}spec:
   ingressClassName: nginx
   rules:
   - host: ${opts.domain}
@@ -117,7 +94,7 @@ metadata:
   namespace: ${namespace}
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    i4t.com/baota-sync: "true"
+    labplane.io/baota-sync: "true"
 spec:
   ingressClassName: nginx
   rules:

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,8 +20,8 @@ import (
 
 const (
 	cloudVMSSHMaxFailsBeforeCaptcha = 3
-	cloudVMSSHMaxEvents           = 200
-	captchaTTL                    = 5 * time.Minute
+	cloudVMSSHMaxEvents             = 200
+	captchaTTL                      = 5 * time.Minute
 )
 
 // cloudVMSSHSecurityEvent 云主机 SSH 密码错误过多等安全事件（进程内环形，重启清空）。
@@ -144,14 +145,23 @@ func captchaStoreKey(instanceID int64, captchaID string) string {
 	return fmt.Sprintf("%d:%s", instanceID, captchaID)
 }
 
+func randIntRangeFallback(min, max int) int {
+	if min > max {
+		min, max = max, min
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(max-min+1)))
+	if err == nil && n != nil {
+		return int(n.Int64()) + min
+	}
+	return mathrand.Intn(max-min+1) + min
+}
+
 func issueCloudVMSSHCaptcha(instanceID int64) (captchaID, question string) {
 	b := make([]byte, 12)
 	_, _ = rand.Read(b)
 	captchaID = hex.EncodeToString(b)
-	a, _ := rand.Int(rand.Reader, big.NewInt(12))
-	bn, _ := rand.Int(rand.Reader, big.NewInt(12))
-	ai := int(a.Int64()) + 1
-	bi := int(bn.Int64()) + 1
+	ai := randIntRangeFallback(1, 12)
+	bi := randIntRangeFallback(1, 12)
 	sum := ai + bi
 	answer := fmt.Sprintf("%d", sum)
 	question = fmt.Sprintf("%d + %d = ?", ai, bi)
@@ -197,7 +207,7 @@ func handleCloudVMSSHCaptcha(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var dummy int
-	err = db.QueryRow(`SELECT 1 FROM kubebt_app_cloud_vm_instances WHERE id=? LIMIT 1`, id).Scan(&dummy)
+	err = db.QueryRow(`SELECT 1 FROM labplane_app_cloud_vm_instances WHERE id=? LIMIT 1`, id).Scan(&dummy)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return

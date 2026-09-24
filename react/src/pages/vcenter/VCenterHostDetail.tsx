@@ -1,10 +1,12 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Monitor } from "lucide-react";
 import { apiGetJson } from "@/lib/api";
+import { useAppConfig } from "@/hooks/use-app-config";
 import type { VCenterHostDetailResponse } from "./types";
 import { VCenterHostPrometheusDetail } from "./VCenterHostPrometheusDetail";
+import { IdracVncConsole } from "./IdracVncConsole";
 
 const VCenterHostDetail: React.FC = () => {
   const { moref = "" } = useParams<{ moref: string }>();
@@ -21,6 +23,10 @@ const VCenterHostDetail: React.FC = () => {
   });
 
   const h = detailQ.data?.host;
+  const cfgQ = useAppConfig();
+  const idracHost = cfgQ.data?.idracHost as string | undefined;
+  const idracVncPassword = cfgQ.data?.idracVncPassword as string | undefined;
+  const hasIdrac = Boolean(idracHost);
 
   return (
     <div className="space-y-6">
@@ -37,6 +43,28 @@ const VCenterHostDetail: React.FC = () => {
       {detailQ.isLoading && <p className="text-sm text-slate-500">加载中…</p>}
       {detailQ.error && (
         <p className="text-sm text-red-600 dark:text-red-400">{(detailQ.error as Error).message}</p>
+      )}
+
+      {hasIdrac && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-start gap-2">
+              <Monitor className="mt-0.5 h-5 w-5 text-violet-600" />
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  iDRAC VNC 控制台
+                </p>
+                <p className="text-xs text-slate-500">
+                  通过 iDRAC 带外 VNC Server 直接预览宿主机画面（需 iDRAC 侧启用 VNC）。
+                </p>
+              </div>
+            </div>
+          </div>
+          <IdracVncConsole
+            vncPassword={idracVncPassword}
+            className="h-[min(68vh,760px)] rounded-lg border border-slate-800"
+          />
+        </div>
       )}
 
       {h?.name ? (

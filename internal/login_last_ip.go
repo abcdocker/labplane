@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	lastLoginIPFileName    = "login-last-ip.json"
-	remoteLoginAlertFile   = "remote-login-alert.json"
-	adminIpBanAlertFile    = "admin-ip-ban-alert.json"
-	kvKeyLastLoginIP       = "kubebt_login_last_ip_v1"
-	kvKeyRemoteLoginAlert  = "kubebt_remote_login_alert"
-	kvKeyAdminIpBanAlert   = "kubebt_admin_ip_ban_alert"
+	lastLoginIPFileName   = "login-last-ip.json"
+	remoteLoginAlertFile  = "remote-login-alert.json"
+	adminIpBanAlertFile   = "admin-ip-ban-alert.json"
+	kvKeyLastLoginIP      = "labplane_login_last_ip_v1"
+	kvKeyRemoteLoginAlert = "labplane_remote_login_alert"
+	kvKeyAdminIpBanAlert  = "labplane_admin_ip_ban_alert"
 )
 
 // LastLoginIPMap 用户名 → 上次成功登录 IP（用于异地登录提示）。
@@ -36,11 +36,11 @@ type RemoteLoginAlertState struct {
 
 // AdminIpBanAlertState 铃铛：admin 密码连续错误导致 IP 临时封禁。
 type AdminIpBanAlertState struct {
-	Unread    bool      `json:"unread"`
-	Message   string    `json:"message,omitempty"`
-	LastAt    time.Time `json:"lastAt,omitempty"`
-	SourceIP  string    `json:"sourceIp,omitempty"`
-	BanUntil  time.Time `json:"banUntil,omitempty"`
+	Unread   bool      `json:"unread"`
+	Message  string    `json:"message,omitempty"`
+	LastAt   time.Time `json:"lastAt,omitempty"`
+	SourceIP string    `json:"sourceIp,omitempty"`
+	BanUntil time.Time `json:"banUntil,omitempty"`
 }
 
 var lastLoginMu sync.Mutex

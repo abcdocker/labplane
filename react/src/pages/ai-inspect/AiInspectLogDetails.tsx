@@ -68,8 +68,8 @@ import {
   type VmLogDetailsRes,
   type VmLogNamespacesRes,
   type VmLogNginxNamedCount,
-  type VmLogOpenClawAnalyzeRes,
-  type VmLogOpenClawAnalyzeRowRes,
+  type VmLogAIAnalyzeRes,
+  type VmLogAIAnalyzeRowRes,
   type VmLogStats,
   type VmLogStatus,
   VM_LOG_BUCKET_OPTIONS,
@@ -207,8 +207,8 @@ const AiInspectLogDetails: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as LogOverviewScope) || DEFAULT_TAB;
   const [selectedRow, setSelectedRow] = useState<VmLogDetailRow | null>(null);
-  const [openclawAnalyze, setOpenclawAnalyze] = useState<VmLogOpenClawAnalyzeRes | null>(null);
-  const [rowAnalyze, setRowAnalyze] = useState<VmLogOpenClawAnalyzeRowRes | null>(null);
+  const [aiAnalyze, setAiAnalyze] = useState<VmLogAIAnalyzeRes | null>(null);
+  const [rowAnalyze, setRowAnalyze] = useState<VmLogAIAnalyzeRowRes | null>(null);
 
   const setParam = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -342,15 +342,15 @@ const AiInspectLogDetails: React.FC = () => {
     }
   };
 
-  const openclawAnalyzeMut = useMutation({
+  const aiAnalyzeMut = useMutation({
     mutationFn: () =>
-      apiPostJson<VmLogOpenClawAnalyzeRes>("/api/ops/vmlog/openclaw-analyze", {
+      apiPostJson<VmLogAIAnalyzeRes>("/api/ops/vmlog/ai-analyze", {
         ...statsBody,
         sampleLimit: 90,
         clearKnownIssues: false,
       }),
     onSuccess: (data) => {
-      setOpenclawAnalyze(data);
+      setAiAnalyze(data);
       if (data.parseError) {
         toast.message("模型返回非 JSON，已展示原始正文");
       } else {
@@ -366,20 +366,20 @@ const AiInspectLogDetails: React.FC = () => {
 
   const clearVmlogDedupeMut = useMutation({
     mutationFn: () =>
-      apiPostJson<VmLogOpenClawAnalyzeRes>("/api/ops/vmlog/openclaw-analyze", {
+      apiPostJson<VmLogAIAnalyzeRes>("/api/ops/vmlog/ai-analyze", {
         ...statsBody,
         clearKnownIssues: true,
       }),
     onSuccess: (data) => {
       toast.success(data.message ?? "已清除");
-      setOpenclawAnalyze(null);
+      setAiAnalyze(null);
     },
     onError: (e) => toast.error(e instanceof ApiHttpError ? e.serverMessage : String(e)),
   });
 
   const rowAnalyzeMut = useMutation({
     mutationFn: (row: VmLogDetailRow) =>
-      apiPostJson<VmLogOpenClawAnalyzeRowRes>("/api/ops/vmlog/openclaw-analyze-row", {
+      apiPostJson<VmLogAIAnalyzeRowRes>("/api/ops/vmlog/ai-analyze-row", {
         scope: tab,
         k8sNamespace: tab === "pod" || tab === "nginx" ? k8sNs.trim() : "",
         k8sPodName: tab === "pod" || tab === "nginx" ? k8sPodName.trim() : "",
@@ -766,7 +766,7 @@ const AiInspectLogDetails: React.FC = () => {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Sparkles className="h-4 w-4 text-violet-600" />
-                OpenClaw 日志智能分析
+                AI 日志智能分析（GLM）
               </CardTitle>
               <CardDescription className="text-[11px] leading-relaxed">
                 使用当前标签与筛选条件，对样本日志做聚合分析并给出处置建议。
@@ -777,10 +777,10 @@ const AiInspectLogDetails: React.FC = () => {
                 <Button
                   type="button"
                   size="sm"
-                  disabled={openclawAnalyzeMut.isPending || !statusQ.data?.configured}
-                  onClick={() => openclawAnalyzeMut.mutate()}
+                  disabled={aiAnalyzeMut.isPending || !statusQ.data?.configured}
+                  onClick={() => aiAnalyzeMut.mutate()}
                 >
-                  {openclawAnalyzeMut.isPending ? (
+                  {aiAnalyzeMut.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
@@ -794,7 +794,7 @@ const AiInspectLogDetails: React.FC = () => {
                     variant="outline"
                     disabled={clearVmlogDedupeMut.isPending}
                     onClick={() => {
-                      if (!window.confirm("清除当前筛选条件下已登记的 OpenClaw 问题指纹？下次分析将重新视为新问题。")) return;
+                      if (!window.confirm("清除当前筛选条件下已登记的 AI 问题指纹？下次分析将重新视为新问题。")) return;
                       clearVmlogDedupeMut.mutate();
                     }}
                   >
@@ -802,19 +802,19 @@ const AiInspectLogDetails: React.FC = () => {
                   </Button>
                 ) : null}
               </div>
-              {openclawAnalyze?.ok ? (
+              {aiAnalyze?.ok ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 bg-white/90 p-4 text-sm">
                   <p className="text-[11px] text-slate-500">
-                    匹配 {openclawAnalyze.matchedLines ?? "—"} 条 · 拉取 {openclawAnalyze.totalFetched ?? "—"} 条 · 已登记问题 {openclawAnalyze.knownIssueCount ?? 0} 类 ·
-                    {openclawAnalyze.latencyMs != null ? ` ${openclawAnalyze.latencyMs} ms` : ""}
-                    {openclawAnalyze.truncated ? " · VL 截断" : ""}
+                    匹配 {aiAnalyze.matchedLines ?? "—"} 条 · 拉取 {aiAnalyze.totalFetched ?? "—"} 条 · 已登记问题 {aiAnalyze.knownIssueCount ?? 0} 类 ·
+                    {aiAnalyze.latencyMs != null ? ` ${aiAnalyze.latencyMs} ms` : ""}
+                    {aiAnalyze.truncated ? " · VL 截断" : ""}
                   </p>
-                  {openclawAnalyze.parseError && openclawAnalyze.rawModel ? (
+                  {aiAnalyze.parseError && aiAnalyze.rawModel ? (
                     <pre className="max-h-64 overflow-auto rounded-md border border-amber-200 bg-amber-50/80 p-3 font-mono text-[11px] text-slate-800">
-                      {openclawAnalyze.rawModel}
+                      {aiAnalyze.rawModel}
                     </pre>
-                  ) : openclawAnalyze.summaryMarkdown ? (
-                    <OpenClawChatMarkdown source={openclawAnalyze.summaryMarkdown} />
+                  ) : aiAnalyze.summaryMarkdown ? (
+                    <OpenClawChatMarkdown source={aiAnalyze.summaryMarkdown} />
                   ) : null}
                 </div>
               ) : null}
@@ -828,8 +828,8 @@ const AiInspectLogDetails: React.FC = () => {
                 AI 建议 · 集群控制平面上下文
               </CardTitle>
               <CardDescription className="text-[11px] leading-relaxed">
-                与上方「OpenClaw 日志智能分析」并列：此处展示平台周期生成的 kube-system
-                控制平面建议，便于对照 VictoriaLogs 明细排查 apiserver/etcd 等频繁重启问题。
+                与上方「AI 日志智能分析」并列：此处展示平台周期生成的 kube-system
+                控制平面建议（内嵌判读模型），便于对照 VictoriaLogs 明细排查 apiserver/etcd 等频繁重启问题。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -863,7 +863,7 @@ const AiInspectLogDetails: React.FC = () => {
                   <OpenClawChatMarkdown source={clusterAdvisoryQ.data.markdown} />
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">暂无周期分析；请稍候或检查巡检 OpenClaw 与后台任务是否启用。</p>
+                <p className="text-xs text-slate-500">暂无周期分析；请确认「AI 判读模型」已启用且后台任务开启。</p>
               )}
             </CardContent>
           </Card>

@@ -2,7 +2,7 @@
 export const DEFAULT_EXCALIDRAW_SCENE = JSON.stringify({
   type: "excalidraw",
   version: 2,
-  source: "kube-bt-sync",
+  source: "labplane",
   elements: [],
   appState: { viewBackgroundColor: "#ffffff", theme: "light" },
   files: {},

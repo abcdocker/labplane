@@ -302,7 +302,7 @@ export const VM_LOG_CATEGORIES: LogCategory[] = [
         title: "格式转换 / 多行 JSON",
         steps: [
           "纯文本行日志可直接用当前 Vector 模板（整行写入 `_msg`）。",
-          "若为 **JSON 行**、**多行 stack**、**二进制**，请在虚拟机编辑 `/etc/vector/kube-bt-vmlog.toml`，增加官方 **remap / parse_json / reduce** 等 transform；也可改用 **Fluent Bit → VL** 等链路。",
+          "若为 **JSON 行**、**多行 stack**、**二进制**，请在虚拟机编辑 `/etc/vector/labplane-vmlog.toml`，增加官方 **remap / parse_json / reduce** 等 transform；也可改用 **Fluent Bit → VL** 等链路。",
           "助手当前不自动安装除 Vector 外的组件；需要时可自行在脚本基础上追加 `yum`/`apt` 依赖。",
         ],
       },
@@ -409,7 +409,7 @@ export const VM_LOG_MAIN_TABS: { id: LogOverviewScope; label: string; short: str
   },
 ];
 
-export type VmLogOpenClawAnalyzeRes = {
+export type VmLogAIAnalyzeRes = {
   ok?: boolean;
   message?: string;
   summaryMarkdown?: string;
@@ -431,7 +431,7 @@ export type VmLogOpenClawAnalyzeRes = {
   scanWarning?: string;
 };
 
-export type VmLogOpenClawAnalyzeRowRes = {
+export type VmLogAIAnalyzeRowRes = {
   ok?: boolean;
   summaryMarkdown?: string;
   latencyMs?: number;

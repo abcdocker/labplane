@@ -24,7 +24,7 @@ import (
 
 func docsRedisOpContext() (context.Context, context.CancelFunc) {
 	sec := 10
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_DOCS_REDIS_TIMEOUT_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_DOCS_REDIS_TIMEOUT_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 2 && n <= 60 {
 			sec = n
 		}
@@ -34,7 +34,7 @@ func docsRedisOpContext() (context.Context, context.CancelFunc) {
 
 func docsMySQLOpContext() (context.Context, context.CancelFunc) {
 	sec := 60
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_DOCS_MYSQL_TIMEOUT_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_DOCS_MYSQL_TIMEOUT_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 10 && n <= 300 {
 			sec = n
 		}
@@ -104,8 +104,8 @@ func docsAttachmentStorageInfo(c *gin.Context, app *ServerApp) {
 			"secretIdMasked": maskDocsSecretID(eff.SecretID),
 			"secretKeySet":   eff.UseCOS && strings.TrimSpace(eff.SecretKey) != "",
 		},
-		"canManageKv": canKV,
-		"configureHint": "在「媒体与附件」页图形化配置腾讯云 COS（写入平台存储）；若未配置完整则使用环境变量 KUBEBT_COS_*；均未配置时附件保存在服务器本地目录。",
+		"canManageKv":   canKV,
+		"configureHint": "在「媒体与附件」页图形化配置腾讯云 COS（写入平台存储）；若未配置完整则使用环境变量 LABPLANE_COS_*；均未配置时附件保存在服务器本地目录。",
 	})
 }
 
@@ -203,11 +203,11 @@ func docsAttachmentStorageTest(c *gin.Context, app *ServerApp) {
 		return
 	}
 	host := bucket + ".cos." + region + ".myqcloud.com"
-	probeKey := "__kubebt_probe__/" + uuid.NewString() + ".txt"
+	probeKey := "__labplane_probe__/" + uuid.NewString() + ".txt"
 	if prefix != "" {
 		probeKey = prefix + "/" + probeKey
 	}
-	payload := []byte("kubebt-cos-probe")
+	payload := []byte("labplane-cos-probe")
 	if err := cosSigV4PutObject(host, region, secretID, secretKey, probeKey, payload, "text/plain"); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "上传探测失败: " + err.Error()})
 		return
@@ -224,7 +224,7 @@ func docsListCategories(c *gin.Context, app *ServerApp) {
 	if db == nil {
 		return
 	}
-	rows, err := db.Query(`SELECT id, name, parent_id, sort_order FROM kubebt_doc_categories ORDER BY sort_order ASC, id ASC`)
+	rows, err := db.Query(`SELECT id, name, parent_id, sort_order FROM labplane_doc_categories ORDER BY sort_order ASC, id ASC`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -275,7 +275,7 @@ func docsCreateCategory(c *gin.Context, app *ServerApp) {
 	} else {
 		pid = nil
 	}
-	res, err := db.Exec(`INSERT INTO kubebt_doc_categories (name, parent_id, sort_order) VALUES (?,?,?)`, name, pid, body.Sort)
+	res, err := db.Exec(`INSERT INTO labplane_doc_categories (name, parent_id, sort_order) VALUES (?,?,?)`, name, pid, body.Sort)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -292,7 +292,7 @@ func docsListTags(c *gin.Context, app *ServerApp) {
 	if db == nil {
 		return
 	}
-	rows, err := db.Query(`SELECT id, name FROM kubebt_doc_tags ORDER BY name ASC`)
+	rows, err := db.Query(`SELECT id, name FROM labplane_doc_tags ORDER BY name ASC`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -328,14 +328,14 @@ func docsCreateTag(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "标签名不能为空"})
 		return
 	}
-	res, err := db.Exec(`INSERT IGNORE INTO kubebt_doc_tags (name) VALUES (?)`, name)
+	res, err := db.Exec(`INSERT IGNORE INTO labplane_doc_tags (name) VALUES (?)`, name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id, _ := res.LastInsertId()
 	if id == 0 {
-		_ = db.QueryRow(`SELECT id FROM kubebt_doc_tags WHERE name=?`, name).Scan(&id)
+		_ = db.QueryRow(`SELECT id FROM labplane_doc_tags WHERE name=?`, name).Scan(&id)
 	}
 	docsBumpCtx, docsBumpCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	docsBumpDocsAPICache(docsBumpCtx, app)
@@ -368,7 +368,7 @@ func docsList(c *gin.Context, app *ServerApp) {
 		args = append(args, category)
 	}
 	if tag != "" {
-		where += " AND EXISTS (SELECT 1 FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id AND t.name=?)"
+		where += " AND EXISTS (SELECT 1 FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id AND t.name=?)"
 		args = append(args, tag)
 	}
 	if q != "" {
@@ -376,8 +376,8 @@ func docsList(c *gin.Context, app *ServerApp) {
 		args = append(args, "%"+q+"%", "%"+q+"%")
 	}
 	sqlStr := `SELECT d.id, d.title, d.category_id, d.author, d.published, d.created_at, d.updated_at, d.content_kind,
-		(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id) AS tags
-		FROM kubebt_docs d WHERE ` + where + ` ORDER BY d.updated_at DESC LIMIT 500`
+		(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id) AS tags
+		FROM labplane_docs d WHERE ` + where + ` ORDER BY d.updated_at DESC LIMIT 500`
 	rows, err := db.QueryContext(dbCtx, sqlStr, args...)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
@@ -484,7 +484,7 @@ func docsSortedTagList(names []string) []string {
 }
 
 func docsTagNamesFromDB(db docsSQL, docID uint64) ([]string, error) {
-	rows, err := db.Query(`SELECT t.name FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, docID)
+	rows, err := db.Query(`SELECT t.name FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, docID)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +517,7 @@ func docsCategoryPtrFromNull(cur sql.NullInt64) *uint64 {
 }
 
 func docsSyncTags(db docsSQL, docID uint64, names []string) error {
-	if _, err := db.Exec(`DELETE FROM kubebt_doc_tag_map WHERE doc_id=?`, docID); err != nil {
+	if _, err := db.Exec(`DELETE FROM labplane_doc_tag_map WHERE doc_id=?`, docID); err != nil {
 		return err
 	}
 	for _, raw := range names {
@@ -525,14 +525,14 @@ func docsSyncTags(db docsSQL, docID uint64, names []string) error {
 		if n == "" {
 			continue
 		}
-		if _, err := db.Exec(`INSERT IGNORE INTO kubebt_doc_tags (name) VALUES (?)`, n); err != nil {
+		if _, err := db.Exec(`INSERT IGNORE INTO labplane_doc_tags (name) VALUES (?)`, n); err != nil {
 			return err
 		}
 		var tid uint64
-		if err := db.QueryRow(`SELECT id FROM kubebt_doc_tags WHERE name=?`, n).Scan(&tid); err != nil {
+		if err := db.QueryRow(`SELECT id FROM labplane_doc_tags WHERE name=?`, n).Scan(&tid); err != nil {
 			return err
 		}
-		if _, err := db.Exec(`INSERT IGNORE INTO kubebt_doc_tag_map (doc_id, tag_id) VALUES (?,?)`, docID, tid); err != nil {
+		if _, err := db.Exec(`INSERT IGNORE INTO labplane_doc_tag_map (doc_id, tag_id) VALUES (?,?)`, docID, tid); err != nil {
 			return err
 		}
 	}
@@ -541,7 +541,7 @@ func docsSyncTags(db docsSQL, docID uint64, names []string) error {
 
 func docsNextVersionNo(db docsSQL, docID uint64) (int, error) {
 	var n sql.NullInt64
-	err := db.QueryRow(`SELECT MAX(version_no) FROM kubebt_doc_versions WHERE doc_id=?`, docID).Scan(&n)
+	err := db.QueryRow(`SELECT MAX(version_no) FROM labplane_doc_versions WHERE doc_id=?`, docID).Scan(&n)
 	if err != nil {
 		return 0, err
 	}
@@ -553,7 +553,7 @@ func docsNextVersionNo(db docsSQL, docID uint64) (int, error) {
 
 func docsInsertVersion(db docsSQL, docID uint64, ver int, title, body, who, contentKind string) error {
 	k := docsNormalizeContentKind(contentKind)
-	_, err := db.Exec(`INSERT INTO kubebt_doc_versions (doc_id, version_no, title, body_markdown, content_kind, created_by) VALUES (?,?,?,?,?,?)`,
+	_, err := db.Exec(`INSERT INTO labplane_doc_versions (doc_id, version_no, title, body_markdown, content_kind, created_by) VALUES (?,?,?,?,?,?)`,
 		docID, ver, title, body, k, who)
 	return err
 }
@@ -584,7 +584,7 @@ func docsCreate(c *gin.Context, app *ServerApp) {
 	if body.CategoryID != nil && *body.CategoryID > 0 {
 		cat = *body.CategoryID
 	}
-	res, err := db.Exec(`INSERT INTO kubebt_docs (title, body_markdown, content_kind, category_id, author, published) VALUES (?,?,?,?,?,?)`,
+	res, err := db.Exec(`INSERT INTO labplane_docs (title, body_markdown, content_kind, category_id, author, published) VALUES (?,?,?,?,?,?)`,
 		strings.TrimSpace(body.Title), body.Body, kind, cat, who, pub)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -634,7 +634,7 @@ func docsGet(c *gin.Context, app *ServerApp) {
 	var pub int
 	var created, updated time.Time
 	var shareHash sql.NullString
-	err = db.QueryRowContext(dbCtx, `SELECT title, body_markdown, content_kind, category_id, author, published, created_at, updated_at, share_password_hash FROM kubebt_docs WHERE id=?`, id).
+	err = db.QueryRowContext(dbCtx, `SELECT title, body_markdown, content_kind, category_id, author, published, created_at, updated_at, share_password_hash FROM labplane_docs WHERE id=?`, id).
 		Scan(&title, &body, &contentKind, &cat, &author, &pub, &created, &updated, &shareHash)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "文档不存在"})
@@ -644,7 +644,7 @@ func docsGet(c *gin.Context, app *ServerApp) {
 		RespondAPIError500(c, err.Error())
 		return
 	}
-	tagRows, err := db.QueryContext(dbCtx, `SELECT t.name FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, id)
+	tagRows, err := db.QueryContext(dbCtx, `SELECT t.name FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, id)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -661,7 +661,7 @@ func docsGet(c *gin.Context, app *ServerApp) {
 	out := gin.H{
 		"id": id, "title": title, "bodyMarkdown": body, "author": author, "published": pub != 0,
 		"contentKind": docsNormalizeContentKind(contentKind),
-		"createdAt": created.Format(time.RFC3339), "updatedAt": updated.Format(time.RFC3339),
+		"createdAt":   created.Format(time.RFC3339), "updatedAt": updated.Format(time.RFC3339),
 		"tagNames": tags, "previewUrl": fmt.Sprintf("/r/%d.html", id),
 		"hasSharePassword": shareHash.Valid && strings.TrimSpace(shareHash.String) != "",
 	}
@@ -704,7 +704,7 @@ func docsUpdate(c *gin.Context, app *ServerApp) {
 	var existingKind, curTitle, curBody string
 	var curCat sql.NullInt64
 	var curPub int
-	if err := db.QueryRow(`SELECT content_kind, title, body_markdown, category_id, published FROM kubebt_docs WHERE id=?`, id).
+	if err := db.QueryRow(`SELECT content_kind, title, body_markdown, category_id, published FROM labplane_docs WHERE id=?`, id).
 		Scan(&existingKind, &curTitle, &curBody, &curCat, &curPub); err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "文档不存在"})
 		return
@@ -755,7 +755,7 @@ func docsUpdate(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusOK, gin.H{"ok": true, "previewUrl": fmt.Sprintf("/r/%d.html", id), "unchanged": true})
 		return
 	}
-	res, err := db.Exec(`UPDATE kubebt_docs SET title=?, body_markdown=?, category_id=?, published=? WHERE id=?`,
+	res, err := db.Exec(`UPDATE labplane_docs SET title=?, body_markdown=?, category_id=?, published=? WHERE id=?`,
 		wantTitle, body.Body, cat, pub, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -801,7 +801,7 @@ func docsVersions(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效 id"})
 		return
 	}
-	rows, err := db.Query(`SELECT version_no, title, created_by, created_at FROM kubebt_doc_versions WHERE doc_id=? ORDER BY version_no DESC`, id)
+	rows, err := db.Query(`SELECT version_no, title, created_by, created_at FROM labplane_doc_versions WHERE doc_id=? ORDER BY version_no DESC`, id)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -838,7 +838,7 @@ func docsRestoreVersion(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var title, md, verKind string
-	err = db.QueryRow(`SELECT title, body_markdown, content_kind FROM kubebt_doc_versions WHERE doc_id=? AND version_no=?`, id, body.VersionNo).Scan(&title, &md, &verKind)
+	err = db.QueryRow(`SELECT title, body_markdown, content_kind FROM labplane_doc_versions WHERE doc_id=? AND version_no=?`, id, body.VersionNo).Scan(&title, &md, &verKind)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "版本不存在"})
 		return
@@ -849,7 +849,7 @@ func docsRestoreVersion(c *gin.Context, app *ServerApp) {
 	}
 	vk := docsNormalizeContentKind(verKind)
 	who := docsActor(c, app)
-	if _, err := db.Exec(`UPDATE kubebt_docs SET title=?, body_markdown=?, content_kind=? WHERE id=?`, title, md, vk, id); err != nil {
+	if _, err := db.Exec(`UPDATE labplane_docs SET title=?, body_markdown=?, content_kind=? WHERE id=?`, title, md, vk, id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -880,7 +880,7 @@ func docsDuplicate(c *gin.Context, app *ServerApp) {
 	}
 	var title, body, dupKind string
 	var cat sql.NullInt64
-	err = db.QueryRow(`SELECT title, body_markdown, category_id, content_kind FROM kubebt_docs WHERE id=?`, id).Scan(&title, &body, &cat, &dupKind)
+	err = db.QueryRow(`SELECT title, body_markdown, category_id, content_kind FROM labplane_docs WHERE id=?`, id).Scan(&title, &body, &cat, &dupKind)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "文档不存在"})
 		return
@@ -908,7 +908,7 @@ func docsDuplicate(c *gin.Context, app *ServerApp) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(`INSERT INTO kubebt_docs (title, body_markdown, content_kind, category_id, author, published) VALUES (?,?,?,?,?,0)`,
+	res, err := tx.Exec(`INSERT INTO labplane_docs (title, body_markdown, content_kind, category_id, author, published) VALUES (?,?,?,?,?,0)`,
 		newTitle, body, docsNormalizeContentKind(dupKind), catArg, who)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -916,7 +916,7 @@ func docsDuplicate(c *gin.Context, app *ServerApp) {
 	}
 	nid, _ := res.LastInsertId()
 	newID := uint64(nid)
-	tagRows, err := tx.Query(`SELECT t.name FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, id)
+	tagRows, err := tx.Query(`SELECT t.name FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=? ORDER BY t.name`, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -973,7 +973,7 @@ func docsPatchCategory(c *gin.Context, app *ServerApp) {
 	} else {
 		cat = nil
 	}
-	res, err := db.Exec(`UPDATE kubebt_docs SET category_id=? WHERE id=?`, cat, id)
+	res, err := db.Exec(`UPDATE labplane_docs SET category_id=? WHERE id=?`, cat, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1005,19 +1005,19 @@ func docsDelete(c *gin.Context, app *ServerApp) {
 		return
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`DELETE FROM kubebt_doc_tag_map WHERE doc_id=?`, id); err != nil {
+	if _, err := tx.Exec(`DELETE FROM labplane_doc_tag_map WHERE doc_id=?`, id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err := tx.Exec(`DELETE FROM kubebt_doc_versions WHERE doc_id=?`, id); err != nil {
+	if _, err := tx.Exec(`DELETE FROM labplane_doc_versions WHERE doc_id=?`, id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err := tx.Exec(`UPDATE kubebt_doc_media SET doc_id=NULL WHERE doc_id=?`, id); err != nil {
+	if _, err := tx.Exec(`UPDATE labplane_doc_media SET doc_id=NULL WHERE doc_id=?`, id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	res, err := tx.Exec(`DELETE FROM kubebt_docs WHERE id=?`, id)
+	res, err := tx.Exec(`DELETE FROM labplane_docs WHERE id=?`, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1148,10 +1148,10 @@ func docsUpload(c *gin.Context, app *ServerApp) {
 	who := docsActor(c, app)
 	var res sql.Result
 	if docID.Valid {
-		res, err = db.Exec(`INSERT INTO kubebt_doc_media (doc_id, kind, orig_name, mime, size_bytes, storage, storage_key, public_token, public_url, created_by) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		res, err = db.Exec(`INSERT INTO labplane_doc_media (doc_id, kind, orig_name, mime, size_bytes, storage, storage_key, public_token, public_url, created_by) VALUES (?,?,?,?,?,?,?,?,?,?)`,
 			docID.Int64, kind, fh.Filename, mimeType, len(data), up.Storage, up.StorageKey, up.PublicToken, up.PublicURL, who)
 	} else {
-		res, err = db.Exec(`INSERT INTO kubebt_doc_media (doc_id, kind, orig_name, mime, size_bytes, storage, storage_key, public_token, public_url, created_by) VALUES (NULL,?,?,?,?,?,?,?,?,?)`,
+		res, err = db.Exec(`INSERT INTO labplane_doc_media (doc_id, kind, orig_name, mime, size_bytes, storage, storage_key, public_token, public_url, created_by) VALUES (NULL,?,?,?,?,?,?,?,?,?)`,
 			kind, fh.Filename, mimeType, len(data), up.Storage, up.StorageKey, up.PublicToken, up.PublicURL, who)
 	}
 	if err != nil {
@@ -1173,7 +1173,7 @@ func docsMediaList(c *gin.Context, app *ServerApp) {
 	if db == nil {
 		return
 	}
-	rows, err := db.Query(`SELECT id, doc_id, kind, orig_name, mime, size_bytes, public_url, created_by, created_at FROM kubebt_doc_media ORDER BY id DESC LIMIT 500`)
+	rows, err := db.Query(`SELECT id, doc_id, kind, orig_name, mime, size_bytes, public_url, created_by, created_at FROM labplane_doc_media ORDER BY id DESC LIMIT 500`)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -1208,7 +1208,7 @@ func docsMediaDelete(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var storage, skey string
-	err = db.QueryRow(`SELECT storage, storage_key FROM kubebt_doc_media WHERE id=?`, id).Scan(&storage, &skey)
+	err = db.QueryRow(`SELECT storage, storage_key FROM labplane_doc_media WHERE id=?`, id).Scan(&storage, &skey)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "不存在"})
 		return
@@ -1224,7 +1224,7 @@ func docsMediaDelete(c *gin.Context, app *ServerApp) {
 	} else if storage == "local" && skey != "" {
 		_ = os.Remove(filepath.Join(app.DataDir(), "doc-uploads", skey))
 	}
-	if _, err := db.Exec(`DELETE FROM kubebt_doc_media WHERE id=?`, id); err != nil {
+	if _, err := db.Exec(`DELETE FROM labplane_doc_media WHERE id=?`, id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -1237,7 +1237,7 @@ func docsApplySharePasswordUpdate(db *sql.DB, docID uint64, p *string) error {
 	}
 	raw := strings.TrimSpace(*p)
 	if raw == "" {
-		_, err := db.Exec(`UPDATE kubebt_docs SET share_password_hash=NULL WHERE id=?`, docID)
+		_, err := db.Exec(`UPDATE labplane_docs SET share_password_hash=NULL WHERE id=?`, docID)
 		return err
 	}
 	if len(raw) > 500 {
@@ -1247,7 +1247,7 @@ func docsApplySharePasswordUpdate(db *sql.DB, docID uint64, p *string) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`UPDATE kubebt_docs SET share_password_hash=? WHERE id=?`, string(h), docID)
+	_, err = db.Exec(`UPDATE labplane_docs SET share_password_hash=? WHERE id=?`, string(h), docID)
 	return err
 }
 
@@ -1307,10 +1307,10 @@ func handleDocPublicGET(c *gin.Context, app *ServerApp) {
 	var created, updated time.Time
 	var tagCSV, catName, shareHash sql.NullString
 	err := db.QueryRow(`SELECT d.title, d.body_markdown, d.content_kind, d.author, d.created_at, d.updated_at,
-		(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') FROM kubebt_doc_tag_map m JOIN kubebt_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id) AS tag_csv,
+		(SELECT GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR ',') FROM labplane_doc_tag_map m JOIN labplane_doc_tags t ON t.id=m.tag_id WHERE m.doc_id=d.id) AS tag_csv,
 		c.name, d.share_password_hash
-		FROM kubebt_docs d
-		LEFT JOIN kubebt_doc_categories c ON c.id = d.category_id
+		FROM labplane_docs d
+		LEFT JOIN labplane_doc_categories c ON c.id = d.category_id
 		WHERE d.id=? AND d.published <> 0`, docID).Scan(&title, &md, &docKind, &author, &created, &updated, &tagCSV, &catName, &shareHash)
 	if err == sql.ErrNoRows {
 		c.Status(http.StatusNotFound)
@@ -1356,7 +1356,7 @@ func handleDocPublicPOST(c *gin.Context, app *ServerApp) {
 	}
 	var title string
 	var shareHash sql.NullString
-	err := db.QueryRow(`SELECT d.title, d.share_password_hash FROM kubebt_docs d WHERE d.id=? AND d.published <> 0`, docID).
+	err := db.QueryRow(`SELECT d.title, d.share_password_hash FROM labplane_docs d WHERE d.id=? AND d.published <> 0`, docID).
 		Scan(&title, &shareHash)
 	if err == sql.ErrNoRows {
 		c.Status(http.StatusNotFound)
@@ -1520,7 +1520,7 @@ func HandleDocPublicMedia(c *gin.Context, app *ServerApp) {
 	}
 	token := strings.TrimSpace(c.Param("token"))
 	var storage, skey, pubURL, mime string
-	err := db.QueryRow(`SELECT storage, storage_key, public_url, mime FROM kubebt_doc_media WHERE public_token=?`, token).Scan(&storage, &skey, &pubURL, &mime)
+	err := db.QueryRow(`SELECT storage, storage_key, public_url, mime FROM labplane_doc_media WHERE public_token=?`, token).Scan(&storage, &skey, &pubURL, &mime)
 	if err == sql.ErrNoRows {
 		c.Status(http.StatusNotFound)
 		return

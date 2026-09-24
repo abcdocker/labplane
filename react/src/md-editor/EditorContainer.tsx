@@ -478,17 +478,6 @@ export default function MdEditorPage() {
     [navigate]
   );
 
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 p-12 text-center text-sm text-slate-600">
-        <p>仅管理员可使用文档编辑器。</p>
-        <Link className="text-violet-700 underline" to="/docs">
-          返回
-        </Link>
-      </div>
-    );
-  }
-
   const attachmentStorageSummary = useMemo(() => {
     const d = storageQ.data;
     if (!d) return null;
@@ -503,6 +492,17 @@ export default function MdEditorPage() {
     }
     return { line: "附件：本地存储（可在「媒体库」配置 COS）", hint: d.configureHint };
   }, [storageQ.data]);
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-12 text-center text-sm text-slate-600">
+        <p>仅管理员可使用文档编辑器。</p>
+        <Link className="text-violet-700 underline" to="/docs">
+          返回
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="md-editor-root flex min-h-0 w-full flex-1 flex-col">

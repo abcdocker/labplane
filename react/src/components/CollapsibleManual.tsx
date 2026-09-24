@@ -11,7 +11,7 @@ const VARIANT_ROOT: Record<string, string> = {
     "rounded-xl border border-amber-200/90 bg-gradient-to-br from-amber-50/95 to-orange-50/40 px-4 py-3 text-[12px] leading-relaxed text-amber-950 shadow-sm",
   amberSoft:
     "rounded-lg border border-amber-200/90 bg-amber-50/95 p-3 text-[11px] leading-relaxed text-amber-950 shadow-sm",
-  indigo: "rounded-lg border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-gray-800",
+  indigo: "rounded-lg border border-indigo-100 bg-indigo-50/50 p-4 text-sm text-slate-800",
   sky: "rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2.5 text-xs leading-relaxed text-sky-950",
   skyCompact:
     "rounded-lg border border-sky-200/80 bg-gradient-to-r from-sky-50 to-indigo-50/50 px-3 py-2 text-[11px] leading-snug text-sky-950",
@@ -20,7 +20,7 @@ const VARIANT_ROOT: Record<string, string> = {
   violet:
     "rounded-lg border border-violet-300/80 bg-violet-100/50 p-3 text-[11px] leading-relaxed text-violet-950 shadow-sm",
   muted: "rounded-lg border border-slate-200/90 bg-slate-50/90 px-3 py-2 text-[11px] leading-relaxed text-slate-700",
-  skyInline: "mb-3 rounded-md border border-sky-200/70 bg-white/50 p-2 text-sm text-gray-800",
+  skyInline: "mb-3 rounded-md border border-sky-200/70 bg-white/50 p-2 text-sm text-slate-800",
 };
 
 export type CollapsibleManualVariant = keyof typeof VARIANT_ROOT;
@@ -68,7 +68,7 @@ export function CollapsibleManual({
         type="button"
         className={cn(
           "flex w-full items-center gap-2 rounded-md py-0.5 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-sky-400/50",
-          variant === "skyInline" && "text-xs font-semibold text-gray-800",
+          variant === "skyInline" && "text-xs font-semibold text-slate-800",
           triggerClassName
         )}
       >

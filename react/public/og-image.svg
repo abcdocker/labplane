@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">LabPlane</title>
+  <desc id="desc">Your HomeLab Control Plane</desc>
+  <rect width="1200" height="630" fill="#0F172A"/>
+  <path d="M0 505 310 335l285 160 310-174 295 166v143H0V505Z" fill="#111C36"/>
+  <g transform="translate(118 130) scale(3.6)">
+    <path d="M48 10 82 29 48 48 14 29 48 10Z" fill="#7C3AED"/>
+    <path d="m14 43 34 19 34-19v13L48 75 14 56V43Z" fill="#5B21B6"/>
+    <path d="M25 48v16m46-16v16M48 61v14" fill="none" stroke="#22D3EE" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="25" cy="68" r="7" fill="#22D3EE"/>
+    <circle cx="48" cy="79" r="7" fill="#22D3EE"/>
+    <circle cx="71" cy="68" r="7" fill="#22D3EE"/>
+  </g>
+  <text x="520" y="280" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="92" font-weight="750" letter-spacing="-3">LabPlane</text>
+  <text x="526" y="344" fill="#22D3EE" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="650" letter-spacing="5">YOUR HOMELAB CONTROL PLANE</text>
+  <text x="526" y="410" fill="#94A3B8" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="25">Kubernetes · Network · Virtualization · Security</text>
+</svg>

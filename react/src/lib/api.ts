@@ -42,6 +42,8 @@ function maybeRedirectLogin(res: Response, path: string) {
   if (path.includes("/api/auth/login")) return;
   if (path.includes("/api/auth/status")) return;
   if (path.includes("/api/setup")) return;
+  // 初始化页允许在未登录状态下运行，任何后台 401 都不应打断初始化流程。
+  if (typeof window !== "undefined" && window.location.pathname === "/setup") return;
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
     window.location.assign(loginPageUrlPreservingReturn());
   }
@@ -84,7 +86,7 @@ export type PlatformPermissions = {
 };
 
 export type K8sSidebarMenuItem = {
-  key: "pods" | "namespaces" | "nodes" | "rbac" | "harbor" | "customResources" | "etcd";
+  key: "pods" | "namespaces" | "nodes" | "rbac" | "harbor" | "customResources" | "etcd" | "routeManager";
   label: string;
   hidden?: boolean;
   order: number;
@@ -166,6 +168,7 @@ export type IngressRow = {
   class: string;
   createdAt: string;
   managed: boolean;
+  annotationCount?: number;
   ddnsPort?: string;
   upstreamHost?: string;
   scheme?: string;
@@ -176,6 +179,24 @@ export type SetupStatus = {
   initialized: boolean;
   dataDir: string;
   version: number;
+  defaults?: {
+    connectionsConfigured: boolean;
+    platformPublicUrl?: string;
+    mysqlDsnConfigured: boolean;
+    mysqlHost?: string;
+    mysqlPort?: number;
+    mysqlDatabase?: string;
+    mysqlUser?: string;
+    mysqlPasswordConfigured: boolean;
+    redisAddr?: string;
+    redisHost?: string;
+    redisPort?: number;
+    redisMode?: string;
+    redisSentinelMaster?: string;
+    redisPasswordConfigured: boolean;
+    encryptionKeyConfigured: boolean;
+    dashboardUser?: string;
+  };
 };
 
 /** GET /api/config 中宝塔多实例摘要（无 apiKey 明文） */
@@ -263,6 +284,12 @@ export type AppConfig = {
   vcenterVmSshConfigured?: boolean;
   /** 是否已配置全局 VCENTER_VM_SSH_*（运行时）；与「仅启用 SSH 加密存储」不同 */
   vcenterVmSshGlobalConfigured?: boolean;
+  /** iDRAC 带外管理地址（运行时配置 idracHost） */
+  idracHost?: string;
+  /** iDRAC VNC Server 端口（默认 5900） */
+  idracVncPort?: number;
+  /** iDRAC VNC 密码；由 noVNC 在 RFB 握手阶段使用 */
+  idracVncPassword?: string;
   /** 当前会话角色，与 /api/auth/status 一致 */
   dashboardRole?: string;
   /** 后端对 viewer 下发的只读标记 */
@@ -417,7 +444,7 @@ export type HarborAdminDashboardResponse = {
     cacheHits?: number;
     cacheMisses?: number;
     cacheTtlSec?: number;
-    /** 单条响应写入 Redis 的最大体积（MB），环境变量 KUBEBT_HARBOR_LIST_CACHE_MAX_BODY_MB */
+    /** 单条响应写入 Redis 的最大体积（MB），环境变量 LABPLANE_HARBOR_LIST_CACHE_MAX_BODY_MB */
     cacheMaxBodyMB?: number;
     /** Redis 已连接且 TTL>0 时 Harbor 列表/统计会写入 Redis */
     harborListCacheEnabled?: boolean;
@@ -712,6 +739,36 @@ export async function apiPutRaw(
     withSignal(
       {
         method: "PUT",
+        headers: { "Content-Type": contentType },
+        credentials: apiFetchCredentials(),
+        body: blob,
+      },
+      opt
+    )
+  );
+  maybeRedirectLogin(res, path);
+  if (!res.ok) {
+    const { msg, code, hint, checks } = await readErrorBody(res);
+    throw new ApiHttpError(res.status, path, msg, code, hint, checks);
+  }
+}
+
+/** POST 原始字节 */
+export async function apiPostRaw(
+  path: string,
+  body: Blob | ArrayBuffer | Uint8Array,
+  contentType = "application/octet-stream",
+  opt?: ApiFetchOptions
+): Promise<void> {
+  const blob =
+    body instanceof Blob
+      ? body
+      : new Blob([body as BlobPart]);
+  const res = await fetch(
+    `${API_BASE}${path}`,
+    withSignal(
+      {
+        method: "POST",
         headers: { "Content-Type": contentType },
         credentials: apiFetchCredentials(),
         body: blob,

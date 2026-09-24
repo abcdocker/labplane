@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"time"
 )
 
-const kvKeyOpsAlertLog = "kubebt_ops_alert_log_v1"
+const kvKeyOpsAlertLog = "labplane_ops_alert_log_v1"
 
 type alertLogEntry struct {
 	Ts      string `json:"ts"`
@@ -62,7 +63,7 @@ func StartOpsCenterBackground(app *ServerApp) {
 }
 
 func opsTickDailyInspect(app *ServerApp, cfg Config) {
-	bundle, err := loadOpsOpenClawBundle(app.PlatformKV())
+	bundle, err := loadOpsAIInspectBundle(app.PlatformKV())
 	if err != nil {
 		return
 	}
@@ -254,6 +255,10 @@ func opsNotifyChannels(app *ServerApp, cfg Config, center OpsAlertCenterBundle, 
 		case "wecom_app":
 			sec, _ := decryptSecret(enc, ch.WeComCorpSecretEnc)
 			_ = sendWeComAppMessage(ch.WeComCorpID, sec, ch.WeComAgentID, ch.WeComToUser, subject, body)
+		case "dingtalk", "dingding":
+			_ = PostDingTalkWebhook(context.Background(), ch.DingTalkWebhook, subject+"\n"+body)
+		case "feishu", "lark":
+			_ = PostFeishuWebhook(context.Background(), ch.FeishuWebhook, subject+"\n"+body)
 		}
 	}
 }
@@ -303,7 +308,7 @@ func sendWeCom(webhook, text string) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	cli := &http.Client{Timeout: 15 * time.Second, Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12},
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
 	}}
 	resp, err := cli.Do(req)
 	if err != nil {

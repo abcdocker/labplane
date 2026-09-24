@@ -57,8 +57,8 @@ const AccountSettings: React.FC = () => {
   return (
     <div className="mx-auto max-w-4xl pb-12">
       <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">账户与平台</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="mb-2 text-2xl font-bold text-slate-900">账户与平台</h1>
+        <p className="text-sm text-slate-500">
           仅平台层配置（数据库、Redis、登录与 OIDC），与 Kubernetes / vCenter 集群菜单独立。宝塔与 Ingress 请在「宝塔」工作区中配置。保存后写入{" "}
           <code className="text-xs">runtime-config.json</code> 并热重载。
         </p>
@@ -84,7 +84,7 @@ const AccountSettings: React.FC = () => {
         {showPlatformUsers && (
           <Link
             to="/account/users"
-            className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
+            className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
           >
             <span className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
@@ -92,13 +92,13 @@ const AccountSettings: React.FC = () => {
               </span>
               平台用户管理
             </span>
-            <ChevronRight size={18} className="shrink-0 text-gray-400" aria-hidden />
+            <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden />
           </Link>
         )}
         {showPlatformAudit && (
           <Link
             to="/account/audit"
-            className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
+            className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
           >
             <span className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
@@ -106,13 +106,13 @@ const AccountSettings: React.FC = () => {
               </span>
               平台审计
             </span>
-            <ChevronRight size={18} className="shrink-0 text-gray-400" aria-hidden />
+            <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden />
           </Link>
         )}
         {showPlatformAudit && (
           <Link
             to="/account/site-stats"
-            className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
+            className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:bg-slate-50"
           >
             <span className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-800">
@@ -120,7 +120,7 @@ const AccountSettings: React.FC = () => {
               </span>
               站点统计
             </span>
-            <ChevronRight size={18} className="shrink-0 text-gray-400" aria-hidden />
+            <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden />
           </Link>
         )}
       </div>

@@ -145,12 +145,12 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="rounded-xl border border-violet-100 bg-white/90 px-4 py-3 shadow-sm">
-        <p className="text-sm font-medium text-gray-900">{displayName}</p>
+        <p className="text-sm font-medium text-slate-900">{displayName}</p>
         <p className="mt-1 font-mono text-xs text-violet-800/90">
           SFTP 与 SSH 共用同一连接：平台先建立 SSH，再在其上打开 SFTP 子系统；凭据与「SSH」分栏一致。
         </p>
         {sshQ.data && (
-          <p className="mt-1 font-mono text-xs text-gray-600">
+          <p className="mt-1 font-mono text-xs text-slate-600">
             {sshQ.data.sshHost}:{sshQ.data.sshPort || 22}
           </p>
         )}
@@ -164,7 +164,7 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
 
       {sftpOk && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <Button
               type="button"
               variant="outline"
@@ -185,7 +185,7 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
             >
               上级
             </Button>
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 font-mono text-[11px] text-gray-500">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 font-mono text-[11px] text-slate-500">
               {crumbs.map((c, i) => (
                 <React.Fragment key={c.path}>
                   {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 opacity-50" />}
@@ -214,18 +214,18 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
               上传到当前目录
             </label>
           </div>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-slate-500">
             点击文件夹进入；文件可下载。上传写入{" "}
-            <code className="rounded bg-gray-100 px-1">{path}</code>。
+            <code className="rounded bg-slate-100 px-1">{path}</code>。
           </p>
 
-          {listQ.isLoading && <p className="text-sm text-gray-500">加载列表…</p>}
+          {listQ.isLoading && <p className="text-sm text-slate-500">加载列表…</p>}
           {listQ.error && (
             <p className="text-sm text-red-600">{(listQ.error as Error).message}</p>
           )}
 
           {listQ.data && (
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -238,7 +238,7 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
                 <TableBody>
                   {listQ.data.entries.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-gray-500">
+                      <TableCell colSpan={4} className="text-center text-slate-500">
                         空目录
                       </TableCell>
                     </TableRow>
@@ -262,8 +262,8 @@ const CloudHostSftpPanel: React.FC<CloudHostSftpPanelProps> = ({ hostId, display
                             e.name
                           )}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-600">{e.type}</TableCell>
-                        <TableCell className="text-right text-xs tabular-nums text-gray-600">
+                        <TableCell className="text-xs text-slate-600">{e.type}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums text-slate-600">
                           {isDir ? "—" : fmtSize(e.size)}
                         </TableCell>
                         <TableCell className="text-right">

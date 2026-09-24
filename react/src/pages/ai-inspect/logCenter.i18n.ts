@@ -1,0 +1,47 @@
+const zhCN = {
+  eyebrow: "AI 巡检 · 日志中心",
+  title: "日志查询",
+  subtitle: "按数据集、字段和时间检索日志；左侧浏览字段与常见值，并可直接让 AI 分析当前结果。",
+  collect: "接入日志源",
+  settings: "VictoriaLogs 设置",
+  advancedAnalysis: "趋势与 AI 深度分析",
+  keywordPlaceholder: "搜索错误、请求 ID、用户或任意内容",
+  search: "查询",
+  refresh: "刷新",
+  source: "来源",
+  window: "时间",
+  level: "级别",
+  namespace: "命名空间",
+  pod: "Pod",
+  host: "主机",
+  field: "搜索字段",
+  advanced: "更多筛选",
+  hideAdvanced: "收起筛选",
+  all: "全部",
+  allFields: "全部字段",
+  messageField: "仅消息",
+  sourceField: "日志源",
+  hostField: "主机",
+  loading: "正在查询日志…",
+  empty: "这个范围内没有匹配日志",
+  emptyHint: "可以扩大时间范围，或清空来源和关键词后重试。",
+  notConfigured: "VictoriaLogs 尚未配置",
+  configureHint: "先配置 VictoriaLogs 地址，再接入日志源即可开始查询。",
+  total: "匹配日志",
+  errors: "错误",
+  warnings: "告警",
+  normal: "普通",
+  resultHint: "结果按时间倒序；点击一条日志查看完整字段。",
+  details: "完整字段",
+  previous: "上一页",
+  next: "下一页",
+  page: "页",
+  partial: "结果达到本次扫描上限，当前统计可能是部分数据。",
+  queryFailed: "日志查询失败",
+} as const;
+
+export type LogCenterTextKey = keyof typeof zhCN;
+
+export function logText(key: LogCenterTextKey): string {
+  return zhCN[key];
+}

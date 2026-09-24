@@ -1079,7 +1079,7 @@ const ClusterPrometheusPanel: React.FC<{ compactIntro?: boolean }> = ({ compactI
       ) : null}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-800">核心组件 up / 抓取</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800">核心组件 up / 抓取</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CORE_METRICS.map((row) => {
             const v = coreVals[row.key];
@@ -1104,7 +1104,7 @@ const ClusterPrometheusPanel: React.FC<{ compactIntro?: boolean }> = ({ compactI
 
       {nodeDefs.length ? (
         <div>
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Layers className="h-4 w-4 text-slate-500" />
             {SECTION_LABEL.nodes}
           </h3>
@@ -1186,7 +1186,7 @@ const ClusterPrometheusPanel: React.FC<{ compactIntro?: boolean }> = ({ compactI
       })}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-800">Prometheus 自监控</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800">Prometheus 自监控</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <StatCard

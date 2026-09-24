@@ -248,7 +248,7 @@ export default function AppCenterKafkaThrottle() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[min(100%,96rem)] space-y-5 pb-12">
+    <div className="mx-auto w-full max-w-[min(100%,96rem)] space-y-5 pb-2 sm:pb-12">
       {statusQ.data?.mysqlReachable === false ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950">
           需要平台 MySQL。请配置 <code className="rounded bg-white px-1">MYSQL_DSN</code>。

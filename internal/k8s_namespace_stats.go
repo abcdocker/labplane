@@ -1,12 +1,15 @@
 package internal
 
 import (
-	"context"
+	"fmt"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -29,7 +32,7 @@ type k8sNamespaceStatRow struct {
 
 type k8sNamespaceStatsResponse struct {
 	// 本响应生成时间（UTC RFC3339），即「数据更新时间」
-	ComputedAt string `json:"computedAt"`
+	ComputedAt string                `json:"computedAt"`
 	Items      []k8sNamespaceStatRow `json:"items"`
 }
 
@@ -49,43 +52,74 @@ func handleK8sNamespaceStats(c *gin.Context, k8s *kubernetes.Clientset) {
 	if !GuardK8s(c, k8s) {
 		return
 	}
-	ctx := context.TODO()
+	ctx := c.Request.Context()
 	computedAt := time.Now().UTC().Format(time.RFC3339)
 
-	nsList, err := k8s.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 Namespace 失败: " + err.Error())
-		return
-	}
-	podList, err := k8s.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 Pod 失败: " + err.Error())
-		return
-	}
-	depList, err := k8s.AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 Deployment 失败: " + err.Error())
-		return
-	}
-	stsList, err := k8s.AppsV1().StatefulSets("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 StatefulSet 失败: " + err.Error())
-		return
-	}
-	svcList, err := k8s.CoreV1().Services("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 Service 失败: " + err.Error())
-		return
-	}
-	pvcList, err := k8s.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		RespondAPIError500(c, "列出 PVC 失败: " + err.Error())
-		return
+	var nsList *corev1.NamespaceList
+	var podList *corev1.PodList
+	var depList *appsv1.DeploymentList
+	var stsList *appsv1.StatefulSetList
+	var svcList *corev1.ServiceList
+	var pvcList *corev1.PersistentVolumeClaimList
+
+	var mu sync.Mutex
+	var firstErr error
+	var wg sync.WaitGroup
+
+	run := func(name string, fn func() error) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := fn(); err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("%s: %w", name, err)
+				}
+				mu.Unlock()
+			}
+		}()
 	}
 
+	run("Namespace", func() error {
+		var err error
+		nsList, err = k8s.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		return err
+	})
+	run("Pod", func() error {
+		var err error
+		podList, err = k8s.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+		return err
+	})
+	run("Deployment", func() error {
+		var err error
+		depList, err = k8s.AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
+		return err
+	})
+	run("StatefulSet", func() error {
+		var err error
+		stsList, err = k8s.AppsV1().StatefulSets("").List(ctx, metav1.ListOptions{})
+		return err
+	})
+	run("Service", func() error {
+		var err error
+		svcList, err = k8s.CoreV1().Services("").List(ctx, metav1.ListOptions{})
+		return err
+	})
+	run("PVC", func() error {
+		var err error
+		pvcList, err = k8s.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{})
+		return err
+	})
+
+	wg.Wait()
+
+	if firstErr != nil {
+		RespondAPIError500(c, firstErr.Error())
+		return
+	}
 	type agg struct {
 		pod, dep, sts, svc, pvc int
-		latest                    *time.Time
+		latest                  *time.Time
 	}
 
 	byNS := make(map[string]*agg, len(nsList.Items))
@@ -147,7 +181,7 @@ func handleK8sNamespaceStats(c *gin.Context, k8s *kubernetes.Clientset) {
 		row := k8sNamespaceStatRow{
 			Namespace:        ns.Name,
 			PodCount:         a.pod,
-			DeploymentCount: a.dep,
+			DeploymentCount:  a.dep,
 			StatefulSetCount: a.sts,
 			ServiceCount:     a.svc,
 			PVCCount:         a.pvc,

@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, ChevronRight, ClipboardList, HardDrive, LayoutDashboard, LineChart, ScrollText, Sparkles } from "lucide-react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, ChevronRight, ClipboardList, HardDrive, LayoutDashboard, LineChart, ScrollText, Sparkles, Wrench } from "lucide-react";
 import { apiGetJson, apiPostJson } from "@/lib/api";
 import { useAuth } from "@/auth/auth-context";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,23 @@ import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
 import { cn } from "@/lib/utils";
 import { OPS_MONITORING_PRESETS } from "./opsMonitoringPresets";
 import { toast } from "sonner";
+import { INSPECTION_DOMAINS } from "./inspectionDomains";
 
 type AlertsGet = {
   rules: { enabled: boolean }[];
   channels: unknown[];
 };
 
-type OpenClawGet = {
-  openclaw: { enabled: boolean; baseUrl: string; apiKeySet: boolean; model: string };
+type AiConfigGet = {
+  ai: {
+    judgeModel?: { enabled: boolean; baseUrl: string; model: string };
+    playbooksEnabled?: boolean;
+    inspectVCenter?: boolean;
+    inspectBastion?: boolean;
+    inspectHeadscale?: boolean;
+    inspectAuthentik?: boolean;
+  };
+  judgeApiKeySet?: boolean;
 };
 
 function SummaryCard(props: {
@@ -74,16 +83,27 @@ const AiInspectDashboard: React.FC = () => {
     queryFn: ({ signal }) => apiGetJson<AlertsGet>("/api/ops/alerts", { signal }),
     enabled: loggedIn && isAdmin,
   });
-  const openclawQ = useQuery({
-    queryKey: ["ops-openclaw"],
-    queryFn: ({ signal }) => apiGetJson<OpenClawGet>("/api/ops/openclaw", { signal }),
+  const aiConfigQ = useQuery({
+    queryKey: ["ops-ai-config"],
+    queryFn: ({ signal }) => apiGetJson<AiConfigGet>("/api/ops/ai-config", { signal }),
     enabled: loggedIn && isAdmin,
   });
   const repQ = useQuery({
     queryKey: ["ops-inspect-reports-head"],
     queryFn: ({ signal }) =>
-      apiGetJson<{ reports?: unknown[]; total?: number }>("/api/ops/inspect/reports?limit=1&offset=0", { signal }),
+      apiGetJson<{ reports?: unknown[]; total?: number }>("/api/ops/inspect/reports?domain=platform&limit=1&offset=0", { signal }),
     enabled: loggedIn && isAdmin,
+  });
+  const domainReportQueries = useQueries({
+    queries: INSPECTION_DOMAINS.map((domain) => ({
+      queryKey: ["ops-inspect-reports-head", domain.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        apiGetJson<{ reports?: { createdAt?: string; summary?: string }[]; total?: number }>(
+          `/api/ops/inspect/reports?domain=${domain.id}&limit=1&offset=0`,
+          { signal }
+        ),
+      enabled: loggedIn && isAdmin,
+    })),
   });
 
   const clusterAdvisoryQ = useQuery({
@@ -126,7 +146,7 @@ const AiInspectDashboard: React.FC = () => {
   const rulesTotal = alertsQ.data?.rules?.length ?? 0;
   const chCount = alertsQ.data?.channels?.length ?? 0;
 
-  const oc = openclawQ.data?.openclaw;
+  const judge = aiConfigQ.data?.ai?.judgeModel;
   const repN = repQ.data?.total ?? repQ.data?.reports?.length ?? 0;
 
   return (
@@ -138,16 +158,24 @@ const AiInspectDashboard: React.FC = () => {
           Dashboard
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          以下为<strong>监控中心</strong>、<strong>告警中心</strong>与<strong>巡检配置</strong>（OpenClaw / 定时巡检）的摘要；点击卡片进入对应页面。与左侧「总览」同级，顶栏「Dashboard」也会进入本页。
+          以下为<strong>监控中心</strong>、<strong>告警中心</strong>与<strong>巡检配置</strong>（判读模型 / 定时巡检 / 剧本化巡检）的摘要；点击卡片进入对应页面。与左侧「总览」同级，顶栏「Dashboard」也会进入本页。
         </p>
-        {isAdmin ? (
-          <Button type="button" variant="outline" size="sm" className="mt-4 border-cyan-200 bg-white/90" asChild>
-            <Link to="/cluster/ai-inspect/configure" className="gap-1.5">
-              <Sparkles className="h-4 w-4" />
-              打开巡检配置
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isAdmin ? (
+            <Button type="button" variant="outline" size="sm" className="border-cyan-200 bg-white/90" asChild>
+              <Link to="/cluster/ai-inspect/configure" className="gap-1.5">
+                <Sparkles className="h-4 w-4" />
+                打开巡检配置
+              </Link>
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" className="border-cyan-200 bg-white/90" asChild>
+            <Link to="/cluster/ai-inspect/assistant" className="gap-1.5">
+              <Wrench className="h-4 w-4" />
+              AI 助手（状态问答 / 故障处置）
             </Link>
           </Button>
-        ) : null}
+        </div>
       </div>
 
       <Card
@@ -169,7 +197,7 @@ const AiInspectDashboard: React.FC = () => {
               </CardTitle>
               <CardDescription className="text-xs leading-relaxed">
                 约每 30 分钟后台汇总 apiserver / etcd / scheduler / controller / coredns 等日志，并结合集群 Pod 计数与 Prometheus
-                是否接入，由巡检 OpenClaw 给出评级与处置建议。处理完成后请点击「已处理」；若评级为 critical，顶栏铃铛会持续提示直至在「通知」中确认。
+                是否接入，由内嵌判读模型（GLM）给出评级与处置建议。处理完成后请点击「已处理」；若评级为 critical，顶栏铃铛会持续提示直至在「通知」中确认。
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -226,12 +254,54 @@ const AiInspectDashboard: React.FC = () => {
               <OpenClawChatMarkdown source={clusterAdvisoryQ.data.markdown} />
             </div>
           ) : !clusterAdvisoryQ.data?.runError ? (
-            <p className="text-xs text-slate-500">等待后台首次分析或检查 AI 巡检 OpenClaw 是否启用。</p>
+            <p className="text-xs text-slate-500">等待后台首次分析；若提示模型错误，请检查「AI 判读模型」配置与余额。</p>
           ) : null}
         </CardContent>
       </Card>
 
+      {isAdmin ? (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">基础设施巡检域</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">独立查看最近报告；立即执行入口位于巡检配置页。</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {INSPECTION_DOMAINS.map((domain, index) => {
+              const latest = domainReportQueries[index]?.data?.reports?.[0];
+              const enabled = Boolean(aiConfigQ.data?.ai?.[domain.configKey]);
+              return (
+                <Link
+                  key={domain.id}
+                  to={`/cluster/ai-inspect/reports/${domain.id}`}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-cyan-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/40 dark:hover:border-cyan-700"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">{domain.label}</h3>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", enabled ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400")}>{enabled ? "定时已启用" : "定时未启用"}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{latest?.createdAt ? `最近：${latest.createdAt}` : "暂无独立报告"}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{latest?.summary || domain.description}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SummaryCard
+          to="/cluster/ai-inspect/assistant"
+          title="AI 助手"
+          icon={<Wrench className="h-4 w-4" aria-hidden />}
+        >
+          <p>
+            询问集群状态、判断服务健康、定位故障；「运维模式」下可执行重启 Deployment / 删除 Pod / 调整副本数等受控处置（写操作全部进审计）。
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            支持连续工具调用：Pod / 事件 / 日志 / Prometheus 交叉验证后给出结论。
+          </p>
+        </SummaryCard>
+
         <SummaryCard
           to="/cluster/ai-inspect/logs"
           title="日志查询"
@@ -302,7 +372,7 @@ const AiInspectDashboard: React.FC = () => {
         >
           {!isAdmin ? (
             <p>
-              平台巡检历史、Pod / 工作负载重启 AI、集群 rollup 与关联分析等汇总入口；<strong>管理员</strong>可查看平台级列表，非只读用户可查看
+              平台巡检历史、Pod / 工作负载重启分析、集群 rollup 与关联分析等汇总入口；<strong>管理员</strong>可查看平台级列表，非只读用户可查看
               K8s 类报告。
             </p>
           ) : repQ.isLoading ? (
@@ -324,26 +394,23 @@ const AiInspectDashboard: React.FC = () => {
         >
           {!isAdmin ? (
             <p>
-              OpenClaw 与定时巡检、模型与巡检范围仅管理员可配。请使用左侧<strong>监控中心</strong>查看 Prometheus 监控图。
+              判读模型与定时巡检、巡检范围仅管理员可配。请使用左侧<strong>监控中心</strong>查看 Prometheus 监控图。
             </p>
-          ) : openclawQ.isLoading ? (
+          ) : aiConfigQ.isLoading ? (
             <span className="text-slate-400">加载中…</span>
           ) : (
             <>
               <p>
-                大模型巡检：
-                <strong className="text-slate-800">{oc?.enabled ? "已启用" : "未启用"}</strong>
-                {oc?.apiKeySet ? " · 已配置 API Key" : ""}
+                判读模型（GLM / Kimi / MiniMax / DeepSeek 直连）：
+                <strong className="text-slate-800">{judge?.enabled ? "已启用" : "未启用"}</strong>
+                {aiConfigQ.data?.judgeApiKeySet ? " · 已配置 API Key" : ""}
               </p>
-              {oc?.baseUrl ? (
-                <p className="mt-2 break-all font-mono text-xs text-slate-700">Base：{oc.baseUrl}</p>
-              ) : (
-                <p className="mt-2 text-xs text-slate-500">尚未填写 Base URL 或未选用应用中心实例。</p>
-              )}
-              {oc?.model ? (
-                <p className="mt-1 text-xs text-slate-600">模型：{oc.model}</p>
+              {judge?.model ? (
+                <p className="mt-1 text-xs text-slate-600">模型：{judge.model}</p>
               ) : null}
-              <p className="mt-2 text-xs text-slate-500">历史报告条目：{repN}（完整列表见「巡检报告」）</p>
+              <p className="mt-2 text-xs text-slate-500">
+                剧本化巡检：{aiConfigQ.data?.ai?.playbooksEnabled ?? true ? "已启用" : "已关闭"} · 历史报告 {repN} 条
+              </p>
             </>
           )}
         </SummaryCard>

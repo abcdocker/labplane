@@ -49,26 +49,26 @@ type DnsRecord struct {
 }
 
 type DnsFailoverTask struct {
-	ID             int        `json:"id"`
-	Name           string     `json:"name"`
-	DomainID       int        `json:"domainId"`
-	DomainName     string     `json:"domainName"`
-	RecordID       string     `json:"recordId"`
-	CheckType      string     `json:"checkType"` // ping, tcp, http
-	CheckTarget    string     `json:"checkTarget"`
-	CheckPort      int        `json:"checkPort"`
-	CheckPath      string     `json:"checkPath"`
-	CheckInterval  int        `json:"checkInterval"`
-	CheckTimeout   int        `json:"checkTimeout"`
-	MaxErrors      int        `json:"maxErrors"`
-	FailoverValue  string     `json:"failoverValue"`
-	OriginalValue  string     `json:"originalValue"`
-	Status         int        `json:"status"` // 1=enabled 0=disabled
-	ErrorCount     int        `json:"errorCount"`
-	LastCheckAt    *time.Time `json:"lastCheckAt"`
-	LastStatus     string     `json:"lastStatus"` // ok, error, unknown
-	CreatedBy      string     `json:"createdBy"`
-	CreatedAt      time.Time  `json:"createdAt"`
+	ID            int        `json:"id"`
+	Name          string     `json:"name"`
+	DomainID      int        `json:"domainId"`
+	DomainName    string     `json:"domainName"`
+	RecordID      string     `json:"recordId"`
+	CheckType     string     `json:"checkType"` // ping, tcp, http
+	CheckTarget   string     `json:"checkTarget"`
+	CheckPort     int        `json:"checkPort"`
+	CheckPath     string     `json:"checkPath"`
+	CheckInterval int        `json:"checkInterval"`
+	CheckTimeout  int        `json:"checkTimeout"`
+	MaxErrors     int        `json:"maxErrors"`
+	FailoverValue string     `json:"failoverValue"`
+	OriginalValue string     `json:"originalValue"`
+	Status        int        `json:"status"` // 1=enabled 0=disabled
+	ErrorCount    int        `json:"errorCount"`
+	LastCheckAt   *time.Time `json:"lastCheckAt"`
+	LastStatus    string     `json:"lastStatus"` // ok, error, unknown
+	CreatedBy     string     `json:"createdBy"`
+	CreatedAt     time.Time  `json:"createdAt"`
 }
 
 type DnsFailoverLog struct {
@@ -98,23 +98,23 @@ type DnsScheduledTask struct {
 }
 
 type DnsCertOrder struct {
-	ID         int        `json:"id"`
-	Name       string     `json:"name"`
-	AccountID  int        `json:"accountId"`
-	Domains    string     `json:"domains"` // JSON array
-	Email      string     `json:"email"`
-	Status     string     `json:"status"` // pending, issued, failed, expired
-	CertPEM    string     `json:"certPem,omitempty"`
-	KeyPEM     string     `json:"keyPem,omitempty"`
-	IssuedAt   *time.Time `json:"issuedAt"`
-	ExpireAt   *time.Time `json:"expireAt"`
-	AutoRenew  bool       `json:"autoRenew"`
+	ID        int        `json:"id"`
+	Name      string     `json:"name"`
+	AccountID int        `json:"accountId"`
+	Domains   string     `json:"domains"` // JSON array
+	Email     string     `json:"email"`
+	Status    string     `json:"status"` // pending, issued, failed, expired
+	CertPEM   string     `json:"certPem,omitempty"`
+	KeyPEM    string     `json:"keyPem,omitempty"`
+	IssuedAt  *time.Time `json:"issuedAt"`
+	ExpireAt  *time.Time `json:"expireAt"`
+	AutoRenew bool       `json:"autoRenew"`
 	// BaotaSiteName 为宝塔「网站名」（通常与主域名一致）；证书签发后可通过 DNS 管理一键部署到该站点。
-	BaotaSiteName string `json:"baotaSiteName"`
-	AutoPushBaota bool   `json:"autoPushBaota"`
-	CreatedBy  string     `json:"createdBy"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
+	BaotaSiteName string    `json:"baotaSiteName"`
+	AutoPushBaota bool      `json:"autoPushBaota"`
+	CreatedBy     string    `json:"createdBy"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // ─────────────────────────── accounts ───────────────────────────
@@ -246,9 +246,9 @@ func dnsDomainGet(ctx context.Context, db *sql.DB, id int) (*DnsDomain, error) {
 }
 
 func dnsDomainInsert(ctx context.Context, db *sql.DB, name string, accountID int, icpBeian, expireAt, remark, createdBy string) (int64, error) {
-	var exp interface{}
-	if expireAt != "" {
-		exp = expireAt
+	var exp sql.NullString
+	if strings.TrimSpace(expireAt) != "" {
+		exp = sql.NullString{String: strings.TrimSpace(expireAt), Valid: true}
 	}
 	res, err := db.ExecContext(ctx,
 		`INSERT INTO dns_domains (name, account_id, icp_beian, expire_at, remark, created_by) VALUES (?,?,?,?,?,?)`,
@@ -260,9 +260,9 @@ func dnsDomainInsert(ctx context.Context, db *sql.DB, name string, accountID int
 }
 
 func dnsDomainUpdate(ctx context.Context, db *sql.DB, id int, name string, accountID int, icpBeian, expireAt, remark string) error {
-	var exp interface{}
-	if expireAt != "" {
-		exp = expireAt
+	var exp sql.NullString
+	if strings.TrimSpace(expireAt) != "" {
+		exp = sql.NullString{String: strings.TrimSpace(expireAt), Valid: true}
 	}
 	_, err := db.ExecContext(ctx,
 		`UPDATE dns_domains SET name=?, account_id=?, icp_beian=?, expire_at=?, remark=?, updated_at=NOW() WHERE id=?`,
@@ -588,12 +588,12 @@ func dnsCertOrderDelete(ctx context.Context, db *sql.DB, id int) error {
 // ─────────────────────────── stats ───────────────────────────
 
 type DnsStats struct {
-	AccountCount   int `json:"accountCount"`
-	DomainCount    int `json:"domainCount"`
-	RecordCount    int `json:"recordCount"`
-	FailoverCount  int `json:"failoverCount"`
-	ScheduledCount int `json:"scheduledCount"`
-	CertCount      int `json:"certCount"`
+	AccountCount   int  `json:"accountCount"`
+	DomainCount    int  `json:"domainCount"`
+	RecordCount    int  `json:"recordCount"`
+	FailoverCount  int  `json:"failoverCount"`
+	ScheduledCount int  `json:"scheduledCount"`
+	CertCount      int  `json:"certCount"`
 	MysqlReachable bool `json:"mysqlReachable"`
 }
 

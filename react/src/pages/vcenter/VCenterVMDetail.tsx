@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, Loader2, Pencil, Radio } from "lucide-react";
@@ -43,6 +43,7 @@ import {
 import { mergeListeningPortsByProtoPort } from "@/lib/listening-ports";
 import VCenterConsolePanel from "./VCenterConsolePanel";
 import VCenterSshTerminal from "./VCenterSshTerminal";
+import VmCapturePanel from "./capture/VmCapturePanel";
 import { VCenterStorageChart, formatBytes } from "./VCenterResourceCharts";
 import { VCenterPerfMonitor } from "./VCenterPerfMonitor";
 import type {
@@ -50,6 +51,7 @@ import type {
   VCenterTaskStatusResponse,
   VCenterVMDetailResponse,
 } from "./types";
+import { vcenterVmDetailText } from "./vcenterVmDetail.i18n";
 
 function formatGuestIps(ips: unknown): string {
   if (ips == null) return "—";
@@ -65,6 +67,7 @@ function formatGiBFromKB(capacityKB: number): string {
 const VCenterVMDetail: React.FC = () => {
   const { moref = "" } = useParams<{ moref: string }>();
   const decoded = decodeURIComponent(moref);
+  const [activeTab, setActiveTab] = useState<"overview" | "metrics" | "ssh" | "console" | "capture">("overview");
   const queryClient = useQueryClient();
 
   const detailQ = useQuery({
@@ -252,52 +255,59 @@ const VCenterVMDetail: React.FC = () => {
     taskState !== "error";
   const vmDisplayName = detailQ.data?.name?.trim() || decoded;
 
+  useEffect(() => {
+    setActiveTab("overview");
+  }, [decoded]);
+
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="mx-auto w-full max-w-[1440px] space-y-4">
+      <div className="space-y-1">
         <Link
           to="/cluster/vcenter"
-          className="mb-3 inline-flex items-center text-sm text-blue-600 hover:underline"
+          className="inline-flex items-center text-sm text-blue-600 hover:underline"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回虚拟机列表
         </Link>
-        <h2 className="text-xl font-semibold text-gray-900">
-          {detailQ.data?.name || decoded}
-        </h2>
-        <p className="mt-1 font-mono text-xs text-gray-500">{decoded}</p>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {detailQ.data?.name || decoded}
+          </h2>
+          <p className="font-mono text-xs text-slate-500">{decoded}</p>
+        </div>
       </div>
 
-      {detailQ.isLoading && <p className="text-gray-500">加载详情…</p>}
+      {detailQ.isLoading && <p className="text-slate-500">加载详情…</p>}
       {detailQ.error && (
         <p className="text-red-600">{(detailQ.error as Error).message}</p>
       )}
 
       {detailQ.data && (
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-4 flex-wrap">
-            <TabsTrigger value="overview">概况与网络</TabsTrigger>
-            <TabsTrigger value="metrics">资源监控</TabsTrigger>
-            <TabsTrigger value="ssh">SSH 终端</TabsTrigger>
-            <TabsTrigger value="console">vSphere 控制台</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full min-w-0">
+          <TabsList className="mb-2 h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-fit">
+            <TabsTrigger value="overview" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.overview}</TabsTrigger>
+            <TabsTrigger value="metrics" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.metrics}</TabsTrigger>
+            <TabsTrigger value="ssh" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.ssh}</TabsTrigger>
+            <TabsTrigger value="console" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.console}</TabsTrigger>
+            <TabsTrigger value="capture" className="min-h-11 shrink-0">{vcenterVmDetailText.tabs.capture}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-xs font-medium text-gray-500">电源 / 工具</p>
+          <TabsContent value="overview" className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-xs font-medium text-slate-500">电源 / 工具</p>
                 <p className="mt-1 text-sm">
                   {detailQ.data.powerState ?? "—"}
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-xs font-medium text-gray-500">vCPU / 内存</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-xs font-medium text-slate-500">vCPU / 内存</p>
                 <p className="mt-1 text-sm">
                   {detailQ.data.cpu ?? "—"} / {detailQ.data.memoryMB ?? "—"} MB
                 </p>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-xs font-medium text-gray-500">UUID</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-xs font-medium text-slate-500">UUID</p>
                 <p className="mt-1 break-all font-mono text-xs">
                   {detailQ.data.uuid ?? "—"}
                 </p>
@@ -305,27 +315,27 @@ const VCenterVMDetail: React.FC = () => {
             </div>
 
             {isTemplate ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950">
                 当前虚拟机为<strong>模板</strong>，无法在此执行电源、硬件编辑或磁盘扩容。
               </div>
             ) : (
               <>
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-slate-500">
                         电源状态
                       </p>
-                      <p className="mt-0.5 text-sm font-medium text-gray-900">
+                      <p className="mt-0.5 text-sm font-medium text-slate-900">
                         {detailQ.data.powerState ?? "—"}
                         {taskStatusQ.isFetching && taskState && (
-                          <span className="ml-2 font-normal text-gray-500">
+                          <span className="ml-2 font-normal text-slate-500">
                             · 任务 {taskState}
                             {taskProg > 0 ? ` ${taskProg}%` : ""}
                           </span>
                         )}
                       </p>
-                      <p className="mt-1 text-[11px] text-gray-500">
+                      <p className="mt-1 text-[11px] text-slate-500">
                         电源与摘要约每 16 秒向 vCenter 拉取刷新，重启/关机后状态会自动更新。
                       </p>
                     </div>
@@ -361,8 +371,8 @@ const VCenterVMDetail: React.FC = () => {
                     </div>
                   </div>
                   {showPowerProgress && (
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] text-gray-600">
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] text-slate-600">
                         <span>
                           {taskStatusQ.isLoading
                             ? "正在连接 vCenter 任务…"
@@ -392,7 +402,7 @@ const VCenterVMDetail: React.FC = () => {
                 </div>
 
                 <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                  <DialogContent className="max-h-[min(90vh,720px)] max-w-lg overflow-y-auto">
+                  <DialogContent className="max-h-[min(90dvh,720px)] max-w-lg overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>编辑资源</DialogTitle>
                       <DialogDescription>
@@ -421,7 +431,7 @@ const VCenterVMDetail: React.FC = () => {
                         />
                       </div>
                     </div>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-slate-500">
                       {[
                         detailQ.data?.cpuHotAddEnabled && "已启用 CPU 热添加。",
                         detailQ.data?.memoryHotAddEnabled && "已启用内存热添加。",
@@ -431,7 +441,7 @@ const VCenterVMDetail: React.FC = () => {
                         "未标记热添加时改配可能需关机。"}
                     </p>
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-slate-700">
                         更多电源操作
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -475,7 +485,7 @@ const VCenterVMDetail: React.FC = () => {
                     </div>
                     {Array.isArray(disks) && disks.length > 0 ? (
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-slate-900">
                           磁盘扩容（目标总 GiB）
                         </p>
                         <div className="mt-2 overflow-x-auto">
@@ -584,11 +594,11 @@ const VCenterVMDetail: React.FC = () => {
               </>
             )}
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">来宾已监听端口</p>
-                  <p className="mt-1 text-[11px] text-gray-500">
+                  <p className="text-sm font-medium text-slate-900">来宾已监听端口</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
                     由 Dashboard Pod SSH 到 Guest 执行 ss/netstat；需已配置 SSH 与 Guest IP。
                   </p>
                 </div>
@@ -628,7 +638,7 @@ const VCenterVMDetail: React.FC = () => {
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-left text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100"
                     >
                       <span>
                         {listeningPortsOpen ? "收起" : "展开"}端口列表
@@ -637,7 +647,7 @@ const VCenterVMDetail: React.FC = () => {
                           : ""}
                       </span>
                       <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${
+                        className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
                           listeningPortsOpen ? "rotate-180" : ""
                         }`}
                       />
@@ -645,14 +655,14 @@ const VCenterVMDetail: React.FC = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="data-[state=closed]:animate-none">
                     <div className="mt-3 space-y-2">
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-slate-500">
                         扫描时间 {listeningPortsQ.data.scannedAt ?? "—"} · Guest{" "}
                         <span className="font-mono">{listeningPortsQ.data.guestIp ?? "—"}</span>
                       </p>
                       {listeningPortsQ.data.stderr ? (
                         <p className="text-xs text-amber-800">{listeningPortsQ.data.stderr}</p>
                       ) : null}
-                      <div className="overflow-x-auto rounded-lg border border-gray-100">
+                      <div className="overflow-x-auto rounded-lg border border-slate-100">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -676,7 +686,7 @@ const VCenterVMDetail: React.FC = () => {
                       </div>
                       {(listeningPortsQ.data.ports ?? []).length === 0 &&
                         !listeningPortsQ.isFetching && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-slate-500">
                             未解析到监听项（或输出格式不兼容）。
                           </p>
                         )}
@@ -687,27 +697,27 @@ const VCenterVMDetail: React.FC = () => {
             </div>
 
             {guest && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-sm font-medium text-gray-900">Guest</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-sm font-medium text-slate-900">Guest</p>
                 <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <dt className="text-xs text-gray-500">IP</dt>
+                    <dt className="text-xs text-slate-500">IP</dt>
                     <dd className="mt-0.5 font-mono text-sm">
                       {guest.ip ?? "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500">主机名</dt>
+                    <dt className="text-xs text-slate-500">主机名</dt>
                     <dd className="mt-0.5 text-sm">{guest.hostname ?? "—"}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-xs text-gray-500">系统</dt>
+                    <dt className="text-xs text-slate-500">系统</dt>
                     <dd className="mt-0.5 text-sm">
                       {guest.guestFullName ?? "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500">Tools 运行</dt>
+                    <dt className="text-xs text-slate-500">Tools 运行</dt>
                     <dd className="mt-0.5 text-sm">
                       {guest.toolsRunningStatus != null
                         ? String(guest.toolsRunningStatus)
@@ -715,7 +725,7 @@ const VCenterVMDetail: React.FC = () => {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500">Tools 版本</dt>
+                    <dt className="text-xs text-slate-500">Tools 版本</dt>
                     <dd className="mt-0.5 text-sm">
                       {guest.toolsVersionStatus != null
                         ? String(guest.toolsVersionStatus)
@@ -727,26 +737,26 @@ const VCenterVMDetail: React.FC = () => {
             )}
 
             {storage && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-sm font-medium text-gray-900">存储</p>
-                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-sm font-medium text-slate-900">存储</p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
                   以下为 vSphere 摘要中的三项：已提交表示当前已占用的虚拟磁盘空间；未提交表示精简置备等尚未兑现、仍可能增长的部分；未共享表示不计入共享（如链接克隆去重）的本机独占用量。三者并非简单相加关系。
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs text-gray-500">已提交</p>
+                    <p className="text-xs text-slate-500">已提交</p>
                     <p className="mt-0.5 text-sm tabular-nums">
                       {formatBytes(storage.committedBytes)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">未提交</p>
+                    <p className="text-xs text-slate-500">未提交</p>
                     <p className="mt-0.5 text-sm tabular-nums">
                       {formatBytes(storage.uncommittedBytes)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">未共享</p>
+                    <p className="text-xs text-slate-500">未共享</p>
                     <p className="mt-0.5 text-sm tabular-nums">
                       {formatBytes(storage.unsharedBytes)}
                     </p>
@@ -759,8 +769,8 @@ const VCenterVMDetail: React.FC = () => {
             )}
 
             {Array.isArray(nets) && nets.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-sm font-medium text-gray-900">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-sm font-medium text-slate-900">
                   网卡与 IP（来自 Guest）
                 </p>
                 <div className="mt-3 overflow-x-auto">
@@ -802,6 +812,7 @@ const VCenterVMDetail: React.FC = () => {
           <TabsContent value="ssh" className="space-y-4">
             <VCenterSshTerminal
               moref={decoded}
+              autoConnect
               guestIpHint={
                 guest &&
                 typeof guest.ip === "string" &&
@@ -814,6 +825,10 @@ const VCenterVMDetail: React.FC = () => {
 
           <TabsContent value="console">
             <VCenterConsolePanel moref={decoded} />
+          </TabsContent>
+
+          <TabsContent value="capture" className="space-y-4">
+            <VmCapturePanel moref={decoded} vmName={vmDisplayName} />
           </TabsContent>
         </Tabs>
       )}

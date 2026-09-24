@@ -130,6 +130,8 @@ type RedisK8sNetworkService = {
   clusterDNS: string;
   ports: Array<{ name?: string; port: number; nodePort?: number; protocol?: string }>;
   loadBalancerIP?: string;
+  externalIPs?: string[];
+  hostNetwork?: boolean;
   note?: string;
 };
 
@@ -206,6 +208,18 @@ function RedisK8sNetworkSection({ instanceId }: { instanceId: number }) {
                         <div>
                           <dt className="text-slate-500">LoadBalancer</dt>
                           <dd className="mt-0.5 font-mono text-[11px] break-all">{s.loadBalancerIP}</dd>
+                        </div>
+                      ) : null}
+                      {s.externalIPs && s.externalIPs.length > 0 ? (
+                        <div>
+                          <dt className="text-slate-500">外部访问地址（hostNetwork 节点 IP）</dt>
+                          <dd className="mt-0.5 space-y-0.5">
+                            {s.externalIPs.map((ip) => (
+                              <div key={ip} className="font-mono text-[11px] text-slate-900">
+                                {ip}:{mainPort}
+                              </div>
+                            ))}
+                          </dd>
                         </div>
                       ) : null}
                       <div>
@@ -578,7 +592,7 @@ export default function AppCenterRedis() {
           {!statusQ.data?.encryptionReady && (
             <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-900">
               保存访问密码需配置{" "}
-              <code className="rounded bg-red-100/80 px-1 font-mono text-xs">KUBEBT_ENCRYPTION_KEY</code>
+              <code className="rounded bg-red-100/80 px-1 font-mono text-xs">LABPLANE_ENCRYPTION_KEY</code>
               {statusQ.data?.encryptionError ? (
                 <span className="ml-1 font-mono text-xs">{statusQ.data.encryptionError}</span>
               ) : null}
@@ -1731,6 +1745,7 @@ function InstallScriptPanel({
   const [serviceType, setServiceType] = useState<"clusterip" | "nodeport" | "loadbalancer">("clusterip");
   const [nodePortRedis, setNodePortRedis] = useState("");
   const [nodePortClusterBus, setNodePortClusterBus] = useState("");
+  const [hostNetwork, setHostNetwork] = useState(false);
   const [monitorContext, setMonitorContext] = useState<{
     ns: string;
     dep: string;
@@ -1868,6 +1883,7 @@ function InstallScriptPanel({
           const n = parseInt(nodePortClusterBus.trim(), 10);
           return Number.isFinite(n) && n > 0 ? n : 0;
         })(),
+        hostNetwork,
       }),
     onSuccess: (res) => {
       toast.success(res.message ?? "已部署到 Kubernetes");
@@ -2219,6 +2235,27 @@ function InstallScriptPanel({
                   )}
                 </>
               )}
+              <div className="space-y-1 sm:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label htmlFor="redis-hostnetwork" className="cursor-pointer">
+                    使用宿主机网络（hostNetwork）
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="redis-hostnetwork"
+                      checked={hostNetwork}
+                      onCheckedChange={setHostNetwork}
+                    />
+                    <span className="text-xs text-slate-600">
+                      {hostNetwork ? "已启用" : "已关闭"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  hostNetwork 模式下 Pod 直接使用节点网络，外部可通过节点 IP 直接访问 Redis 端口。
+                  Cluster 模式建议配合 NodePort 或搭配反亲和性分散到不同节点，避免端口冲突。
+                </p>
+              </div>
               <div className="space-y-1 sm:col-span-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label htmlFor="redis-exp" className="cursor-pointer">

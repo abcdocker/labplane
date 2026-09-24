@@ -485,7 +485,128 @@ export default function AppCenterCloudVm() {
               ），列表仅显示创建时间与阶段；配置后可显示 CPU/内存占用率（相对 limit）。
             </p>
           ) : null}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="grid gap-3 md:hidden">
+            {instances.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                暂无实例{canWrite ? "，可切换到「创建云主机」按步骤新建" : null}
+              </div>
+            ) : (
+              instances.map((row) => {
+                const u = usageById.get(row.id);
+                const pctCpu = u?.cpuPercent;
+                const pctMem = u?.memPercent;
+                const cpuOk = pctCpu != null && Number.isFinite(pctCpu);
+                const memOk = pctMem != null && Number.isFinite(pctMem);
+                return (
+                  <article
+                    key={row.id}
+                    className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="break-all font-mono text-sm font-bold text-slate-900">{row.name}</h3>
+                        <p className="mt-0.5 truncate text-xs text-slate-500" title={row.summary?.image}>
+                          {row.summary?.image ?? "—"}
+                        </p>
+                      </div>
+                      {row.summary?.phase === "running" ? (
+                        <Badge className="shrink-0 border-emerald-600/40 bg-emerald-50 font-normal text-emerald-900">
+                          运行中
+                        </Badge>
+                      ) : row.summary?.phase === "deploying" ? (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-amber-500/70 bg-amber-50 font-normal text-amber-950"
+                        >
+                          部署中
+                        </Badge>
+                      ) : (
+                        <span className="shrink-0 text-xs text-slate-600">{row.summary?.phase ?? "—"}</span>
+                      )}
+                    </div>
+
+                    <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                      <div className="flex min-w-0 items-center justify-between gap-3">
+                        <dt className="shrink-0 text-slate-400">创建时间</dt>
+                        <dd className="min-w-0 text-right text-slate-700">
+                          {row.createdAt
+                            ? format(new Date(row.createdAt), "yyyy-MM-dd HH:mm", { locale: zhCN })
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div className="flex min-w-0 items-center justify-between gap-3">
+                        <dt className="shrink-0 text-slate-400">访问（root）</dt>
+                        <dd className="min-w-0 break-all text-right font-mono text-slate-700">
+                          {row.summary?.nodeIP && row.summary?.sshPort
+                            ? `${row.summary.nodeIP}:${row.summary.sshPort}`
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="mb-1 text-slate-400">资源（相对 limit）</dt>
+                        <dd>
+                          {usageQ.isPending ? (
+                            <span className="text-xs text-slate-400">加载中…</span>
+                          ) : !cpuOk && !memOk ? (
+                            <span className="text-xs text-slate-500">
+                              {usageQ.data?.prometheusConfigured === false ? "未配置监控" : "暂无使用率数据"}
+                            </span>
+                          ) : (
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-8 shrink-0 text-[10px] font-medium text-slate-500">CPU</span>
+                                {cpuOk ? (
+                                  <>
+                                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
+                                      <div
+                                        className="h-full rounded-full bg-sky-500 transition-[width]"
+                                        style={{ width: `${Math.min(100, Math.max(0, pctCpu!))}%` }}
+                                      />
+                                    </div>
+                                    <span className="w-9 shrink-0 text-right tabular-nums text-[10px] text-slate-800">
+                                      {pctCpu!.toFixed(0)}%
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="min-w-0 flex-1 text-[11px] text-slate-400">—</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="w-8 shrink-0 text-[10px] font-medium text-slate-500">内存</span>
+                                {memOk ? (
+                                  <>
+                                    <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
+                                      <div
+                                        className="h-full rounded-full bg-violet-500 transition-[width]"
+                                        style={{ width: `${Math.min(100, Math.max(0, pctMem!))}%` }}
+                                      />
+                                    </div>
+                                    <span className="w-9 shrink-0 text-right tabular-nums text-[10px] text-slate-800">
+                                      {pctMem!.toFixed(0)}%
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="min-w-0 flex-1 text-[11px] text-slate-400">—</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-3 border-t border-slate-100 pt-3">
+                      <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" asChild>
+                        <Link to={`/cluster/apps/cloud-vm/${row.id}`}>管理</Link>
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
             <Table>
               <TableHeader>
                 <TableRow>

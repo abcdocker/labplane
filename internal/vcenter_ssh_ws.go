@@ -45,6 +45,7 @@ func buildSSHClientConfigMerged(cfg Config, st *SSHVMStored) (*ssh.ClientConfig,
 	keyPath := strings.TrimSpace(cfg.VCenterVMSshPrivateKeyPath)
 	keyPass := cfg.VCenterVMSshKeyPassphrase
 	insecure := cfg.VCenterVMSshInsecureHostKey
+	hostKeyFingerprint := cfg.VCenterVMSshHostKeyFingerprint
 	if st != nil {
 		if strings.TrimSpace(st.User) != "" {
 			user = strings.TrimSpace(st.User)
@@ -56,6 +57,9 @@ func buildSSHClientConfigMerged(cfg Config, st *SSHVMStored) (*ssh.ClientConfig,
 			keyPass = st.KeyPassphrase
 		}
 		insecure = st.InsecureHostKey
+		if strings.TrimSpace(st.HostKeyFingerprint) != "" {
+			hostKeyFingerprint = st.HostKeyFingerprint
+		}
 	}
 	if user == "" {
 		return nil, fmt.Errorf("SSH 用户名为空（环境变量或已保存配置）")
@@ -96,13 +100,14 @@ func buildSSHClientConfigMerged(cfg Config, st *SSHVMStored) (*ssh.ClientConfig,
 	if len(methods) == 0 {
 		return nil, fmt.Errorf("请配置私钥（文件路径或页面粘贴 PEM）或密码")
 	}
-	if !insecure {
-		return nil, fmt.Errorf("当前仅支持 insecure 主机密钥校验（VCENTER_VM_SSH_INSECURE_HOST_KEY 或页面勾选）")
+	hostKeyCallback, err := pinnedSSHHostKeyCallback(insecure, hostKeyFingerprint)
+	if err != nil {
+		return nil, err
 	}
 	return &ssh.ClientConfig{
 		User:            user,
 		Auth:            methods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         15 * time.Second,
 	}, nil
 }

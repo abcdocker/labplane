@@ -18,7 +18,7 @@ func mapRedisError(err error) (status int, body gin.H) {
 
 	if strings.Contains(low, "decrypt") || strings.Contains(low, "cipher") {
 		return http.StatusInternalServerError, gin.H{
-			"error": "凭据解密失败，请检查 KUBEBT_ENCRYPTION_KEY 是否与保存密码时一致",
+			"error": "凭据解密失败，请检查 LABPLANE_ENCRYPTION_KEY 是否与保存密码时一致",
 			"code":  "decrypt",
 		}
 	}

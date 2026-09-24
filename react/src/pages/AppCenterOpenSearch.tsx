@@ -137,7 +137,7 @@ const AppCenterOpenSearch: React.FC = () => {
   const [idxDetailOpen, setIdxDetailOpen] = useState(false);
   const [idxDetailName, setIdxDetailName] = useState("");
   const [idxSettingsJson, setIdxSettingsJson] = useState('{"index":{"refresh_interval":"30s"}}');
-  const [prunePat, setPrunePat] = useState("kubebt-vmlog-*");
+  const [prunePat, setPrunePat] = useState("labplane-vmlog-*");
   const [pruneDays, setPruneDays] = useState("30");
   const [pruneDry, setPruneDry] = useState(true);
   const [deleteIdx, setDeleteIdx] = useState<string | null>(null);
@@ -500,14 +500,14 @@ const AppCenterOpenSearch: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>本次部署 index template JSON（可选，覆盖模版；将注册为 composable template kubebt-&lt;部署名&gt;）</Label>
+                <Label>本次部署 index template JSON（可选，覆盖模版；将注册为 composable template labplane-&lt;部署名&gt;）</Label>
                 <Textarea
                   value={idxTpl}
                   onChange={(e) => setIdxTpl(e.target.value)}
                   disabled={!canWrite}
                   rows={5}
                   className="font-mono text-xs"
-                  placeholder='{"index_patterns":["kubebt-vmlog-*"],"template":{"settings":{"number_of_shards":1}}}'
+                  placeholder='{"index_patterns":["labplane-vmlog-*"],"template":{"settings":{"number_of_shards":1}}}'
                 />
               </div>
               <Button
@@ -655,7 +655,7 @@ const AppCenterOpenSearch: React.FC = () => {
             </AlertTitle>
             <AlertDescription className="text-xs leading-relaxed">
               平台进程使用实例中保存的 <code className="rounded bg-white px-1">internalHttp</code>（集群内 Service）调用 OpenSearch REST API。
-              请确保 <strong>kube-bt-sync 与 OpenSearch 网络互通</strong>（通常控制台部署在集群内或已打通 Service CIDR）。
+              请确保 <strong>labplane 与 OpenSearch 网络互通</strong>（通常控制台部署在集群内或已打通 Service CIDR）。
             </AlertDescription>
           </Alert>
 
@@ -829,7 +829,7 @@ const AppCenterOpenSearch: React.FC = () => {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">按创建时间清理（过期索引）</CardTitle>
                 <CardDescription className="text-xs leading-relaxed">
-                  按 <code className="rounded bg-slate-100 px-1">filepath</code> 风格匹配索引名（如 <code className="rounded bg-slate-100 px-1">kubebt-vmlog-*</code>
+                  按 <code className="rounded bg-slate-100 px-1">filepath</code> 风格匹配索引名（如 <code className="rounded bg-slate-100 px-1">labplane-vmlog-*</code>
                   ），根据 OpenSearch <code className="rounded bg-slate-100 px-1">creation_date</code> 删除早于 N 天的索引。建议先<strong>预演</strong>。
                 </CardDescription>
               </CardHeader>
@@ -1023,7 +1023,7 @@ const AppCenterOpenSearch: React.FC = () => {
               />
             </div>
             <div className="space-y-1">
-              <Label>默认 index template JSON（部署时可覆盖；PUT _index_template/kubebt-&lt;部署名&gt;）</Label>
+              <Label>默认 index template JSON（部署时可覆盖；PUT _index_template/labplane-&lt;部署名&gt;）</Label>
               <Textarea value={idxTplText} onChange={(e) => setIdxTplText(e.target.value)} rows={5} className="font-mono text-xs" />
             </div>
           </div>

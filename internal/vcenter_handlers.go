@@ -634,7 +634,6 @@ func handleVCenterVMNetPerf(c *gin.Context, app *ServerApp) {
 	c.JSON(http.StatusOK, out)
 }
 
-
 func quickStatsJSON(qs types.VirtualMachineQuickStats) gin.H {
 	return gin.H{
 		"cpuUsageMHz":        qs.OverallCpuUsage,
@@ -729,12 +728,17 @@ func hostRowFromMO(m *mo.HostSystem, ref string) gin.H {
 		esxi = strings.TrimSpace(m.Summary.Config.Product.FullName)
 	}
 	row := gin.H{
-		"moref":              ref,
-		"name":               name,
-		"connectionState":    string(m.Runtime.ConnectionState),
-		"overallStatus":      string(m.Summary.OverallStatus),
-		"cpuCores":           numCores,
-		"cpuMhzPerCore":      func() int32 { if hw != nil { return hw.CpuMhz }; return 0 }(),
+		"moref":           ref,
+		"name":            name,
+		"connectionState": string(m.Runtime.ConnectionState),
+		"overallStatus":   string(m.Summary.OverallStatus),
+		"cpuCores":        numCores,
+		"cpuMhzPerCore": func() int32 {
+			if hw != nil {
+				return hw.CpuMhz
+			}
+			return 0
+		}(),
 		"cpuUsageMHz":        qs.OverallCpuUsage,
 		"cpuCapacityMHz":     cpuMHzTotal,
 		"cpuUsagePercent":    roundPct1(cpuPct),
@@ -941,36 +945,26 @@ func handleVCenterVMWebmks(c *gin.Context, vc *vCenterClient, app *ServerApp) {
 		return
 	}
 	ctx := c.Request.Context()
-	var ticket *types.VirtualMachineTicket
+	var powerState types.VirtualMachinePowerState
 	err := vc.WithClientRetry(ctx, func(client *govmomi.Client) error {
 		vm := object.NewVirtualMachine(client.Client, types.ManagedObjectReference{Type: "VirtualMachine", Value: moref})
-		t, e := vm.AcquireTicket(ctx, string(types.VirtualMachineTicketTypeWebmks))
-		if e != nil {
-			return e
-		}
-		ticket = t
-		return nil
+		state, e := vm.PowerState(ctx)
+		powerState = state
+		return e
 	})
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "获取 WebMKS 票据失败: " + err.Error()})
+		c.JSON(http.StatusBadGateway, gin.H{"error": "读取虚拟机电源状态失败: " + err.Error()})
 		return
 	}
-	port := ticket.Port
-	if port == 0 {
-		port = 443
+	if powerState != types.VirtualMachinePowerStatePoweredOn {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "虚拟机需处于开机状态才能打开 WebMKS 控制台"})
+		return
 	}
-	host := ticket.Host
-	tok := ticket.Ticket
-	wss := fmt.Sprintf("wss://%s:%d/ticket/%s", host, port, url.PathEscape(tok))
 	c.JSON(http.StatusOK, gin.H{
-		"host":          host,
-		"port":          port,
-		"sslThumbprint": ticket.SslThumbprint,
-		"ticket":        tok,
-		"cfgFile":       ticket.CfgFile,
-		"wssUrl":        wss,
-		"proxyPath":     fmt.Sprintf("/api/vcenter/vms/%s/console-ws", url.PathEscape(moref)),
-		"hint":          "浏览器通过同源 WebSocket 代理连接 ESXi WebMKS；需运行 kube-bt-sync 的机器能访问 ESXi 主机。",
+		"ready":      true,
+		"powerState": string(powerState),
+		"proxyPath":  fmt.Sprintf("/api/vcenter/vms/%s/console-ws", url.PathEscape(moref)),
+		"hint":       "WebMKS ticket 仅在同源 WebSocket 握手时由服务端即时申请，不再通过 JSON 暴露给浏览器。",
 	})
 }
 
@@ -994,10 +988,10 @@ func registerVCenterRoutes(api *gin.RouterGroup, app *ServerApp) {
 	api.GET("/vcenter/vms/:moref/netperf", func(c *gin.Context) { handleVCenterVMNetPerf(c, app) })
 	api.GET("/vcenter/vms/:moref/listening-ports", func(c *gin.Context) { handleVCenterVMListeningPorts(c, app) })
 	api.GET("/vcenter/vms/:moref/tcp-established", func(c *gin.Context) { handleVCenterVMTcpEstablished(c, app) })
+	registerVCenterVMCaptureRoutes(api, app)
 	api.GET("/vcenter/vms/:moref/metrics", func(c *gin.Context) { handleVCenterVMMetrics(c, app.VCenter()) })
 	api.GET("/vcenter/vms/:moref/webmks", func(c *gin.Context) { handleVCenterVMWebmks(c, app.VCenter(), app) })
 	api.GET("/vcenter/vms/:moref/console-ws", func(c *gin.Context) { handleVCenterConsoleWS(c, app.VCenter(), app) })
-	api.GET("/vcenter/vms/:moref/console-html", func(c *gin.Context) { handleVCenterVMConsoleHTMLURL(c, app.VCenter(), app.Cfg(), app) })
 	api.GET("/vcenter/vms/:moref/ssh-settings", func(c *gin.Context) { handleGetVCenterVMSSHSettings(c, app.Cfg(), app.SSHStore()) })
 	api.PUT("/vcenter/vms/:moref/ssh-settings", func(c *gin.Context) { handlePutVCenterVMSSHSettings(c, app.Cfg(), app.SSHStore()) })
 	api.DELETE("/vcenter/vms/:moref/ssh-settings", func(c *gin.Context) { handleDeleteVCenterVMSSHSettings(c, app.Cfg(), app.SSHStore()) })
@@ -1007,7 +1001,9 @@ func registerVCenterRoutes(api *gin.RouterGroup, app *ServerApp) {
 	api.GET("/vcenter/tasks/:taskId", func(c *gin.Context) { handleVCenterTaskStatus(c, app.VCenter()) })
 	api.PUT("/vcenter/vms/:moref/hardware", func(c *gin.Context) { handleVCenterVMHardware(c, app) })
 	api.POST("/vcenter/vms/:moref/disk/expand", func(c *gin.Context) { handleVCenterVMDiskExpand(c, app) })
+	api.POST("/vcenter/vms/:moref/screen-resolution", func(c *gin.Context) { handleVCenterVMSetScreenResolution(c, app) })
 	api.GET("/vcenter/vms/:moref", func(c *gin.Context) { handleVCenterVMDetail(c, app) })
+	api.GET("/idrac/vnc-ws", func(c *gin.Context) { handleIdracVNCWS(c, app) })
 	api.GET("/vcenter/events", func(c *gin.Context) { handleGetVCenterVMEvents(c, app) })
 }
 

@@ -16,7 +16,7 @@ const SetupGate: React.FC = () => {
 
   if (q.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9] font-sans text-gray-600">
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9] font-sans text-slate-600">
         加载中…
       </div>
     );
@@ -26,7 +26,7 @@ const SetupGate: React.FC = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-[#F1F5F9] px-4 font-sans">
         <p className="text-red-600">无法读取初始化状态：{extractErrorMessage(q.error)}</p>
-        <p className="text-sm text-gray-500">请确认后端已启动且可访问 GET /api/setup/status</p>
+        <p className="text-sm text-slate-500">请确认后端已启动且可访问 GET /api/setup/status</p>
       </div>
     );
   }

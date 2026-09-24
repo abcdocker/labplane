@@ -344,7 +344,7 @@ func inspectCollectK8sSection(ctx context.Context, app *ServerApp, cfg Config, a
 	if podList != nil {
 		type cand struct {
 			ns, name, phase string
-			restarts         int32
+			restarts        int32
 		}
 		var cands []cand
 		for _, p := range podList.Items {
@@ -1113,7 +1113,7 @@ func inspectCollectRedisSection(ctx context.Context, app *ServerApp, cfg Config,
 		sec.Markdown = "无 MySQL，无法读取实例表。"
 		return sec
 	}
-	rows, err := db.QueryContext(ctx, `SELECT id, name, mode, config_json FROM kubebt_app_redis_instances ORDER BY id DESC LIMIT 25`)
+	rows, err := db.QueryContext(ctx, `SELECT id, name, mode, config_json FROM labplane_app_redis_instances ORDER BY id DESC LIMIT 25`)
 	if err != nil {
 		sec.Status = "warn"
 		sec.Markdown = fmt.Sprintf("读取实例表失败：%s", err.Error())
@@ -1181,7 +1181,7 @@ func inspectCollectCloudVmSection(ctx context.Context, app *ServerApp, ai OpsAII
 		sec.Markdown = "无 MySQL。"
 		return sec
 	}
-	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json FROM kubebt_app_cloud_vm_instances ORDER BY id DESC LIMIT 40`)
+	rows, err := db.QueryContext(ctx, `SELECT id, name, namespace, config_json FROM labplane_app_cloud_vm_instances ORDER BY id DESC LIMIT 40`)
 	if err != nil {
 		sec.Status = "warn"
 		sec.Markdown = err.Error()
@@ -1204,65 +1204,6 @@ func inspectCollectCloudVmSection(ctx context.Context, app *ServerApp, ai OpsAII
 		b.WriteString(fmt.Sprintf("| %d | %s | %s | %s | %d |\n", id, name, ns, st.Phase, st.NodePort))
 	}
 	sec.Status = "ok"
-	sec.Markdown = b.String()
-	return sec
-}
-
-func inspectCollectOpenClawSection(ctx context.Context, app *ServerApp, cfg Config, ai OpsAIInspectConfig) InspectionSection {
-	sec := InspectionSection{ID: "openclaw", Title: "OpenClaw 网关"}
-	sec.Status = "ok"
-	if app.PlatformKV() == nil {
-		sec.Status = "skip"
-		sec.Markdown = "platform_kv 不可用。"
-		return sec
-	}
-	list, err := loadAppOpenClawInstances(app.PlatformKV())
-	if err != nil {
-		sec.Status = "warn"
-		sec.Markdown = err.Error()
-		return sec
-	}
-	if len(list) == 0 {
-		sec.Markdown = "当前**无**已登记的 OpenClaw 实例。"
-		return sec
-	}
-	var b strings.Builder
-	b.WriteString("### 已登记实例与网关探针\n\n")
-	b.WriteString("| 显示名 | 命名空间/Deployment | 集群内 Base | K8s 阶段 | 网关 HTTP 探针 |\n| --- | --- | --- | --- | --- |\n")
-	k8s := app.K8s()
-	key, kerr := opsEncryptionKey(cfg)
-	for _, inst := range list {
-		phase := "—"
-		if k8s != nil && ai.InspectK8s {
-			st := openClawK8sStatus(ctx, k8s, inst.Namespace, inst.DeploymentName, inst.Image)
-			if p, ok := st["phase"].(string); ok {
-				phase = p
-			}
-		}
-		probe := "跳过（未连 K8s 或未勾选 K8s）"
-		bearer := ""
-		if kerr == nil && key != nil && strings.TrimSpace(inst.GatewayTokenEnc) != "" {
-			if tok, derr := decryptSecret(key, inst.GatewayTokenEnc); derr == nil {
-				bearer = strings.TrimSpace(tok)
-			}
-		}
-		if strings.TrimSpace(bearer) != "" {
-			pr := openClawGatewayProbe(ctx, &inst, bearer)
-			if ok, _ := pr["ok"].(bool); ok {
-				probe = fmt.Sprintf("成功 HTTP %v", pr["httpStatus"])
-			} else {
-				probe = fmt.Sprintf("失败 %s", inspectMdEscape(fmt.Sprint(pr["message"])))
-				sec.Status = "warn"
-			}
-		} else {
-			probe = "无 Token，未探针"
-		}
-		b.WriteString(fmt.Sprintf("| %s | %s/%s | %s | %s | %s |\n",
-			inspectMdEscape(inst.DisplayName),
-			inst.Namespace, inst.DeploymentName,
-			inspectMdEscape(inst.ClusterV1BaseURL),
-			phase, probe))
-	}
 	sec.Markdown = b.String()
 	return sec
 }

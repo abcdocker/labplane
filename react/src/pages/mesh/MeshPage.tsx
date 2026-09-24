@@ -1,0 +1,2318 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity, AlertTriangle, CheckCircle2, ExternalLink, Globe, KeyRound,
+  Loader2, Network, Pencil, Plus, RefreshCw, Router, Route as RouteIcon,
+  Search, Server, ShieldCheck, Trash2, Wifi, WifiOff,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { apiDeleteJson, apiGetJson, apiPostJson, apiPutJson, ApiHttpError } from "@/lib/api";
+import { useAuth } from "@/auth/auth-context";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+// ──────────────────────────── 类型 ────────────────────────────
+
+type TrafficCollector = {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  user: string;
+  passSet?: boolean;
+  command?: string;
+  hostKeyFp?: string;
+  lastSnapshotAt?: string;
+  lastError?: string;
+};
+
+type MeshInstance = {
+  id: string;
+  name: string;
+  region?: string;
+  apiUrl: string;
+  apiKeySet: boolean;
+  metricsUrl?: string;
+  headplaneUrl?: string;
+  enabled: boolean;
+  notes?: string;
+  trafficCollectors: TrafficCollector[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type HSUser = {
+  id: string; name: string; displayName?: string; email?: string;
+  provider?: string; createdAt?: string;
+};
+
+type HSNode = {
+  id: string; name: string; givenName: string; ipAddresses: string[];
+  user?: HSUser; online: boolean; lastSeen?: string; expiry?: string;
+  createdAt?: string; registerMethod?: string;
+  approvedRoutes?: string[]; availableRoutes?: string[]; subnetRoutes?: string[];
+  tags?: string[];
+  /** 节点上报的 WireGuard 候选地址（ip:port），内含真实 LAN IP 与公网 NAT 地址 */
+  endpoints?: string[];
+};
+
+type HSPreAuthKey = {
+  id: string; key: string; reusable: boolean; ephemeral: boolean; used: boolean;
+  expiration?: string; createdAt?: string; user?: HSUser; aclTags?: string[];
+  note?: string; usedAt?: string; hasFull?: boolean;
+};
+
+type DiscoveredNode = HSNode & {
+  os?: string; clientVersion?: string; realIps?: string[]; duplicate?: boolean;
+};
+
+type MeshSite = {
+  subnet: string; router: string; routerId: string; approved: boolean;
+  online: boolean; lastSeen?: string; tailscaleIp?: string; realIps?: string[];
+};
+
+type MeshLink = {
+  from: string; to: string; via: string; curAddr?: string; relay?: string;
+  rxBytes: number; txBytes: number; seenAt?: string;
+};
+
+type CollectorSuggestion = { routerId: string; name: string; host: string; port: number };
+
+type Discover = {
+  instance: MeshInstance;
+  health: boolean;
+  error?: string;
+  version?: string;
+  users?: HSUser[];
+  nodes?: DiscoveredNode[];
+  nodesError?: string;
+  sites?: MeshSite[];
+  links?: MeshLink[];
+  preAuthKeys?: HSPreAuthKey[];
+  collectorSuggestions?: CollectorSuggestion[];
+};
+
+type TrafficPeer = {
+  hostName: string; dnsName?: string; tailscaleIps?: string[]; os?: string;
+  online: boolean; lastSeen?: string; rxBytes: number; txBytes: number;
+  curAddr?: string; relay?: string;
+};
+
+type CollectorCandidate = { host: string; source: string; reachable: boolean };
+type SvcRouter = { routerId: string; name: string; online: boolean; candidates: CollectorCandidate[] };
+type KeyCleanupItem = {
+  id: string; key: string; user?: string; reusable: boolean;
+  used: boolean; expired: boolean; expiration?: string; reason: string;
+};
+
+type TrafficSnapshot = {
+  collectorId: string; collectorName: string; host: string; collectedAt: string;
+  hostKeyFp?: string; version?: string; backendState?: string;
+  selfHostName?: string; selfIps?: string[];
+  peers: TrafficPeer[]; error?: string;
+};
+
+type TrafficHistory = Record<string, TrafficSnapshot[]>;
+
+type MetricSample = { name: string; value: number; labels?: Record<string, string> };
+
+// ──────────────────────────── 工具 ────────────────────────────
+
+const emptyInstance = (): MeshInstance => ({
+  id: "",
+  name: "",
+  region: "",
+  apiUrl: "",
+  apiKeySet: false,
+  metricsUrl: "",
+  headplaneUrl: "",
+  enabled: true,
+  notes: "",
+  trafficCollectors: [],
+  createdAt: "",
+  updatedAt: "",
+});
+
+const fmtBytes = (n: number) => {
+  if (!Number.isFinite(n) || n <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let v = n, i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+const fmtTime = (iso?: string) => {
+  if (!iso) return "—";
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  const diff = Date.now() - t;
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 30 * 86_400_000) return `${Math.floor(diff / 86_400_000)} 天前`;
+  return new Date(t).toLocaleDateString();
+};
+
+const apiErr = (e: unknown) => (e instanceof ApiHttpError ? e.serverMessage : e instanceof Error ? e.message : String(e));
+
+// ──────────────────────────── 页面 ────────────────────────────
+
+const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
+  const qc = useQueryClient();
+  const { status } = useAuth();
+  const isAdmin = status?.role === "admin";
+
+  const instancesQ = useQuery({
+    queryKey: ["mesh-instances"],
+    queryFn: () => apiGetJson<{ instances: MeshInstance[] }>("/api/ops/mesh/instances"),
+  });
+  const instances = useMemo(() => instancesQ.data?.instances ?? [], [instancesQ.data]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const instParam = searchParams.get("inst") ?? "";
+  const [selectedId, setSelectedId] = useState("");
+  const selected = instances.find((i) => i.id === selectedId) ?? null;
+
+  // 选中实例由左侧菜单 ?inst= 驱动；无参数或参数失效时回落到第一台
+  useEffect(() => {
+    if (instances.length === 0) return;
+    if (instParam && instances.some((i) => i.id === instParam)) {
+      setSelectedId(instParam);
+      return;
+    }
+    if (!selectedId || !instances.some((i) => i.id === selectedId)) {
+      setSelectedId(instances[0].id);
+    }
+  }, [instances, instParam, selectedId]);
+
+  // ── 实例编辑 ──
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<MeshInstance>(emptyInstance());
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [collectorPassInput, setCollectorPassInput] = useState<Record<string, string>>({});
+
+  // 采集器服务发现：探测子网路由节点的候选 SSH 地址（真实 LAN IP 优先）
+  const [svcState, setSvcState] = useState<{ loading: boolean; routers?: SvcRouter[]; error?: string }>({ loading: false });
+  const runSvcDiscover = () => {
+    if (!draft.id) return;
+    setSvcState({ loading: true });
+    apiGetJson<{ routers: SvcRouter[] }>(`/api/ops/mesh/instances/${draft.id}/collector-discover`)
+      .then((res) => setSvcState({ loading: false, routers: res.routers ?? [] }))
+      .catch((e) => setSvcState({ loading: false, error: apiErr(e) }));
+  };
+  const addDiscoveredCollector = (name: string, host: string) => {
+    setDraft((d) => {
+      if ((d.trafficCollectors ?? []).some((x) => x.host === host)) return d;
+      return { ...d, trafficCollectors: [...(d.trafficCollectors ?? []), { id: `tc-${Date.now()}`, name, host, port: 22, user: "root", passSet: false }] };
+    });
+    toast.info(`已添加采集器 ${host}，请补 SSH 用户名与密码`);
+  };
+
+  // 采集器自动扫描：SSH 登录节点探测 tailscale 安装方式并自动填入采集命令
+  const updCollectorRef = React.useRef<((idx: number, patch: Partial<TrafficCollector>) => void) | null>(null);
+  const probeMut = useMutation({
+    mutationFn: (p: { cid: string; idx: number; host: string; port: number; user: string }) =>
+      apiPostJson<{ mode: string; command: string; version?: string; raw?: string }>(`/api/ops/mesh/instances/${draft.id}/collector-probe`, {
+        collectorId: p.cid, host: p.host, port: p.port, user: p.user, password: collectorPassInput[p.cid] ?? "",
+      }),
+    onSuccess: (res, p) => {
+      if (res.command) {
+        updCollectorRef.current?.(p.idx, { command: res.command });
+        toast.success(`探测成功（${res.mode}）：已自动填入采集命令${res.version ? ` · ${res.version}` : ""}`);
+      } else {
+        toast.error("未探测到 tailscale（原生与容器均未找到），请手动填写采集命令");
+      }
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const openCreate = () => {
+    setDraft(emptyInstance());
+    setApiKeyInput("");
+    setCollectorPassInput({});
+    setEditorOpen(true);
+  };
+  // 左侧菜单「添加实例」经 /cluster/mesh?new=1 打开编辑器
+  React.useEffect(() => {
+    if (!isAdmin) return;
+    if (searchParams.get("new") === "1") {
+      openCreate();
+      const sp = new URLSearchParams(searchParams);
+      sp.delete("new");
+      setSearchParams(sp, { replace: true });
+    }
+  }, [isAdmin, searchParams, setSearchParams]);
+  const openEdit = (inst: MeshInstance, extraCollector?: { name: string; host: string; port: number }) => {
+    const draftCollected = { ...inst, trafficCollectors: (inst.trafficCollectors ?? []).map((c) => ({ ...c })) };
+    if (extraCollector) {
+      draftCollected.trafficCollectors = [
+        ...(draftCollected.trafficCollectors ?? []),
+        { id: `tc-${Date.now()}`, name: extraCollector.name, host: extraCollector.host, port: extraCollector.port || 22, user: "root", passSet: false },
+      ];
+    }
+    setDraft(draftCollected);
+    setApiKeyInput("");
+    setCollectorPassInput({});
+    setEditorOpen(true);
+  };
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      apiPutJson("/api/ops/mesh/instances", {
+        id: draft.id || undefined,
+        name: draft.name,
+        region: draft.region,
+        apiUrl: draft.apiUrl,
+        apiKey: apiKeyInput || undefined,
+        metricsUrl: draft.metricsUrl,
+        headplaneUrl: draft.headplaneUrl,
+        enabled: draft.enabled,
+        notes: draft.notes,
+        trafficCollectors: (draft.trafficCollectors ?? []).map((c) => ({
+          id: c.id || undefined,
+          name: c.name,
+          host: c.host,
+          port: c.port,
+          user: c.user,
+          password: collectorPassInput[c.id] ?? undefined,
+          command: c.command ?? "",
+        })),
+      }),
+    onSuccess: () => {
+      toast.success("实例已保存");
+      setEditorOpen(false);
+      void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
+      void qc.invalidateQueries({ queryKey: ["mesh-summary"] });
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  if (!instancesQ.isLoading && instances.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader isAdmin={isAdmin} onAdd={isAdmin ? openCreate : undefined} />
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+          <Network className="mx-auto h-10 w-10 text-slate-300" />
+          <p className="mt-3 text-sm text-slate-600">还没有异地组网控制面实例。</p>
+          <p className="mt-1 text-xs text-slate-400">
+            添加 Headscale 实例后，可在此管理节点、子网路由（router）、预授权密钥与站点间流量监控。
+          </p>
+          {isAdmin ? (
+            <Button type="button" size="sm" className="mt-4" onClick={openCreate}>
+              <Plus className="mr-1 h-4 w-4" /> 添加 Headscale 实例
+            </Button>
+          ) : null}
+        </div>
+        {editorOpen ? renderInstanceEditor() : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader isAdmin={isAdmin} />
+
+      {instancesQ.isLoading ? (
+        <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> 加载实例…</p>
+      ) : null}
+
+      {/* 实例切换与「添加实例」已移至左侧菜单（?inst= / ?new=1） */}
+      {selected ? (
+        <InstanceDetail
+          key={selected.id}
+          inst={selected}
+          isAdmin={isAdmin}
+          initialTab={initialTab}
+          onEdit={() => openEdit(selected)}
+          onAddCollector={(s) => openEdit(selected, s)}
+        />
+      ) : null}
+
+      {editorOpen ? renderInstanceEditor() : null}
+    </div>
+  );
+
+  // ── 实例新增/编辑弹窗 ──
+  // 注意：必须是「渲染函数」而不是内联组件——若写成 <InstanceEditor />，每次按键
+  // 触发页面重渲染时函数身份变化会导致整个弹窗子树卸载重建（闪屏/丢焦点）。
+  function renderInstanceEditor() {
+    const updCollector = (idx: number, patch: Partial<TrafficCollector>) =>
+      setDraft((d) => {
+        const cs = [...(d.trafficCollectors ?? [])];
+        cs[idx] = { ...cs[idx], ...patch };
+        return { ...d, trafficCollectors: cs };
+      });
+    updCollectorRef.current = updCollector;
+    return (
+      <Dialog open onOpenChange={(o) => { if (!o) setEditorOpen(false); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl!">
+          <DialogHeader>
+            <DialogTitle>{draft.id ? "编辑实例" : "添加 Headscale 实例"}</DialogTitle>
+            <DialogDescription>
+              API 地址建议填写控制面可达地址；若公网域名前有 WAF/网关，可改用直连地址。API Key 仅加密存储、不回显。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>名称 *</Label>
+              <Input value={draft.name} placeholder="公网控制面" onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>区域 / 备注（站点）</Label>
+              <Input value={draft.region ?? ""} placeholder="腾讯云公网 / 威海 ops / 北京 ukx-nas" onChange={(e) => setDraft((d) => ({ ...d, region: e.target.value }))} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>API 地址 *（Headscale server_url）</Label>
+              <Input value={draft.apiUrl} placeholder="https://headscale.example.com" onChange={(e) => setDraft((d) => ({ ...d, apiUrl: e.target.value }))} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>API Key {draft.apiKeySet ? "（已保存，留空保留；填 - 清除）" : ""}</Label>
+              <Input type="password" value={apiKeyInput} autoComplete="off" placeholder="hskey-api-…" onChange={(e) => setApiKeyInput(e.target.value)} />
+            </div>
+            <details className="sm:col-span-2 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
+              <summary className="cursor-pointer text-xs text-slate-500">高级选项：Metrics / Headplane 地址（留空自动发现，一般无需填写）</summary>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Metrics 地址（默认自动推导 http://&lt;host&gt;:9090/metrics）</Label>
+                  <Input className="h-8 text-xs" value={draft.metricsUrl ?? ""} placeholder="留空自动发现" onChange={(e) => setDraft((d) => ({ ...d, metricsUrl: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Headplane 地址（可选，用于跳转）</Label>
+                  <Input className="h-8 text-xs" value={draft.headplaneUrl ?? ""} placeholder="留空（未部署则无需填写）" onChange={(e) => setDraft((d) => ({ ...d, headplaneUrl: e.target.value }))} />
+                </div>
+              </div>
+            </details>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <Switch checked={draft.enabled} onCheckedChange={(v) => setDraft((d) => ({ ...d, enabled: v }))} />
+              <Label className="text-xs">启用该实例（停用后不在 Dashboard 汇总中探测）</Label>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>备注</Label>
+              <Textarea rows={2} value={draft.notes ?? ""} onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))} />
+            </div>
+          </div>
+
+          {/* 流量采集器 */}
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-xs font-medium text-slate-500">流量采集器（SSH 到子网路由节点采集流量）</Label>
+              <div className="flex items-center gap-2">
+                {draft.id ? (
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={svcState.loading} onClick={runSvcDiscover}
+                    title="自动列出子网路由节点并探测 SSH 端口可达性">
+                    {svcState.loading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />} 服务发现
+                  </Button>
+                ) : null}
+                <Button type="button" variant="secondary" size="sm" className="h-7 text-xs"
+                  onClick={() => setDraft((d) => ({
+                    ...d,
+                    trafficCollectors: [...(d.trafficCollectors ?? []), { id: `tc-${Date.now()}`, name: "", host: "", port: 22, user: "root", passSet: false }],
+                  }))}>
+                  <Plus className="mr-1 h-3 w-3" /> 添加采集器
+                </Button>
+              </div>
+            </div>
+            {svcState.error ? <p className="text-[11px] text-red-600">服务发现失败：{svcState.error}</p> : null}
+            {(svcState.routers ?? []).length > 0 ? (
+              <div className="space-y-1.5 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/40 p-2.5">
+                <p className="text-[11px] font-semibold text-indigo-900">发现子网路由节点（✓ = 本平台到该地址 22 端口探测可达；点击地址添加采集器，再补用户名密码）</p>
+                {svcState.routers!.map((r) => (
+                  <div key={r.routerId} className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] text-slate-700">{r.name}{r.online ? "" : "（离线）"}</span>
+                    {r.candidates.map((c) => (
+                      <button key={c.host} type="button" onClick={() => addDiscoveredCollector(r.name, c.host)}
+                        title={c.reachable ? "22 端口可达" : "22 端口不可达"}
+                        className={cn("rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors",
+                          c.reachable
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : "border-slate-200 bg-white text-slate-400 hover:bg-slate-100")}>
+                        {c.host} · {c.source === "lan" ? "内网" : "TS"} {c.reachable ? "✓" : "✗"}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {(draft.trafficCollectors ?? []).map((c, idx) => (
+              <div key={c.id} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                <div className="grid gap-3 sm:grid-cols-12">
+                  <div className="space-y-1 sm:col-span-3">
+                    <Label className="text-xs">名称</Label>
+                    <Input className="h-8 text-xs" value={c.name} placeholder="ops 路由节点" onChange={(e) => updCollector(idx, { name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-3">
+                    <Label className="text-xs">主机</Label>
+                    <Input className="h-8 text-xs" value={c.host} placeholder="100.64.0.1" onChange={(e) => updCollector(idx, { host: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">端口</Label>
+                    <Input className="h-8 text-xs" type="number" value={c.port || 22} onChange={(e) => updCollector(idx, { port: parseInt(e.target.value, 10) || 22 })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">用户</Label>
+                    <Input className="h-8 text-xs" value={c.user} placeholder="root" onChange={(e) => updCollector(idx, { user: e.target.value })} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">密码 {c.passSet ? "（已存）" : ""}</Label>
+                    <Input className="h-8 text-xs" type="password" autoComplete="off" value={collectorPassInput[c.id] ?? ""} onChange={(e) => setCollectorPassInput((m) => ({ ...m, [c.id]: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs">采集命令（自动扫描可免填）</Label>
+                    {draft.id ? (
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]"
+                        disabled={probeMut.isPending && probeMut.variables?.cid === c.id}
+                        onClick={() => probeMut.mutate({ cid: c.id, idx, host: c.host, port: c.port || 22, user: c.user })}>
+                        {(probeMut.isPending && probeMut.variables?.cid === c.id) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />}
+                        自动扫描
+                      </Button>
+                    ) : null}
+                  </div>
+                  <Input className="h-8 font-mono text-[11px]" value={c.command ?? ""} placeholder="留空，点「自动扫描」探测 tailscale 安装方式（原生/容器/群晖）" onChange={(e) => updCollector(idx, { command: e.target.value })} />
+                  {probeMut.data && probeMut.variables?.cid === c.id ? (
+                    <p className="text-[10px] text-slate-400">探测结果：{probeMut.data.raw}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center justify-end">
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-red-600"
+                    onClick={() => setDraft((d) => ({ ...d, trafficCollectors: (d.trafficCollectors ?? []).filter((x) => x.id !== c.id) }))}>
+                    <Trash2 className="mr-1 h-3 w-3" /> 移除
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-500">
+              采集器在路由节点上执行采集命令解析 <code className="rounded bg-slate-100 px-1">tailscale status --json</code>；
+              普通执行失败时自动用已存 SSH 密码走 <code className="rounded bg-slate-100 px-1">sudo -S</code> 重试（群晖等容器化部署适用）。
+              首次连接自动记录 host key 指纹，之后指纹变化将拒绝连接。
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditorOpen(false)}>取消</Button>
+            <Button type="button" disabled={saveMut.isPending || !draft.name.trim() || !draft.apiUrl.trim()} onClick={() => saveMut.mutate()}>
+              {saveMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+};
+
+// ──────────────────────────── 子组件 ────────────────────────────
+
+const PageHeader: React.FC<{ isAdmin: boolean; onAdd?: () => void }> = ({ isAdmin, onAdd }) => (
+  <div className="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+        <Network className="h-6 w-6 text-indigo-600" /> 异地组网
+      </h1>
+      <p className="mt-1 text-sm text-slate-600">
+        Headscale 控制面管理：节点、子网路由（router）、预授权密钥与站点间流量监控；登录用户经 Authentik（OIDC）注册。
+      </p>
+    </div>
+    {isAdmin && onAdd ? (
+      <Button type="button" size="sm" onClick={onAdd}><Plus className="mr-1 h-4 w-4" /> 添加实例</Button>
+    ) : null}
+  </div>
+);
+
+const InstanceDetail: React.FC<{
+  inst: MeshInstance;
+  isAdmin: boolean;
+  initialTab?: string;
+  onEdit: () => void;
+  onAddCollector: (s: CollectorSuggestion) => void;
+}> = ({ inst, isAdmin, initialTab, onEdit, onAddCollector }) => {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  // tab 由路由（initialTab）唯一驱动：同路由组切换时组件实例被复用，state 初值不会重算
+  const tab = initialTab && ["topology", "nodes", "keys", "traffic", "service"].includes(initialTab) ? initialTab : "topology";
+  const discoverQ = useQuery({
+    queryKey: ["mesh-discover", inst.id],
+    queryFn: () => apiGetJson<Discover>(`/api/ops/mesh/instances/${inst.id}/discover`),
+    // discover 是重接口（控制面多路并发+密钥汇总），15s 内切 tab/聚焦不重复拉取；
+    // 需要新数据时用「自动发现」按钮显式 refetch
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  const ov = discoverQ.data;
+  const nodes = ov?.nodes ?? [];
+
+  const testMut = useMutation({
+    mutationFn: () =>
+      apiPostJson<{ message?: string; nodesCount?: number; usersCount?: number }>(
+        `/api/ops/mesh/instances/${inst.id}/test`,
+        {},
+      ),
+    onSuccess: (res) =>
+      toast.success(`${res.message ?? "连接成功"}（节点 ${res.nodesCount ?? "?"} · 用户 ${res.usersCount ?? "?"}）`),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const [confirmDel, setConfirmDel] = useState(false);
+  const delMut = useMutation({
+    mutationFn: () => apiDeleteJson(`/api/ops/mesh/instances/${inst.id}`),
+    onSuccess: () => {
+      toast.success("实例已删除");
+      void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
+      void qc.invalidateQueries({ queryKey: ["mesh-summary"] });
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  // 自动发现：刷新控制面聚合 + 静默触发一次流量采集（有采集器时）
+  const collectSilentMut = useMutation({
+    mutationFn: () => apiPostJson(`/api/ops/mesh/instances/${inst.id}/traffic`, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["mesh-traffic", inst.id] });
+      void qc.invalidateQueries({ queryKey: ["mesh-discover", inst.id] });
+      void qc.invalidateQueries({ queryKey: ["mesh-instances"] });
+    },
+    onError: () => { /* 静默：采集失败不阻塞发现 */ },
+  });
+  const runDiscover = () => {
+    discoverQ.refetch();
+    if (isAdmin && (inst.trafficCollectors ?? []).length > 0) collectSilentMut.mutate();
+  };
+
+  // 自动采集（实时链路）：页面停留期间定时 SSH 采集，喂饱链路图与流量表
+  const [autoSec, setAutoSec] = useState(60);
+  const autoPendingRef = React.useRef(false);
+  autoPendingRef.current = collectSilentMut.isPending;
+  React.useEffect(() => {
+    if (!isAdmin || !autoSec || (inst.trafficCollectors ?? []).length === 0) return;
+    const id = window.setInterval(() => {
+      if (!autoPendingRef.current) collectSilentMut.mutate();
+    }, autoSec * 1000);
+    return () => window.clearInterval(id);
+  }, [isAdmin, autoSec, inst.id, inst.trafficCollectors]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* 顶栏 */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-base font-semibold text-slate-900">{inst.name}</h2>
+            {ov ? (
+              ov.health ? (
+                <span className="flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700"><CheckCircle2 className="h-3 w-3" /> 健康{ov.version ? ` · v${ov.version}` : ""}</span>
+              ) : (
+                <span className="flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700"><AlertTriangle className="h-3 w-3" /> 不可达</span>
+              )
+            ) : null}
+          </div>
+          <p className="truncate font-mono text-[11px] text-slate-400">{inst.apiUrl}{inst.headplaneUrl ? " · headplane 可用" : ""}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+            onClick={() => testMut.mutate()} disabled={testMut.isPending}>
+            {testMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-1 h-3 w-3" />} 测试连接
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => discoverQ.refetch()}
+            disabled={discoverQ.isFetching || collectSilentMut.isPending}>
+            <RefreshCw className={cn("mr-1 h-3 w-3", (discoverQ.isFetching || collectSilentMut.isPending) && "animate-spin")} /> 自动发现
+          </Button>
+          {inst.headplaneUrl ? (
+            <a href={inst.headplaneUrl} target="_blank" rel="noreferrer">
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs"><ExternalLink className="mr-1 h-3 w-3" /> Headplane</Button>
+            </a>
+          ) : null}
+          {isAdmin ? (
+            <>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onEdit}><Pencil className="mr-1 h-3 w-3" /> 编辑</Button>
+              {confirmDel ? (
+                <Button type="button" size="sm" variant="destructive" className="h-7 text-xs" disabled={delMut.isPending}
+                  onClick={() => { delMut.mutate(); setConfirmDel(false); }}>
+                  确认删除？
+                </Button>
+              ) : (
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-red-600" onClick={() => setConfirmDel(true)}>
+                  <Trash2 className="mr-1 h-3 w-3" />
+                </Button>
+              )}
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <Tabs value={tab} onValueChange={(v) => navigate(v === "topology" ? "/cluster/mesh" : `/cluster/mesh/${v}`)}>
+          {/* 导航已由左侧菜单承担（/cluster/mesh/*），页面内不再重复 tab 条 */}
+
+          {/* 拓扑总览 */}
+          <TabsContent value="topology" className="mt-3">
+            <TopologyPanel discover={ov} isAdmin={isAdmin} onAddCollector={onAddCollector} autoSec={autoSec} onAutoSecChange={setAutoSec} />
+          </TabsContent>
+
+          {/* 节点与路由 */}
+          <TabsContent value="nodes" className="mt-3">
+            {ov?.nodesError ? <p className="mb-2 text-xs text-red-600">节点加载失败：{ov.nodesError}</p> : null}
+            <NodesTable nodes={nodes} instanceId={inst.id} isAdmin={isAdmin} />
+          </TabsContent>
+
+          {/* 密钥 */}
+          <TabsContent value="keys" className="mt-3">
+            <PreAuthKeysPanel instanceId={inst.id} isAdmin={isAdmin} keys={ov?.preAuthKeys ?? []} users={ov?.users ?? []} onChanged={() => discoverQ.refetch()} />
+          </TabsContent>
+
+          {/* 流量监控 */}
+          <TabsContent value="traffic" className="mt-3">
+            <TrafficPanel instance={inst} isAdmin={isAdmin} discover={ov} autoSec={autoSec} onAutoSecChange={setAutoSec} />
+          </TabsContent>
+
+          {/* 服务信息 */}
+          <TabsContent value="service" className="mt-3">
+            <ServicePanel discover={ov} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+// ── 拓扑总览（自动发现）──
+
+const TopologyPanel: React.FC<{ discover?: Discover; isAdmin: boolean; onAddCollector: (s: CollectorSuggestion) => void; autoSec: number; onAutoSecChange: (v: number) => void }> = ({ discover, isAdmin, onAddCollector, autoSec, onAutoSecChange }) => {
+  if (!discover) {
+    return <p className="flex items-center gap-2 py-6 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> 发现中…</p>;
+  }
+  if (!discover.health) {
+    return <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-3 text-xs text-red-700">控制面不可达：{discover.error}</p>;
+  }
+  const sites = discover.sites ?? [];
+  const links = discover.links ?? [];
+  const suggestions = discover.collectorSuggestions ?? [];
+  const nodes = discover.nodes ?? [];
+  const online = nodes.filter((n) => n.online).length;
+  const withOs = nodes.filter((n) => n.os).length;
+
+  return (
+    <div className="space-y-4">
+      {/* 汇总条 */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <StatCard icon={<Server className="h-4 w-4" />} label="节点" value={String(nodes.length)} />
+        <StatCard icon={<Wifi className="h-4 w-4" />} label="在线" value={String(online)} tone="emerald" />
+        <StatCard icon={<Router className="h-4 w-4" />} label="站点/子网" value={String(sites.length)} tone="sky" />
+        <StatCard icon={<Activity className="h-4 w-4" />} label="链路" value={String(links.length)} tone="violet" />
+        <StatCard icon={<Globe className="h-4 w-4" />} label="已识别设备类型" value={`${withOs}/${nodes.length}`} />
+      </div>
+
+      {/* 站点 */}
+      <div>
+        <p className="mb-2 text-xs font-semibold text-slate-800">站点（子网路由器）</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {sites.map((s) => (
+            <div key={s.subnet + s.routerId} className={cn("rounded-xl border p-3", s.approved ? "border-sky-200 bg-sky-50/50" : "border-amber-200 bg-amber-50/50")}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs font-semibold text-slate-900">{s.subnet}</span>
+                {s.online ? <span className="flex items-center gap-1 text-[10px] text-emerald-700"><Wifi className="h-3 w-3" /> 在线</span> : <span className="text-[10px] text-slate-400">离线</span>}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-600">
+                路由器 <span className="font-medium">{s.router}</span>
+                {s.tailscaleIp ? <span className="ml-1 font-mono text-[10px] text-slate-400">{s.tailscaleIp}</span> : null}
+              </p>
+              {(s.realIps ?? []).length > 0 ? (
+                <p className="mt-0.5 font-mono text-[10px] text-slate-500" title="路由器节点私网地址（采集器侧直连地址）">真实 {s.realIps!.join(", ")}</p>
+              ) : null}
+              <p className="mt-0.5 text-[10px]">
+                {s.approved ? (
+                  <span className="text-sky-700">已审批 · 加入 {fmtTime(s.lastSeen)}</span>
+                ) : (
+                  <span className="text-amber-700">已宣告待审批</span>
+                )}
+              </p>
+            </div>
+          ))}
+          {sites.length === 0 ? <p className="text-xs text-slate-400">未发现子网路由器（无站点宣告）。</p> : null}
+        </div>
+      </div>
+
+      {/* 链路 */}
+      <div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-slate-800">站点间链路（来自路由节点侧采集）</p>
+          <label className="flex items-center gap-1.5 text-[10px] text-slate-500">
+            <input type="checkbox" checked={autoSec > 0} onChange={(e) => onAutoSecChange(e.target.checked ? 60 : 0)} />
+            实时模式（每 60s 自动采集）
+          </label>
+        </div>
+        {/* 移动端链路卡片（<768px） */}
+        <div className="grid gap-2 md:hidden">
+          {links.length === 0 ? (
+            <p className="rounded-xl border border-slate-100 px-3 py-4 text-center text-xs text-slate-400">
+              暂无链路数据：请先在「流量监控」配置采集器并采集一次（拓扑按钮「自动发现」会同时触发采集）。
+            </p>
+          ) : (
+            links.map((l, i) => (
+              <div key={`${l.from}-${l.to}-${i}`} className="min-w-0 rounded-xl border border-slate-100 bg-white p-3">
+                <p className="break-all text-xs font-semibold text-slate-800">{l.from} → {l.to}</p>
+                <dl className="mt-2 grid min-w-0 gap-1.5 text-xs">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">路径</dt>
+                    <dd className="min-w-0 break-all text-right">
+                      {l.via === "direct" ? (
+                        <span className="font-mono text-[10px] text-emerald-700" title={l.curAddr}>直连 {l.curAddr}</span>
+                      ) : (
+                        <span className="text-[10px] text-amber-700">DERP {l.relay}</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">收 ↓ / 发 ↑</dt>
+                    <dd className="min-w-0 font-mono text-slate-600">{fmtBytes(l.rxBytes)} / {fmtBytes(l.txBytes)}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">采样时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-400">{fmtTime(l.seenAt)}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 桌面端链路表格（≥768px） */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
+          <table className="w-full min-w-[560px] text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-3 py-1.5 font-medium">起点</th>
+                <th className="px-3 py-1.5 font-medium">对端</th>
+                <th className="px-3 py-1.5 font-medium">路径</th>
+                <th className="px-3 py-1.5 font-medium">收 ↓ / 发 ↑</th>
+                <th className="px-3 py-1.5 font-medium">采样时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {links.map((l, i) => (
+                <tr key={`${l.from}-${l.to}-${i}`} className="border-t border-slate-50">
+                  <td className="px-3 py-1.5 font-medium text-slate-800">{l.from}</td>
+                  <td className="px-3 py-1.5 font-medium text-slate-800">{l.to}</td>
+                  <td className="px-3 py-1.5">
+                    {l.via === "direct" ? (
+                      <span className="font-mono text-[10px] text-emerald-700" title={l.curAddr}>直连 {l.curAddr}</span>
+                    ) : (
+                      <span className="text-[10px] text-amber-700">DERP {l.relay}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-slate-600">{fmtBytes(l.rxBytes)} / {fmtBytes(l.txBytes)}</td>
+                  <td className="px-3 py-1.5 text-slate-400">{fmtTime(l.seenAt)}</td>
+                </tr>
+              ))}
+              {links.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                  暂无链路数据：请先在「流量监控」配置采集器并采集一次（拓扑按钮「自动发现」会同时触发采集）。
+                </td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 采集器建议 */}
+      {isAdmin && suggestions.length > 0 ? (
+        <div className="rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3">
+          <p className="text-xs font-semibold text-indigo-900">建议添加的流量采集器</p>
+          <p className="mt-0.5 text-[11px] text-indigo-700/80">以下子网路由器尚未配置采集节点侧流量的 SSH 采集器：</p>
+          <ul className="mt-2 space-y-1.5">
+            {suggestions.map((s) => (
+              <li key={s.routerId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/80 px-2.5 py-1.5">
+                <span className="text-xs text-slate-800">{s.name} <span className="ml-1 font-mono text-[10px] text-slate-400">{s.host}:{s.port}</span></span>
+                <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => onAddCollector(s)}>
+                  <Plus className="mr-1 h-3 w-3" /> 添加到实例
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[10px] text-indigo-700/70">
+            添加后补一个 SSH 密码即可；若节点是容器化 tailscale（如群晖），在「采集命令」里填 docker exec 形式的命令。
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+// ── 节点表（含路由管理）──
+
+const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmin: boolean }> = ({ nodes, instanceId, isAdmin }) => {
+  const qc = useQueryClient();
+  const [routeEditId, setRouteEditId] = useState("");
+  const [routesDraft, setRoutesDraft] = useState("");
+  const [confirmNodeId, setConfirmNodeId] = useState("");
+  const [cleanOpen, setCleanOpen] = useState(false);
+  const [cleanDays, setCleanDays] = useState(30);
+  const [cleanMode, setCleanMode] = useState<"offline" | "duplicates">("offline");
+  const [scanResult, setScanResult] = useState<{ nodes: { id: string; name: string; user?: string; lastSeen?: string }[] } | null>(null);
+
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["mesh-discover", instanceId] });
+    void qc.invalidateQueries({ queryKey: ["mesh-overview", instanceId] });
+    void qc.invalidateQueries({ queryKey: ["mesh-summary"] });
+  };
+
+  const routesMut = useMutation({
+    mutationFn: (p: { nid: string; routes: string[] }) => apiPostJson(`/api/ops/mesh/instances/${instanceId}/nodes/${p.nid}/routes`, { routes: p.routes }),
+    onSuccess: () => { toast.success("路由已更新"); setRouteEditId(""); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const nodeMut = useMutation({
+    mutationFn: (p: { nid: string; action: "expire" | "delete" }) =>
+      p.action === "expire"
+        ? apiPostJson(`/api/ops/mesh/instances/${instanceId}/nodes/${p.nid}/expire`, {})
+        : apiDeleteJson(`/api/ops/mesh/instances/${instanceId}/nodes/${p.nid}`),
+    onSuccess: (_r, p) => { toast.success(p.action === "expire" ? "节点密钥已过期" : "节点已删除"); setConfirmNodeId(""); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const scanMut = useMutation({
+    mutationFn: () => apiPostJson<{ nodes: { id: string; name: string; user?: string; lastSeen?: string }[] }>(`/api/ops/mesh/instances/${instanceId}/nodes/cleanup`, { mode: cleanMode, days: cleanDays, dryRun: true }),
+    onSuccess: (res) => setScanResult({ nodes: res.nodes ?? [] }),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const cleanMut = useMutation({
+    mutationFn: () => apiPostJson<{ deleted: string[]; failed: { name: string; error: string }[] }>(`/api/ops/mesh/instances/${instanceId}/nodes/cleanup`, { mode: cleanMode, days: cleanDays, dryRun: false }),
+    onSuccess: (res) => {
+      const failCount = res.failed?.length ?? 0;
+      if (failCount > 0) toast.error(`${res.deleted.length} 台已删除，${failCount} 台失败：${res.failed.map((f) => f.name).join("、")}`);
+      else toast.success(`已删除 ${res.deleted.length} 台陈旧节点`);
+      setCleanOpen(false);
+      setScanResult(null);
+      invalidate();
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  return (
+    <div>
+      {isAdmin ? (
+        <div className="mb-2 flex justify-end">
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setScanResult(null); setCleanOpen(true); }}>
+            <Trash2 className="mr-1 h-3 w-3" /> 清理陈旧节点
+          </Button>
+        </div>
+      ) : null}
+      <div>
+      {/* 移动端节点卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {nodes.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无节点</div>
+        ) : (
+          nodes.map((n) => (
+            <article key={n.id} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-all text-sm font-bold text-slate-900">
+                    {n.givenName || n.name}
+                    {(n.tags ?? []).length > 0 ? (
+                      <span className="ml-1 rounded bg-indigo-50 px-1 text-[10px] font-normal text-indigo-700">{(n.tags ?? []).join(",")}</span>
+                    ) : null}
+                  </h3>
+                  <p className="mt-0.5 break-all font-mono text-[11px] text-slate-600">
+                    {(n.ipAddresses ?? []).filter((ip) => ip.startsWith("100.")).join(", ") || "—"}
+                  </p>
+                </div>
+                {n.online ? (
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-emerald-700"><Wifi className="h-3 w-3" /> 在线</span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-slate-400"><WifiOff className="h-3 w-3" /> 离线</span>
+                )}
+              </div>
+
+              <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                <div className="min-w-0">
+                  <dt className="mb-1 text-slate-400">子网路由（router）</dt>
+                  <dd className="flex min-w-0 flex-wrap gap-1">
+                    {(n.approvedRoutes ?? []).length > 0 ? (
+                      (n.approvedRoutes ?? []).map((r) => (
+                        <span key={r} className="flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-800"><RouteIcon className="h-3 w-3" /> {r}</span>
+                      ))
+                    ) : (n.availableRoutes ?? []).length > 0 ? (
+                      <span className="text-[10px] text-amber-700">已宣告待审批：{(n.availableRoutes ?? []).join(", ")}</span>
+                    ) : (
+                      <span className="text-[10px] text-slate-300">—</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">用户</dt>
+                    <dd className="break-all text-slate-600">{n.user?.name ?? "—"}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">类型</dt>
+                    <dd className="break-all">
+                      {n.os ? (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700">{n.os}</span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300" title="由流量采集器自动补齐">待采集</span>
+                      )}
+                      {n.registerMethod === "REGISTER_METHOD_OIDC" ? (
+                        <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] text-violet-700">OIDC</span>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">最近在线</dt>
+                    <dd className="break-all text-slate-500">{fmtTime(n.lastSeen)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-slate-400">加入时间</dt>
+                    <dd className="break-all text-slate-500">{fmtTime(n.createdAt)}</dd>
+                  </div>
+                </div>
+              </dl>
+
+              {isAdmin ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                  {(n.availableRoutes ?? []).length > 0 ? (
+                    <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                      onClick={() => { setRouteEditId(n.id); setRoutesDraft((n.availableRoutes ?? []).join("\n")); }}>
+                      <Router className="mr-1 h-3 w-3" /> 路由
+                    </Button>
+                  ) : null}
+                  {confirmNodeId === n.id ? (
+                    <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                      onClick={() => nodeMut.mutate({ nid: n.id, action: "delete" })}>
+                      确认删除？
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-slate-500"
+                      onClick={() => setConfirmNodeId(n.id)}>删除</Button>
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端节点表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
+      <table className="w-full min-w-[960px] text-left text-xs">
+        <thead className="bg-slate-50 text-slate-500">
+          <tr>
+            <th className="px-3 py-2 font-medium">节点</th>
+            <th className="px-3 py-2 font-medium">Tailscale IP</th>
+            <th className="px-3 py-2 font-medium" title="节点私网地址：采集器侧 tailscale 直连地址（仅在线直连节点有）">真实地址</th>
+            <th className="px-3 py-2 font-medium">类型</th>
+            <th className="px-3 py-2 font-medium">用户</th>
+            <th className="px-3 py-2 font-medium">状态</th>
+            <th className="px-3 py-2 font-medium">子网路由（router）</th>
+            <th className="px-3 py-2 font-medium">最近在线</th>
+            <th className="px-3 py-2 font-medium">加入时间</th>
+            {isAdmin ? <th className="px-3 py-2 font-medium">操作</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {nodes.map((n) => (
+            <tr key={n.id} className="border-t border-slate-50 align-top hover:bg-slate-50/60">
+              <td className="px-3 py-2 font-medium text-slate-900">
+                {n.givenName || n.name}
+                {(n.tags ?? []).length > 0 ? (
+                  <span className="ml-1 rounded bg-indigo-50 px-1 text-[10px] text-indigo-700">{(n.tags ?? []).join(",")}</span>
+                ) : null}
+              </td>
+              <td className="px-3 py-2 font-mono text-[11px] text-slate-600">{(n.ipAddresses ?? []).filter((ip) => ip.startsWith("100.")).join(", ") || "—"}</td>
+              <td className="px-3 py-2 font-mono text-[11px] text-slate-600" title={(n.realIps ?? []).length > 0 ? (n.endpoints ?? []).join("\n") : "节点离线或不在采集器直连范围内，暂无真实地址"}>
+                {(n.realIps ?? []).length > 0 ? (n.realIps ?? []).join(", ") : <span className="text-slate-300">—</span>}
+              </td>
+              <td className="px-3 py-2">
+                {n.os ? (
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700">{n.os}</span>
+                ) : (
+                  <span className="text-[10px] text-slate-300" title="由流量采集器自动补齐">待采集</span>
+                )}
+                {n.registerMethod === "REGISTER_METHOD_OIDC" ? (
+                  <span className="ml-1 rounded bg-violet-50 px-1 text-[10px] text-violet-700">OIDC</span>
+                ) : null}
+              </td>
+              <td className="px-3 py-2 text-slate-600">{n.user?.name ?? "—"}</td>
+              <td className="px-3 py-2">
+                {n.online ? (
+                  <span className="flex items-center gap-1 text-emerald-700"><Wifi className="h-3 w-3" /> 在线</span>
+                ) : (
+                  <span className="flex items-center gap-1 text-slate-400"><WifiOff className="h-3 w-3" /> 离线</span>
+                )}
+              </td>
+              <td className="px-3 py-2">
+                {(n.approvedRoutes ?? []).length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {(n.approvedRoutes ?? []).map((r) => (
+                      <span key={r} className="flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-800"><RouteIcon className="h-3 w-3" /> {r}</span>
+                    ))}
+                  </div>
+                ) : (n.availableRoutes ?? []).length > 0 ? (
+                  <span className="text-[10px] text-amber-700">已宣告待审批：{(n.availableRoutes ?? []).join(", ")}</span>
+                ) : (
+                  <span className="text-[10px] text-slate-300">—</span>
+                )}
+              </td>
+              <td className="px-3 py-2 text-slate-500">{fmtTime(n.lastSeen)}</td>
+              <td className="px-3 py-2 text-slate-500" title={n.createdAt ?? ""}>{fmtTime(n.createdAt)}</td>
+              {isAdmin ? (
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {(n.availableRoutes ?? []).length > 0 ? (
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        onClick={() => { setRouteEditId(n.id); setRoutesDraft((n.availableRoutes ?? []).join("\n")); }}>
+                        <Router className="mr-1 h-3 w-3" /> 路由
+                      </Button>
+                    ) : null}
+                    {confirmNodeId === n.id ? (
+                      <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                        onClick={() => nodeMut.mutate({ nid: n.id, action: "delete" })}>
+                        确认删除？
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-slate-500"
+                        onClick={() => setConfirmNodeId(n.id)}>删除</Button>
+                    )}
+                  </div>
+                </td>
+              ) : null}
+            </tr>
+          ))}
+          {nodes.length === 0 ? (
+            <tr><td colSpan={10} className="px-3 py-8 text-center text-slate-400">暂无节点</td></tr>
+          ) : null}
+        </tbody>
+      </table>
+      </div>
+
+      <Dialog open={routeEditId !== ""} onOpenChange={(o) => { if (!o) setRouteEditId(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Router className="h-4 w-4 text-sky-600" /> 管理子网路由</DialogTitle>
+            <DialogDescription>
+              每行一条 CIDR。提交为<strong>覆盖式审批</strong>：不在列表中的已宣告路由将被取消；清空则全部取消审批。
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea rows={4} className="font-mono text-xs" value={routesDraft} onChange={(e) => setRoutesDraft(e.target.value)} placeholder={"192.168.21.0/24"} />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRouteEditId("")}>取消</Button>
+            <Button type="button" disabled={routesMut.isPending}
+              onClick={() => routesMut.mutate({
+                nid: routeEditId,
+                routes: routesDraft.split("\n").map((s) => s.trim()).filter(Boolean),
+              })}>
+              {routesMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} 提交审批
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cleanOpen} onOpenChange={(o) => { if (!o) setCleanOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>清理陈旧节点</DialogTitle>
+            <DialogDescription>
+              headscale 不会自动清理离线节点。删除连续 N 天未上线的离线节点；设备下次连接会自动重新注册，安全可逆。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <select className="h-7 rounded border border-slate-200 bg-white px-2 text-[11px]" value={cleanMode}
+              onChange={(e) => setCleanMode(e.target.value as "offline" | "duplicates")}>
+              <option value="offline">离线超期节点</option>
+              <option value="duplicates">重复注册节点（保留最新）</option>
+            </select>
+            {cleanMode === "offline" ? (
+              <>
+                <Label className="shrink-0 text-xs">离线超过</Label>
+                <Input className="h-8 w-20 text-xs" type="number" min={1} value={cleanDays} onChange={(e) => setCleanDays(parseInt(e.target.value, 10) || 30)} />
+                <span className="text-xs text-slate-500">天</span>
+              </>
+            ) : null}
+            <Button type="button" size="sm" variant="outline" className="ml-auto h-7 text-xs" disabled={scanMut.isPending} onClick={() => scanMut.mutate()}>
+              {scanMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />} 扫描
+            </Button>
+          </div>
+          {scanResult ? (
+            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/60 p-2">
+              {scanResult.nodes.length === 0 ? (
+                <p className="py-3 text-center text-xs text-slate-400">没有满足条件的节点 🎉</p>
+              ) : scanResult.nodes.map((n) => (
+                <div key={n.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="truncate text-slate-700">{n.name}<span className="ml-1 text-slate-400">{n.user}</span></span>
+                  <span className="shrink-0 font-mono text-[10px] text-slate-400">{fmtTime(n.lastSeen)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400">先设置天数并「扫描」预览，确认后再执行删除。</p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCleanOpen(false)}>取消</Button>
+            <Button type="button" variant="destructive"
+              disabled={!scanResult || scanResult.nodes.length === 0 || cleanMut.isPending}
+              onClick={() => cleanMut.mutate()}>
+              {cleanMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+              确认删除 {scanResult?.nodes.length ?? 0} 台
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      </div>
+    </div>
+  );
+};
+
+// ── 预授权密钥 ──
+
+const PreAuthKeysPanel: React.FC<{
+  instanceId: string; isAdmin: boolean; keys: HSPreAuthKey[]; users: HSUser[]; onChanged: () => void;
+}> = ({ instanceId, isAdmin, keys, users, onChanged }) => {
+  const [user, setUser] = useState(users[0]?.name ?? "");
+  const [reusable, setReusable] = useState(false);
+  const [ephemeral, setEphemeral] = useState(false);
+  const [hours, setHours] = useState(1);
+  const [created, setCreated] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [confirmDelId, setConfirmDelId] = useState("");
+  const [keyCleanOpen, setKeyCleanOpen] = useState(false);
+  const [keyScan, setKeyScan] = useState<{ keys: KeyCleanupItem[] } | null>(null);
+  const [revealed, setRevealed] = useState<{ id: string; key: string } | null>(null);
+
+  useEffect(() => {
+    if (!user && users.length > 0) setUser(users[0].name);
+  }, [users, user]);
+
+  const createMut = useMutation({
+    mutationFn: () => apiPostJson<{ key?: HSPreAuthKey }>(`/api/ops/mesh/instances/${instanceId}/keys`, { user, reusable, ephemeral, hours }),
+    onSuccess: (res) => {
+      if (res.key?.key) setCreated(res.key.key);
+      toast.success("密钥已创建（仅此次展示完整值）");
+      onChanged();
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  // v0.28：过期/删除都只收列表返回的数字 id，与 key 是否打码无关
+  const expireMut = useMutation({
+    mutationFn: (id: string) => apiPostJson(`/api/ops/mesh/instances/${instanceId}/keys/expire`, { id }),
+    onSuccess: () => { toast.success("密钥已过期"); onChanged(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => apiPostJson(`/api/ops/mesh/instances/${instanceId}/keys/delete`, { id }),
+    onSuccess: () => { toast.success("密钥已删除"); onChanged(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  // 兜底去重（后端已按 id 去重，此处防御渲染层重复）
+  const uniqueKeys = React.useMemo(() => {
+    const seen = new Set<string>();
+    return keys.filter((k) => (seen.has(k.id) ? false : (seen.add(k.id), true)));
+  }, [keys]);
+  const noteMut = useMutation({
+    mutationFn: (p: { id: string; note: string }) => apiPostJson(`/api/ops/mesh/instances/${instanceId}/keys/note`, p),
+    onSuccess: () => toast.success("备注已保存"),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const revealMut = useMutation({
+    mutationFn: (id: string) => apiPostJson<{ key: string }>(`/api/ops/mesh/instances/${instanceId}/keys/reveal`, { id }),
+    onSuccess: (res, id) => setRevealed({ id, key: res.key ?? "" }),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const keyScanMut = useMutation({
+    mutationFn: () => apiPostJson<{ keys: KeyCleanupItem[] }>(`/api/ops/mesh/instances/${instanceId}/keys/cleanup`, { dryRun: true }),
+    onSuccess: (res) => setKeyScan({ keys: res.keys ?? [] }),
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const keyCleanMut = useMutation({
+    mutationFn: () => apiPostJson<{ deleted: string[]; failed: { key: string; error: string }[] }>(`/api/ops/mesh/instances/${instanceId}/keys/cleanup`, { dryRun: false }),
+    onSuccess: (res) => {
+      const failCount = res.failed?.length ?? 0;
+      if (failCount > 0) toast.error(`${res.deleted.length} 个已删除，${failCount} 个失败`);
+      else toast.success(`已删除 ${res.deleted.length} 个无用密钥`);
+      setKeyCleanOpen(false);
+      setKeyScan(null);
+      onChanged();
+    },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  return (
+    <div className="space-y-4">
+      {isAdmin ? (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+          <div className="space-y-1">
+            <Label className="text-xs">用户</Label>
+            <select className="h-8 rounded border border-slate-200 bg-white px-2 text-xs" value={user} onChange={(e) => setUser(e.target.value)}>
+              {users.map((u) => <option key={u.id} value={u.name}>{u.name}{u.provider === "oidc" ? "（OIDC）" : ""}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">有效期（小时）</Label>
+            <Input className="h-8 w-24 text-xs" type="number" min={1} value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} />
+          </div>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-slate-700">
+            <input type="checkbox" checked={reusable} onChange={(e) => setReusable(e.target.checked)} /> 可复用
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-slate-700">
+            <input type="checkbox" checked={ephemeral} onChange={(e) => setEphemeral(e.target.checked)} /> 临时节点
+          </label>
+          <Button type="button" size="sm" className="h-8" disabled={createMut.isPending || !user} onClick={() => { setCopied(false); createMut.mutate(); }}>
+            {createMut.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />} 创建密钥
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="ml-auto h-8 text-xs"
+            onClick={() => { setKeyScan(null); setKeyCleanOpen(true); }}>
+            <Trash2 className="mr-1 h-3.5 w-3.5" /> 清理密钥
+          </Button>
+        </div>
+      ) : null}
+
+      {created ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+          <code className="min-w-0 flex-1 truncate font-mono text-xs text-emerald-900">{created}</code>
+          <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+            onClick={() => { void navigator.clipboard.writeText(created).catch(() => {}); setCopied(true); }}>
+            {copied ? "已复制" : "复制"}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCreated("")}>关闭</Button>
+        </div>
+      ) : null}
+
+      <Dialog open={keyCleanOpen} onOpenChange={(o) => { if (!o) setKeyCleanOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>清理无用密钥</DialogTitle>
+            <DialogDescription>
+              删除「已过期」和「已消耗（一次性且已使用）」的密钥——这两类已无法再注册节点。
+              在有效期内、或可复用未使用的密钥一律保留。
+            </DialogDescription>
+          </DialogHeader>
+          <Button type="button" size="sm" variant="outline" className="w-full text-xs" disabled={keyScanMut.isPending} onClick={() => keyScanMut.mutate()}>
+            {keyScanMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />} 扫描
+          </Button>
+          {keyScan ? (
+            <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/60 p-2">
+              {keyScan.keys.length === 0 ? (
+                <p className="py-3 text-center text-xs text-slate-400">没有满足条件的密钥 🎉</p>
+              ) : keyScan.keys.map((k) => (
+                <div key={k.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="min-w-0 truncate">
+                    <span className="font-mono text-slate-700">{k.key}</span>
+                    <span className="ml-1 text-slate-400">{k.user}</span>
+                  </span>
+                  <span className="shrink-0 text-[10px] text-amber-700">{k.reason}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400">先「扫描」预览，确认后再执行删除。</p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setKeyCleanOpen(false)}>取消</Button>
+            <Button type="button" variant="destructive"
+              disabled={!keyScan || keyScan.keys.length === 0 || keyCleanMut.isPending}
+              onClick={() => keyCleanMut.mutate()}>
+              {keyCleanMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+              确认删除 {keyScan?.keys.length ?? 0} 个
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 移动端密钥卡片（<768px） */}
+      <div className="grid gap-3 md:hidden">
+        {uniqueKeys.length === 0 ? (
+          <div className="rounded-xl border border-slate-100 px-4 py-8 text-center text-xs text-slate-400">暂无预授权密钥</div>
+        ) : (
+          uniqueKeys.map((k) => {
+            const expired = k.expiration ? Date.parse(k.expiration) < Date.now() : false;
+            return (
+              <article key={k.id} className="min-w-0 rounded-xl border border-slate-100 bg-white p-4">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <code className="min-w-0 break-all font-mono text-xs text-slate-700">{k.key}</code>
+                  <span className={cn("shrink-0 rounded px-1 text-[10px]", k.reusable ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>
+                    {k.reusable ? "可复用" : "一次性"}
+                  </span>
+                </div>
+
+                <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                  <dd className="flex min-w-0 flex-wrap items-center gap-1">
+                    {k.ephemeral ? <span className="rounded bg-violet-50 px-1 text-[10px] text-violet-700">临时</span> : null}
+                    {k.used ? (
+                      <span className={cn("rounded px-1 text-[10px]",
+                        k.reusable ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}
+                        title={k.reusable ? "已被至少一台节点兑换，仍可继续注册新节点" : "已被节点兑换且不可复用，已无法再使用"}>
+                        {k.reusable ? "使用中" : "已消耗"}
+                      </span>
+                    ) : (
+                      <span className="rounded bg-slate-50 px-1 text-[10px] text-slate-400">未使用</span>
+                    )}
+                  </dd>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">用户</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-600">{k.user?.name ?? "—"}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">过期时间</dt>
+                    <dd className={cn("min-w-0 break-all text-right", expired ? "text-red-500" : "text-slate-600")}>
+                      {k.expiration ? new Date(k.expiration).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">使用时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-500" title={k.usedAt ? "平台检测到密钥被使用的时间（近似）" : "尚未检测到使用"}>
+                      {k.usedAt ? new Date(k.usedAt).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <dt className="shrink-0 text-slate-400">创建时间</dt>
+                    <dd className="min-w-0 break-all text-right text-slate-500">{fmtTime(k.createdAt)}</dd>
+                  </div>
+                  {isAdmin ? (
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-slate-400">备注</dt>
+                      <dd>
+                        <input
+                          className="w-full min-w-0 rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] focus:border-indigo-300 focus:outline-none"
+                          defaultValue={k.note ?? ""} placeholder="点击填写备注"
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (k.note ?? "")) noteMut.mutate({ id: k.id, note: v });
+                          }}
+                        />
+                      </dd>
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">备注</dt>
+                      <dd className="min-w-0 break-all text-right text-slate-500">{k.note || "—"}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                {isAdmin ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                    {k.hasFull ? (
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        title="查看完整密钥（可复用于注册节点）"
+                        onClick={() => revealMut.mutate(k.id)}>
+                        {revealMut.isPending && revealMut.variables === k.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                        查看
+                      </Button>
+                    ) : null}
+                    {!expired ? (
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        disabled={expireMut.isPending && expireMut.variables === k.id}
+                        onClick={() => expireMut.mutate(k.id)}>
+                        使过期
+                      </Button>
+                    ) : null}
+                    {confirmDelId === k.id ? (
+                      <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                        disabled={deleteMut.isPending}
+                        onClick={() => { deleteMut.mutate(k.id); setConfirmDelId(""); }}>
+                        确认删除？
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
+                        title="从 headscale 移除该密钥记录；已用它注册的节点不受影响"
+                        onClick={() => setConfirmDelId(k.id)}>
+                        删除
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      {/* 桌面端密钥表格（≥768px） */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-100 md:block">
+        <table className="w-full min-w-[900px] text-left text-xs">
+          <thead className="bg-slate-50 text-slate-500">
+            <tr>
+              <th className="px-3 py-2 font-medium">Key（打码）</th>
+              <th className="px-3 py-2 font-medium">用户</th>
+              <th className="px-3 py-2 font-medium">属性</th>
+              <th className="px-3 py-2 font-medium" title="平台检测到密钥被使用的时间（近似，粒度为采集间隔）">使用时间</th>
+              <th className="px-3 py-2 font-medium">过期时间</th>
+              <th className="px-3 py-2 font-medium">创建时间</th>
+              <th className="px-3 py-2 font-medium">备注</th>
+              {isAdmin ? <th className="px-3 py-2 font-medium">操作</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {uniqueKeys.map((k) => {
+              const expired = k.expiration ? Date.parse(k.expiration) < Date.now() : false;
+              return (
+                <tr key={k.id} className="border-t border-slate-50">
+                  <td className="px-3 py-2 font-mono text-[11px] text-slate-700">{k.key}</td>
+                  <td className="px-3 py-2 text-slate-600">{k.user?.name ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <span className="mr-1 rounded bg-slate-100 px-1 text-[10px] text-slate-600">{k.reusable ? "可复用" : "一次性"}</span>
+                    {k.ephemeral ? <span className="mr-1 rounded bg-violet-50 px-1 text-[10px] text-violet-700">临时</span> : null}
+                    {k.used ? (
+                      <span className={cn("mr-1 rounded px-1 text-[10px]",
+                        k.reusable ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}
+                        title={k.reusable ? "已被至少一台节点兑换，仍可继续注册新节点" : "已被节点兑换且不可复用，已无法再使用"}>
+                        {k.reusable ? "使用中" : "已消耗"}
+                      </span>
+                    ) : (
+                      <span className="mr-1 rounded bg-slate-50 px-1 text-[10px] text-slate-400">未使用</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-slate-500" title={k.usedAt ? "平台检测到密钥被使用的时间（近似）" : "尚未检测到使用"}>
+                    {k.usedAt ? new Date(k.usedAt).toLocaleString() : "—"}
+                  </td>
+                  <td className={cn("px-3 py-2", expired ? "text-red-500" : "text-slate-600")}>
+                    {k.expiration ? new Date(k.expiration).toLocaleString() : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-slate-500">{fmtTime(k.createdAt)}</td>
+                  <td className="px-3 py-2">
+                    {isAdmin ? (
+                      <input
+                        className="w-full min-w-[110px] rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] focus:border-indigo-300 focus:outline-none"
+                        defaultValue={k.note ?? ""} placeholder="点击填写备注"
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== (k.note ?? "")) noteMut.mutate({ id: k.id, note: v });
+                        }}
+                      />
+                    ) : (
+                      <span className="text-slate-500">{k.note || "—"}</span>
+                    )}
+                  </td>
+                  {isAdmin ? (
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {k.hasFull ? (
+                          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                            title="查看完整密钥（可复用于注册节点）"
+                            onClick={() => revealMut.mutate(k.id)}>
+                            {revealMut.isPending && revealMut.variables === k.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                            查看
+                          </Button>
+                        ) : null}
+                        {!expired ? (
+                          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                            disabled={expireMut.isPending && expireMut.variables === k.id}
+                            onClick={() => expireMut.mutate(k.id)}>
+                            使过期
+                          </Button>
+                        ) : null}
+                        {confirmDelId === k.id ? (
+                          <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-[11px]"
+                            disabled={deleteMut.isPending}
+                            onClick={() => { deleteMut.mutate(k.id); setConfirmDelId(""); }}>
+                            确认删除？
+                          </Button>
+                        ) : (
+                          <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-red-600"
+                            title="从 headscale 移除该密钥记录；已用它注册的节点不受影响"
+                            onClick={() => setConfirmDelId(k.id)}>
+                            删除
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+            {uniqueKeys.length === 0 ? (
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-slate-400">暂无预授权密钥</td></tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={!!revealed} onOpenChange={(o) => { if (!o) setRevealed(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>完整密钥（妥善保管）</DialogTitle>
+            <DialogDescription>
+              可复用密钥可在多台设备上重复使用；请勿泄露给不可信人员。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 p-2.5">
+            <code className="min-w-0 flex-1 break-all font-mono text-xs text-emerald-900">{revealed?.key}</code>
+            <Button type="button" size="sm" variant="outline"
+              onClick={() => { void navigator.clipboard.writeText(revealed?.key ?? "").catch(() => {}); toast.success("已复制"); }}>
+              复制
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRevealed(null)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// ── 流量监控 ──
+
+const MESH_CHART_COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6"];
+
+// ── 流量仪表盘小组件（纯 SVG/CSS/JS 实现，贴合站点卡片风格）──
+
+// Catmull-Rom 转三次贝塞尔：平滑曲线
+const meshSmoothPath = (pts: { x: number; y: number }[]): string => {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+};
+
+const MeshSparkline: React.FC<{ values: number[]; stroke: string; gradId: string }> = ({ values, stroke, gradId }) => {
+  const W = 100;
+  const H = 30;
+  if (values.length < 2) {
+    return <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-1.5 h-[30px] w-full"><line x1={0} x2={W} y1={H - 4} y2={H - 4} stroke="#e2e8f0" strokeWidth={1} vectorEffect="non-scaling-stroke" /></svg>;
+  }
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => ({ x: (i / (values.length - 1)) * W, y: H - 3 - ((v - min) / span) * (H - 6) }));
+  const line = meshSmoothPath(pts);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-1.5 h-[30px] w-full">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity={0.26} />
+          <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L${W},${H} L0,${H} Z`} fill={`url(#${gradId})`} />
+      <path d={line} fill="none" stroke={stroke} strokeWidth={1.6} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+    </svg>
+  );
+};
+
+// requestAnimationFrame 数字滚动
+const MeshCountUp: React.FC<{ value: number; format: (n: number) => string }> = ({ value, format }) => {
+  const [v, setV] = React.useState(value);
+  const cur = React.useRef(value);
+  React.useEffect(() => {
+    const from = cur.current;
+    const to = value;
+    const t0 = performance.now();
+    const dur = 550;
+    let raf = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      const val = from + (to - from) * e;
+      cur.current = val;
+      setV(val);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{format(v)}</>;
+};
+
+const MeshKpiTile: React.FC<{
+  label: string; value: number; delta?: number; spark?: number[]; color: string; gradId: string;
+  sub?: string; format?: (n: number) => string;
+}> = ({ label, value, delta, spark, color, gradId, sub, format = (n) => fmtBytes(n) }) => (
+  <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md">
+    <p className="text-[11px] text-slate-500">{label}{sub ? <span className="ml-1 text-slate-300">· {sub}</span> : null}</p>
+    <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-slate-900">
+      <MeshCountUp value={value} format={format} />
+    </p>
+    {typeof delta === "number" && Number.isFinite(delta) ? (
+      <p className={cn("text-[10px] tabular-nums", delta >= 0 ? "text-emerald-600" : "text-slate-400")}>
+        {delta >= 0 ? "▲" : "▼"} {fmtBytes(Math.abs(delta))} <span className="text-slate-300">较上一点</span>
+      </p>
+    ) : (
+      <p className="text-[10px] text-slate-300">—</p>
+    )}
+    {spark && spark.length > 1 ? <MeshSparkline values={spark} stroke={color} gradId={gradId} /> : null}
+  </div>
+);
+
+// 链路拓扑图（Grafana Node Graph 风格）：采集器为枢纽，tailnet 成员为节点；
+// 连线粗细 ∝ 累计流量，绿色流动虚线 = 直连在线，橙色点线 = DERP 中继，灰色 = 离线。
+type MeshGraphNode = {
+  id: string; name: string; kind: "hub" | "peer";
+  x: number; y: number;
+  tsIp?: string; realIp?: string; os?: string; host?: string;
+  online: boolean; rx: number; tx: number;
+};
+type MeshGraphEdge = {
+  from: string; to: string; rx: number; tx: number;
+  via: "direct" | "relay" | "offline"; curAddr?: string; relay?: string;
+};
+const meshPct = (v: number, total: number) => `${((v / total) * 100).toFixed(2)}%`;
+const meshOsEmoji = (os?: string) => {
+  const s = (os || "").toLowerCase();
+  if (s.includes("mac")) return "";
+  if (s.includes("ios") || s.includes("iphone") || s.includes("ipad")) return "📱";
+  if (s.includes("win")) return "🪟";
+  if (s.includes("linux")) return "🐧";
+  if (s.includes("android")) return "🤖";
+  return "🖥";
+};
+
+const meshCompactCount = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n)));
+
+const MeshLinkGraph: React.FC<{
+  hubs: { id: string; name: string; host?: string; x: number; y: number }[];
+  peers: MeshGraphNode[];
+  edges: MeshGraphEdge[];
+  height?: number;
+  cp?: { name: string; version?: string; nodesTotal?: number; apiReq?: number };
+}> = ({ hubs, peers, edges, height = 460, cp }) => {
+  const [hover, setHover] = React.useState<{ kind: "node" | "edge"; id: string } | null>(null);
+  const [cpHover, setCpHover] = React.useState(false);
+  const [tip, setTip] = React.useState<{ x: number; y: number } | null>(null);
+  const boxRef = React.useRef<HTMLDivElement | null>(null);
+  const W = 1000;
+  const H = 460;
+  const nodeById = React.useMemo(() => {
+    const m = new Map<string, MeshGraphNode>();
+    hubs.forEach((h) => m.set(h.id, { ...h, kind: "hub", online: true, rx: 0, tx: 0 }));
+    peers.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [hubs, peers]);
+  const maxBytes = Math.max(1, ...edges.map((e) => e.rx + e.tx));
+  const edgeW = (e: MeshGraphEdge) => 1.3 + 4.5 * (Math.log10(1 + e.rx + e.tx) / Math.log10(1 + maxBytes));
+  const viaColor = (v: MeshGraphEdge["via"]) => (v === "direct" ? "#10b981" : v === "relay" ? "#f59e0b" : "#cbd5e1");
+  const edgeKey = (e: MeshGraphEdge) => `${e.from}|${e.to}`;
+  const hoverId = hover?.id ?? null;
+  const nodeActive = (nid: string) =>
+    !hoverId || hoverId === nid || edges.some((e) => (e.from === nid || e.to === nid) && (hoverId === edgeKey(e) || hoverId === e.from || hoverId === e.to));
+  const edgeActive = (e: MeshGraphEdge) =>
+    !hoverId || hoverId === edgeKey(e) || hoverId === e.from || hoverId === e.to;
+  const labelNodes = [...hubs.map((h) => ({ ...h, kind: "hub" as const, tsIp: undefined as string | undefined, realIp: undefined as string | undefined, os: undefined as string | undefined, online: true, rx: 0, tx: 0 })), ...peers];
+  const hoverNode = hover?.kind === "node" ? nodeById.get(hover.id) : undefined;
+  const hoverEdge = hover?.kind === "edge" ? edges.find((e) => edgeKey(e) === hover.id) : undefined;
+  const topEdges = [...edges].filter((e) => e.rx + e.tx > 0).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)).slice(0, 6).map(edgeKey);
+  const track = (e: React.MouseEvent) => {
+    const r = boxRef.current?.getBoundingClientRect();
+    if (r) setTip({ x: e.clientX - r.left, y: e.clientY - r.top });
+  };
+  return (
+    <div ref={boxRef} className="relative select-none" style={{ height }} onMouseMove={track}>
+      <style>{`@keyframes meshFlow{to{stroke-dashoffset:-32}}`}</style>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full">
+        {/* 连线 */}
+        {edges.map((e) => {
+          const a = nodeById.get(e.from);
+          const b = nodeById.get(e.to);
+          if (!a || !b) return null;
+          const mx = (a.x + b.x) / 2 + (b.y - a.y) * 0.06;
+          const my = (a.y + b.y) / 2 - (b.x - a.x) * 0.06;
+          const d = `M${a.x},${a.y} Q${mx.toFixed(1)},${my.toFixed(1)} ${b.x},${b.y}`;
+          const color = viaColor(e.via);
+          return (
+            <g key={edgeKey(e)} opacity={edgeActive(e) ? 1 : 0.12}>
+              <path d={d} fill="none" stroke={color} strokeWidth={edgeW(e)} strokeLinecap="round"
+                strokeDasharray={e.via === "direct" ? "7 9" : e.via === "relay" ? "2 7" : undefined}
+                style={e.via === "direct" ? { animation: "meshFlow 1.1s linear infinite" } : undefined} />
+              <path d={d} fill="none" stroke="#000" strokeOpacity={0} strokeWidth={16} pointerEvents="stroke"
+                onMouseEnter={() => setHover({ kind: "edge", id: edgeKey(e) })} onMouseLeave={() => setHover(null)} />
+            </g>
+          );
+        })}
+        {/* headscale 控制面链路：注册/心跳（不承载数据面流量） */}
+        {cp ? (
+          <g opacity={0.6}>
+            {hubs.map((h) => (
+              <line key={"cp-" + h.id} x1={W / 2} y1={34 + 18} x2={h.x} y2={h.y - 26} stroke="#8b5cf6" strokeWidth={1.2} strokeDasharray="4 7" vectorEffect="non-scaling-stroke" />
+            ))}
+            {peers.filter((p) => p.online).map((p) => (
+              <line key={"cp-" + p.id} x1={W / 2} y1={34 + 16} x2={p.x} y2={p.y - 17} stroke="#8b5cf6" strokeWidth={0.8} strokeDasharray="3 7" opacity={0.55} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+        ) : null}
+        {/* 节点 */}
+        {peers.map((p) => (
+          <g key={p.id} opacity={nodeActive(p.id) ? 1 : 0.18} style={{ cursor: "pointer" }}
+            onMouseEnter={() => setHover({ kind: "node", id: p.id })} onMouseLeave={() => setHover(null)}>
+            <circle cx={p.x} cy={p.y} r={17} fill="#fff" stroke={p.online ? "#10b981" : "#cbd5e1"} strokeWidth={2}
+              style={{ filter: p.online ? "drop-shadow(0 0 5px rgba(16,185,129,.4))" : undefined }} />
+          </g>
+        ))}
+        {hubs.map((h) => (
+          <g key={h.id} opacity={nodeActive(h.id) ? 1 : 0.18} style={{ cursor: "pointer" }}
+            onMouseEnter={() => setHover({ kind: "node", id: h.id })} onMouseLeave={() => setHover(null)}>
+            <circle cx={h.x} cy={h.y} r={24} fill="#eef2ff" stroke="#6366f1" strokeWidth={2.5}
+              style={{ filter: "drop-shadow(0 0 8px rgba(99,102,241,.45))" }} />
+          </g>
+        ))}
+        {cp ? (
+          <g style={{ cursor: "pointer" }} onMouseEnter={() => setCpHover(true)} onMouseLeave={() => setCpHover(false)}>
+            <circle cx={W / 2} cy={34} r={19} fill="#f5f3ff" stroke="#8b5cf6" strokeWidth={2.5}
+              style={{ filter: "drop-shadow(0 0 8px rgba(139,92,246,.45))" }} />
+          </g>
+        ) : null}
+      </svg>
+      {/* 控制面节点 emoji + 标签 */}
+      {cp ? (
+        <>
+          <span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-[15px] leading-none" style={{ left: meshPct(W / 2, W), top: meshPct(34, H) }}>🌐</span>
+          <div className="pointer-events-none absolute -translate-y-1/2 whitespace-nowrap font-mono text-[10px] text-violet-600"
+            style={{ left: `calc(${meshPct(W / 2, W)} + 27px)`, top: meshPct(34, H) }}>
+            🛰 {cp.name}{cp.version ? ` · v${cp.version}` : ""}{cp.nodesTotal != null ? ` · 节点 ${meshCompactCount(cp.nodesTotal)}` : ""}{cp.apiReq != null ? ` · API ${meshCompactCount(cp.apiReq)}` : ""}
+          </div>
+        </>
+      ) : null}
+      {cp && cpHover ? (
+        <div className="pointer-events-none absolute z-20 w-64 rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] shadow-lg backdrop-blur"
+          style={{ left: `calc(${meshPct(W / 2, W)} - 128px)`, top: meshPct(34 + 30, H) }}>
+          <p className="font-semibold text-slate-800">🌐 headscale 控制面</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">{cp.name}</p>
+          {cp.version ? <p className="mt-1 text-slate-600">版本 <span className="font-mono">v{cp.version}</span></p> : null}
+          {cp.nodesTotal != null ? <p className="text-slate-600">节点总数 <span className="font-mono">{Math.round(cp.nodesTotal)}</span></p> : null}
+          {cp.apiReq != null ? <p className="text-slate-600">API 请求累计 <span className="font-mono">{meshCompactCount(cp.apiReq)}</span></p> : null}
+          <p className="mt-1 text-[10px] text-slate-400">仅承载注册/心跳等控制面流量；headscale 不经过节点间数据面，节点间流量见采集器连线。</p>
+        </div>
+      ) : null}
+      {/* 节点 emoji（HTML 层，避免 SVG 缩放变形） */}
+      {labelNodes.map((n) => (
+        <span key={"e-" + n.id} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 leading-none"
+          style={{ left: meshPct(n.x, W), top: meshPct(n.y, H), fontSize: n.kind === "hub" ? 18 : 13 }}>
+          {n.kind === "hub" ? "🛰️" : meshOsEmoji(n.os)}
+        </span>
+      ))}
+      {/* 连线流量标签：Top6 + 悬停 */}
+      {edges.map((e) => {
+        if (!(topEdges.includes(edgeKey(e)) || hoverId === edgeKey(e))) return null;
+        const a = nodeById.get(e.from);
+        const b = nodeById.get(e.to);
+        if (!a || !b) return null;
+        return (
+          <span key={"t-" + edgeKey(e)} className={cn("pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border px-1.5 font-mono text-[9px] tabular-nums shadow-sm",
+            hoverId === edgeKey(e) ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white/90 text-slate-600")}
+            style={{ left: meshPct((a.x + b.x) / 2, W), top: meshPct((a.y + b.y) / 2 - 14, H) }}>
+            {fmtBytes(e.rx + e.tx)}
+          </span>
+        );
+      })}
+      {/* 节点标签 */}
+      {labelNodes.map((n) => (
+        <div key={"l-" + n.id} className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap text-center"
+          style={{ left: meshPct(n.x, W), top: `calc(${meshPct(n.y, H)} + ${n.kind === "hub" ? 27 : 20}px)` }}>
+          <p className={cn("text-[10px] font-medium leading-tight", !hoverId || hoverId === n.id || nodeActive(n.id) ? "text-slate-700" : "text-slate-400")}>{n.name}</p>
+          {n.kind === "hub" && n.host ? <p className="font-mono text-[9px] leading-tight text-indigo-400">{n.host}</p> : null}
+          {n.kind === "peer" && n.tsIp ? <p className="font-mono text-[9px] leading-tight text-slate-400">{n.tsIp}</p> : null}
+          {n.kind === "peer" && n.realIp ? <p className="font-mono text-[9px] leading-tight text-emerald-600">{n.realIp}</p> : null}
+        </div>
+      ))}
+      {/* 悬停详情 */}
+      {hover && tip ? (
+        <div className="pointer-events-none absolute z-20 max-w-[260px] rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] shadow-lg backdrop-blur"
+          style={{ left: Math.min(tip.x + 14, (boxRef.current?.clientWidth ?? 800) - 270), top: Math.max(4, tip.y - 10) }}>
+          {hoverNode ? (
+            hoverNode.kind === "hub" ? (
+              <>
+                <p className="flex items-center gap-1 font-semibold text-slate-800">🛰️ {hoverNode.name}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-slate-500">{hoverNode.host}</p>
+                <p className="mt-1 text-slate-500">流量采集枢纽（子网路由器视角）</p>
+              </>
+            ) : (
+              <>
+                <p className="flex items-center gap-1 font-semibold text-slate-800">{meshOsEmoji(hoverNode.os)} {hoverNode.name}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-slate-500">{hoverNode.tsIp}{hoverNode.os ? ` · ${hoverNode.os}` : ""}</p>
+                {hoverNode.realIp ? <p className="font-mono text-[10px] text-emerald-600">真实 {hoverNode.realIp}</p> : null}
+                <p className={cn("mt-1", hoverNode.online ? "text-emerald-600" : "text-slate-400")}>{hoverNode.online ? "● 在线" : "○ 离线"}</p>
+                <p className="mt-0.5 font-mono tabular-nums text-slate-600">收 {fmtBytes(hoverNode.rx)} / 发 {fmtBytes(hoverNode.tx)}<span className="text-slate-300">（多视角合计）</span></p>
+              </>
+            )
+          ) : hoverEdge ? (
+            <>
+              <p className="font-semibold text-slate-800">{nodeById.get(hoverEdge.from)?.name} → {nodeById.get(hoverEdge.to)?.name}</p>
+              <p className="mt-0.5">
+                {hoverEdge.via === "direct" ? <span className="text-emerald-600">● 直连{hoverEdge.curAddr ? <span className="ml-1 font-mono text-[10px] text-slate-500">{hoverEdge.curAddr}</span> : null}</span>
+                  : hoverEdge.via === "relay" ? <span className="text-amber-600">● DERP 中继{hoverEdge.relay ? ` ${hoverEdge.relay}` : ""}</span>
+                    : <span className="text-slate-400">● 离线</span>}
+              </p>
+              <p className="mt-0.5 font-mono tabular-nums text-slate-600">收 {fmtBytes(hoverEdge.rx)} / 发 {fmtBytes(hoverEdge.tx)}</p>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discover?: Discover; autoSec: number; onAutoSecChange: (v: number) => void }> = ({ instance, isAdmin, discover, autoSec, onAutoSecChange }) => {
+  const qc = useQueryClient();
+  const cacheQ = useQuery({
+    queryKey: ["mesh-traffic", instance.id],
+    queryFn: () => apiGetJson<{ snapshots: TrafficSnapshot[]; history?: TrafficHistory }>(`/api/ops/mesh/instances/${instance.id}/traffic`),
+  });
+  const collectMut = useMutation({
+    mutationFn: () => apiPostJson<{ snapshots: TrafficSnapshot[] }>(`/api/ops/mesh/instances/${instance.id}/traffic`, {}),
+    onSuccess: () => { toast.success("采集完成"); void qc.invalidateQueries({ queryKey: ["mesh-traffic", instance.id] }); void qc.invalidateQueries({ queryKey: ["mesh-instances"] }); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+
+  const snapshots = cacheQ.data?.snapshots ?? [];
+  const collectors = instance.trafficCollectors ?? [];
+
+  // 链路图数据：最新快照的枢纽→对端连线 + 自动发现的 realIp/os 合并
+  const graph = React.useMemo(() => {
+    const GW = 1000;
+    const GH = 460;
+    const realByIp = new Map<string, { realIp?: string; os?: string }>();
+    (discover?.nodes ?? []).forEach((n) => {
+      const ip = (n.ipAddresses ?? []).find((x) => x.startsWith("100."));
+      if (ip) realByIp.set(ip, { realIp: n.realIps?.[0], os: n.os });
+    });
+    const hubsArr = snapshots.map((s, si) => ({
+      id: "hub-" + s.collectorId,
+      name: s.selfHostName || s.collectorName || s.host,
+      host: s.host,
+      x: snapshots.length === 1 ? GW / 2 : GW * 0.27 + si * GW * 0.46,
+      y: GH / 2,
+    }));
+    const peerMap = new Map<string, MeshGraphNode & { hubIds: string[] }>();
+    const edgeMap = new Map<string, MeshGraphEdge>();
+    snapshots.forEach((s) => {
+      const hubId = "hub-" + s.collectorId;
+      (s.peers ?? []).forEach((p) => {
+        const tsIp = (p.tailscaleIps ?? []).find((x) => x.startsWith("100.")) ?? "";
+        const id = tsIp || "n-" + p.hostName;
+        const meta = realByIp.get(tsIp);
+        const via: MeshGraphEdge["via"] = !p.online ? "offline" : p.curAddr ? "direct" : "relay";
+        const pk = peerMap.get(id);
+        if (pk) {
+          pk.rx += p.rxBytes || 0;
+          pk.tx += p.txBytes || 0;
+          pk.online = pk.online || p.online;
+          if (meta?.realIp && !pk.realIp) pk.realIp = meta.realIp;
+          if (meta?.os && !pk.os) pk.os = meta.os;
+          if (!pk.hubIds.includes(hubId)) pk.hubIds.push(hubId);
+        } else {
+          peerMap.set(id, { id, kind: "peer", name: p.hostName || tsIp, x: 0, y: 0, tsIp, realIp: meta?.realIp, os: p.os || meta?.os, online: p.online, rx: p.rxBytes || 0, tx: p.txBytes || 0, hubIds: [hubId] });
+        }
+        const ek = hubId + "|" + id;
+        const ex = edgeMap.get(ek);
+        if (ex) {
+          ex.rx += p.rxBytes || 0;
+          ex.tx += p.txBytes || 0;
+          if (via === "direct") ex.via = "direct";
+        } else {
+          edgeMap.set(ek, { from: hubId, to: id, rx: p.rxBytes || 0, tx: p.txBytes || 0, via, curAddr: p.curAddr, relay: p.relay });
+        }
+      });
+    });
+    const list = [...peerMap.values()];
+    if (hubsArr.length === 1) {
+      const hub = hubsArr[0];
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      list.forEach((p, i) => {
+        const ang = ((-90 + (360 / Math.max(1, list.length)) * i) * Math.PI) / 180;
+        p.x = hub.x + Math.cos(ang) * 200;
+        p.y = hub.y + Math.sin(ang) * 185;
+      });
+    } else {
+      const shared = list.filter((p) => p.hubIds.length === hubsArr.length).sort((a, b) => a.name.localeCompare(b.name));
+      shared.forEach((p, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const rows = Math.ceil(shared.length / 2);
+        p.x = GW / 2 + (col === 0 ? -52 : 52);
+        p.y = 96 + row * ((GH - 166) / Math.max(1, rows - 1));
+      });
+      const arc = (items: (MeshGraphNode & { hubIds: string[] })[], hub: { x: number; y: number }, a0: number, a1: number) => {
+        items.forEach((p, i) => {
+          const ang = ((a0 + (items.length === 1 ? (a1 - a0) / 2 : ((a1 - a0) * i) / (items.length - 1))) * Math.PI) / 180;
+          p.x = hub.x + Math.cos(ang) * 210;
+          p.y = hub.y + Math.sin(ang) * 168;
+        });
+      };
+      arc(list.filter((p) => p.hubIds.length === 1 && p.hubIds[0] === hubsArr[0].id).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)), hubsArr[0], 115, 245);
+      arc(list.filter((p) => p.hubIds.length === 1 && p.hubIds[0] === hubsArr[1].id).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)), hubsArr[1], -65, 65);
+    }
+    return { hubs: hubsArr, peers: list as MeshGraphNode[], edges: [...edgeMap.values()] };
+  }, [snapshots, discover]);
+
+  // headscale 控制面（/metrics best-effort：9090 未暴露时静默降级）
+  const metricsQ = useQuery({
+    queryKey: ["mesh-metrics-cp", instance.id],
+    queryFn: () => apiGetJson<{ samples: MetricSample[] }>(`/api/ops/mesh/instances/${instance.id}/metrics`),
+    enabled: Boolean(instance.id),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const cpInfo = React.useMemo(() => {
+    const samples = metricsQ.data?.samples ?? [];
+    const first = (name: string) => samples.find((s) => s.name === name)?.value;
+    let host = instance.apiUrl;
+    try {
+      host = new URL(instance.apiUrl).hostname;
+    } catch {
+      /* 保留原始串 */
+    }
+    return {
+      host,
+      version: samples.find((s) => s.name === "headscale_build_info")?.labels?.version,
+      nodesTotal: first("headscale_nodestore_nodes_total") ?? first("headscale_nodes_registered"),
+      apiReq: first("headscale_api_requests_total"),
+    };
+  }, [metricsQ.data, instance.apiUrl]);
+
+  // TopN：最新快照的多视角合并（同一对端在多个采集器视角的计数相加）
+  const topPeers = React.useMemo(() => {
+    const agg = new Map<string, { name: string; rx: number; tx: number }>();
+    snapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
+      const key = p.hostName || p.tailscaleIps?.[0] || "unknown";
+      const cur = agg.get(key) ?? { name: key, rx: 0, tx: 0 };
+      cur.rx += p.rxBytes || 0;
+      cur.tx += p.txBytes || 0;
+      agg.set(key, cur);
+    }));
+    return [...agg.values()].sort((a, b) => b.rx + b.tx - (a.rx + a.tx)).slice(0, 8);
+  }, [snapshots]);
+
+  // KPI：按时间点合并所有采集器的收发合计（含环比上一点的差值）
+  const kpi = React.useMemo(() => {
+    const hist = cacheQ.data?.history ?? {};
+    const rows = new Map<number, { rx: number; tx: number }>();
+    Object.values(hist).forEach((snaps) => snaps.forEach((s) => {
+      const t = Date.parse(s.collectedAt);
+      if (!Number.isFinite(t)) return;
+      const row = rows.get(t) ?? { rx: 0, tx: 0 };
+      (s.peers ?? []).forEach((p) => { row.rx += p.rxBytes || 0; row.tx += p.txBytes || 0; });
+      rows.set(t, row);
+    }));
+    const arr = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    const last = arr[arr.length - 1] ?? { rx: 0, tx: 0 };
+    const prev = arr.length >= 2 ? arr[arr.length - 2] : undefined;
+    const seen = new Set<string>();
+    let online = 0;
+    let peerTotal = 0;
+    snapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
+      const id = p.tailscaleIps?.[0] ?? p.hostName;
+      if (seen.has(id)) return;
+      seen.add(id);
+      peerTotal++;
+      if (p.online) online++;
+    }));
+    const tail = arr.slice(-40);
+    return {
+      rx: last.rx, tx: last.tx,
+      rxDelta: prev ? last.rx - prev.rx : undefined,
+      txDelta: prev ? last.tx - prev.tx : undefined,
+      rxSpark: tail.map((r) => r.rx),
+      txSpark: tail.map((r) => r.tx),
+      online, peerTotal, points: arr.length,
+    };
+  }, [cacheQ.data, snapshots]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          流量数据来自子网路由节点侧（<code className="rounded bg-slate-100 px-1">tailscale status --json</code> 的累计 Rx/Tx 计数，自 tailscaled 启动起）；
+          Headscale 服务端不经过 P2P 数据面，无节点间流量指标。
+        </p>
+        {isAdmin ? (
+          <div className="flex items-center gap-2">
+            <select className="h-7 rounded border border-slate-200 bg-white px-2 text-xs" value={autoSec} onChange={(e) => onAutoSecChange(parseInt(e.target.value, 10) || 0)}>
+              <option value={0}>手动采集</option>
+              <option value={60}>自动 · 每 1 分钟</option>
+              <option value={300}>自动 · 每 5 分钟</option>
+            </select>
+            <Button type="button" size="sm" className="h-7 text-xs" disabled={collectMut.isPending || collectors.length === 0} onClick={() => collectMut.mutate()}>
+              {collectMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />} 立即采集
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/70 to-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+            流量仪表盘
+            {autoSec > 0 && collectors.length > 0 ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-normal text-emerald-700">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                LIVE · 每 {autoSec}s
+              </span>
+            ) : null}
+          </p>
+          <p className="text-[10px] text-slate-400">数据点 {kpi.points} · 更新 {snapshots.length > 0 ? fmtTime(snapshots[0]?.collectedAt) : "—"}</p>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MeshKpiTile label="累计接收" value={kpi.rx} delta={kpi.rxDelta} spark={kpi.rxSpark} color="#0ea5e9" gradId="mesh-sp-rx" />
+          <MeshKpiTile label="累计发送" value={kpi.tx} delta={kpi.txDelta} spark={kpi.txSpark} color="#8b5cf6" gradId="mesh-sp-tx" />
+          <MeshKpiTile label="在线对端" value={kpi.online} color="#10b981" gradId="mesh-sp-on" sub={`共 ${kpi.peerTotal}`} format={(n) => String(Math.round(n))} />
+          <MeshKpiTile label="历史数据点" value={kpi.points} color="#6366f1" gradId="mesh-sp-pt" sub="跨采集器" format={(n) => String(Math.round(n))} />
+        </div>
+
+        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-800">链路拓扑 · 流向图</p>
+            <div className="flex flex-wrap items-center gap-2.5 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#10b981 0 4px,transparent 4px 8px)" }} />直连 · 在线</span>
+              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#f59e0b 0 2px,transparent 2px 6px)" }} />DERP 中继</span>
+              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded bg-slate-300" />离线</span>
+              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#8b5cf6 0 3px,transparent 3px 7px)" }} />headscale 控制面</span>
+              <span>线宽 ∝ 累计流量</span>
+            </div>
+          </div>
+          {graph.peers.length > 0 ? (
+            <MeshLinkGraph hubs={graph.hubs} peers={graph.peers} edges={graph.edges} height={470}
+              cp={{ name: cpInfo.host, version: cpInfo.version, nodesTotal: cpInfo.nodesTotal, apiReq: cpInfo.apiReq }} />
+          ) : (
+            <p className="py-12 text-center text-xs text-slate-400">暂无链路数据：先完成一次采集（或开启自动采集）。</p>
+          )}
+          <p className="mt-1 text-[10px] text-slate-400">🛰️ 枢纽 = 流量采集器（子网路由器视角）；节点 = tailnet 成员；绿色流动线 = 直连在线。悬停节点/连线查看详情；真实 IP 来自自动发现合并。</p>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+          <p className="mb-2.5 flex items-center justify-between text-xs font-semibold text-slate-800">
+            <span>对端累计流量 Top 8</span>
+            <span className="flex items-center gap-2.5 text-[10px] font-normal text-slate-400">
+              <span className="flex items-center gap-1"><span className="h-1.5 w-3 rounded-full bg-sky-400" />接收 ↓</span>
+              <span className="flex items-center gap-1"><span className="h-1.5 w-3 rounded-full bg-violet-400" />发送 ↑</span>
+            </span>
+          </p>
+          <div className="space-y-2.5">
+            {topPeers.map((p) => {
+              const maxTotal = topPeers[0].rx + topPeers[0].tx || 1;
+              return (
+                <div key={p.name}>
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="truncate font-medium text-slate-700">{p.name}</span>
+                    <span className="shrink-0 font-mono tabular-nums text-slate-500">{fmtBytes(p.rx + p.tx)}</span>
+                  </div>
+                  <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full bg-gradient-to-r from-sky-400 to-sky-500 transition-all duration-700 ease-out" style={{ width: `${((p.rx / maxTotal) * 100).toFixed(1)}%` }} />
+                    <div className="h-full bg-gradient-to-r from-violet-400 to-violet-500 transition-all duration-700 ease-out" style={{ width: `${((p.tx / maxTotal) * 100).toFixed(1)}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            {topPeers.length === 0 ? <p className="py-4 text-center text-xs text-slate-400">暂无数据</p> : null}
+          </div>
+        </div>
+      </div>
+
+      {collectors.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-400">
+          未配置流量采集器。编辑实例，添加 SSH 采集器（指向 ops / ukx-nas 等子网路由节点）后即可采集流量。
+        </p>
+      ) : null}
+
+      {snapshots.map((s) => (
+        <div key={s.collectorId} className="rounded-xl border border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-50 px-3 py-2">
+            <p className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+              <Activity className="h-3.5 w-3.5 text-indigo-600" /> {s.collectorName || s.host}
+              {s.selfHostName ? <span className="font-mono text-[10px] font-normal text-slate-400">{s.selfHostName}{s.version ? ` · ${s.version.split("-")[0]}` : ""}</span> : null}
+            </p>
+            <p className="text-[10px] text-slate-400">采集于 {fmtTime(s.collectedAt)}</p>
+          </div>
+          {s.error ? (
+            <p className="px-3 py-3 text-xs text-red-600">{s.error}</p>
+          ) : (
+            <>
+              {/* 移动端对端卡片（<768px） */}
+              <div className="grid gap-2 p-3 md:hidden">
+              {(s.peers ?? []).map((p) => (
+                <div key={p.hostName + (p.tailscaleIps?.[0] ?? "")} className="min-w-0 rounded-lg border border-slate-100 bg-white p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <p className="min-w-0 break-all text-xs font-semibold text-slate-800">
+                      {p.hostName}
+                      <span className="ml-1 font-mono text-[10px] font-normal text-slate-400">{(p.tailscaleIps ?? []).find((ip) => ip.startsWith("100.")) ?? ""}</span>
+                    </p>
+                    {p.online ? <span className="shrink-0 text-xs text-emerald-700">在线</span> : <span className="shrink-0 text-xs text-slate-400">{fmtTime(p.lastSeen)}</span>}
+                  </div>
+                  <dl className="mt-2 grid min-w-0 grid-cols-3 gap-2 text-xs">
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">接收 ↓</dt>
+                      <dd className="break-all font-mono text-slate-700">{fmtBytes(p.rxBytes)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">发送 ↑</dt>
+                      <dd className="break-all font-mono text-slate-700">{fmtBytes(p.txBytes)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-slate-400">连接</dt>
+                      <dd className="break-all">
+                        {p.curAddr ? (
+                          <span className="font-mono text-[10px] text-sky-700" title="直连">直连 {p.curAddr}</span>
+                        ) : p.relay ? (
+                          <span className="text-[10px] text-amber-700">DERP {p.relay}</span>
+                        ) : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+              {(s.peers ?? []).length === 0 ? <p className="py-2 text-center text-xs text-slate-400">暂无对端</p> : null}
+            </div>
+
+            {/* 桌面端对端表格（≥768px） */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[640px] text-left text-xs">
+                <thead className="bg-slate-50/60 text-slate-500">
+                  <tr>
+                    <th className="px-3 py-1.5 font-medium">对端</th>
+                    <th className="px-3 py-1.5 font-medium">状态</th>
+                    <th className="px-3 py-1.5 font-medium">接收 ↓</th>
+                    <th className="px-3 py-1.5 font-medium">发送 ↑</th>
+                    <th className="px-3 py-1.5 font-medium">连接</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(s.peers ?? []).map((p) => (
+                    <tr key={p.hostName + (p.tailscaleIps?.[0] ?? "")} className="border-t border-slate-50">
+                      <td className="px-3 py-1.5">
+                        <span className="font-medium text-slate-800">{p.hostName}</span>
+                        <span className="ml-1 font-mono text-[10px] text-slate-400">{(p.tailscaleIps ?? []).find((ip) => ip.startsWith("100.")) ?? ""}</span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {p.online ? <span className="text-emerald-700">在线</span> : <span className="text-slate-400">{fmtTime(p.lastSeen)}</span>}
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-slate-700">{fmtBytes(p.rxBytes)}</td>
+                      <td className="px-3 py-1.5 font-mono text-slate-700">{fmtBytes(p.txBytes)}</td>
+                      <td className="px-3 py-1.5">
+                        {p.curAddr ? (
+                          <span className="font-mono text-[10px] text-sky-700" title="直连">直连 {p.curAddr}</span>
+                        ) : p.relay ? (
+                          <span className="text-[10px] text-amber-700">DERP {p.relay}</span>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            </>
+          )}
+        </div>
+      ))}
+
+      {collectors.length > 0 && snapshots.length === 0 ? (
+        <p className="text-center text-xs text-slate-400">尚无快照，点击「立即采集」获取流量数据。</p>
+      ) : null}
+    </div>
+  );
+};
+
+// ── 服务信息 ──
+
+const ServicePanel: React.FC<{ discover?: Discover }> = ({ discover: ov }) => {
+  const metricsQ = useQuery({
+    queryKey: ["mesh-metrics", ov?.instance?.id],
+    queryFn: () => apiGetJson<{ metricsUrl?: string; samples: MetricSample[]; stale?: boolean; fetchedAt?: string }>(`/api/ops/mesh/instances/${ov!.instance.id}/metrics`),
+    enabled: Boolean(ov?.instance?.id),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const nodes = ov?.nodes ?? [];
+  const onlineCount = nodes.filter((n) => n.online).length;
+  const routesTotal = nodes.reduce((acc, n) => acc + (n.approvedRoutes?.length ?? 0), 0);
+  const oidcUsers = (ov?.users ?? []).filter((u) => u.provider === "oidc").length;
+  const version = ov?.version ?? (metricsQ.data?.samples ?? []).find((s) => s.name === "headscale_build_info")?.labels?.version;
+  // Grafana Overview 风格指标卡（/metrics；9090 不可达时静默隐藏）
+  const ms = metricsQ.data?.samples ?? [];
+  const firstV = (name: string) => {
+    const s = ms.find((x) => x.name === name);
+    return s ? s.value : undefined;
+  };
+  const cpKpis: { label: string; value?: number }[] = [
+    { label: "控制面节点", value: firstV("headscale_nodestore_nodes_total") ?? firstV("headscale_nodes_registered") },
+    { label: "注册用户", value: firstV("headscale_users_registered") },
+    { label: "API 请求累计", value: firstV("headscale_api_requests_total") },
+    { label: "机器注册次数", value: firstV("headscale_machine_registrations_total") },
+  ];
+  const cpKpisVisible = cpKpis.some((k) => k.value != null);
+
+  return (
+    <div className="space-y-4">
+      {ov && !ov.health ? (
+        <p className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">控制面不可达：{ov.error}</p>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-4">
+        <StatCard icon={<Server className="h-4 w-4" />} label="节点总数" value={String(nodes.length)} />
+        <StatCard icon={<Wifi className="h-4 w-4" />} label="在线" value={String(onlineCount)} tone="emerald" />
+        <StatCard icon={<Router className="h-4 w-4" />} label="已批路由" value={String(routesTotal)} tone="sky" />
+        <StatCard icon={<KeyRound className="h-4 w-4" />} label="OIDC 用户" value={String(oidcUsers)} tone="violet" />
+      </div>
+      {cpKpisVisible ? (
+        <div className="grid gap-3 sm:grid-cols-4">
+          {cpKpis.map((k) => (
+            <StatCard key={k.label} icon={<Activity className="h-4 w-4" />} label={`${k.label}（metrics）`} value={k.value != null ? meshCompactCount(k.value) : "—"} />
+          ))}
+        </div>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-100 p-3">
+          <p className="mb-2 text-xs font-semibold text-slate-800">用户（Authentik OIDC 同步）</p>
+          <ul className="space-y-1 text-xs text-slate-600">
+            {(ov?.users ?? []).map((u) => (
+              <li key={u.id} className="flex items-center justify-between gap-2">
+                <span className="truncate">{u.displayName || u.name}</span>
+                <span className="shrink-0 text-[10px] text-slate-400">{u.provider === "oidc" ? `OIDC · ${u.email || u.name}` : "本地"}</span>
+              </li>
+            ))}
+            {(ov?.users ?? []).length === 0 ? <li className="text-slate-400">暂无</li> : null}
+          </ul>
+        </div>
+        <div className="rounded-xl border border-slate-100 p-3">
+          <p className="mb-2 text-xs font-semibold text-slate-800">控制面指标（Prometheus /metrics）</p>
+          {metricsQ.isError ? (
+            <p className="text-xs text-red-600">metrics 获取失败：{apiErr(metricsQ.error)}</p>
+          ) : (
+            <ul className="max-h-48 space-y-0.5 overflow-y-auto font-mono text-[10px] text-slate-600">
+              <li>version: {version ?? "—"}{metricsQ.data?.stale ? <span className="ml-1 text-amber-600">（后台缓存）</span> : null}</li>
+              {(metricsQ.data?.samples ?? [])
+                .filter((s) => s.name !== "headscale_build_info")
+                .slice(0, 40)
+                .map((s, i) => (
+                  <li key={i} className="flex justify-between gap-2">
+                    <span className="truncate">{s.name}{s.labels && Object.keys(s.labels).length ? `{${Object.entries(s.labels).map(([k, v]) => `${k}=${v}`).join(",")}}` : ""}</span>
+                    <span className="shrink-0 tabular-nums">{s.value}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; tone?: "emerald" | "sky" | "violet" }> = ({ icon, label, value, tone }) => (
+  <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+    <p className={cn("flex items-center gap-1.5 text-[11px] text-slate-500",
+      tone === "emerald" && "text-emerald-700", tone === "sky" && "text-sky-700", tone === "violet" && "text-violet-700")}>
+      {icon} {label}
+    </p>
+    <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">{value}</p>
+  </div>
+);
+
+export default MeshPage;

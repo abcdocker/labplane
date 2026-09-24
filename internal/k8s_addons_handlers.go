@@ -387,7 +387,7 @@ func handleK8sAddonsDashboardMonitoringInstall(c *gin.Context, app *ServerApp) {
 	verifyCtx, verifyCancel := context.WithTimeout(c.Request.Context(), 8*time.Minute)
 	defer verifyCancel()
 	verification := WaitVerifyK8sDashboardMonitoringStack(verifyCtx, app.K8s(), 10*time.Second, 7*time.Minute+30*time.Second)
-	msg := "已安装 metrics-server、Kubernetes Dashboard 2.7（recommended）及登录用 ServiceAccount kube-bt-sync-dashboard-admin；清单走国内友好下载线，容器镜像默认改写为 DaoCloud 加速前缀（与 ingress 一致，未关闭 registry 镜像改写时）。"
+	msg := "已安装 metrics-server、Kubernetes Dashboard 2.7（recommended）及登录用 ServiceAccount labplane-dashboard-admin；清单走国内友好下载线，容器镜像默认改写为 DaoCloud 加速前缀（与 ingress 一致，未关闭 registry 镜像改写时）。"
 	if !verification.OK {
 		msg += " 自检未全部通过，请展开 verification 查看明细与处理建议。"
 	}
@@ -398,7 +398,7 @@ func handleK8sAddonsDashboardMonitoringInstall(c *gin.Context, app *ServerApp) {
 		"manifestMirror":     K8sAddonsManifestMirrorCanonical(mirror),
 		"kubeletInsecureTls": kubeTLS,
 		"verification":       verification,
-		"loginTokenHint":     "kubectl create token kube-bt-sync-dashboard-admin -n kubernetes-dashboard --duration=24h",
+		"loginTokenHint":     "kubectl create token labplane-dashboard-admin -n kubernetes-dashboard --duration=24h",
 		"prometheusHint":     "本平台「集群 → 监控」等页面的 Prometheus / vmselect 地址仍在集群设置中单独配置 prometheusUrlK8s、vmSelectUrlK8s；与 Dashboard Web UI 独立。若需完整 PromQL 指标栈，可另装 kube-prometheus-stack 后填入集群内 Service URL。",
 	})
 }
@@ -422,16 +422,16 @@ func handleK8sAddonsDashboardMonitoringVerify(c *gin.Context, app *ServerApp) {
 }
 
 type k8sAddonsKubePromBody struct {
-	ManifestMirror           string   `json:"manifestMirror"`
-	GrafanaEnabled           bool     `json:"grafanaEnabled"`
-	AlertmanagerEnabled      bool     `json:"alertmanagerEnabled"`
-	AutoSwitchPrometheusURL  *bool    `json:"autoSwitchPrometheusUrl"`
-	ClearVMSelect            *bool    `json:"clearVmSelect"`
-	KubeEtcdEnabled          *bool    `json:"kubeEtcdEnabled"`
-	KubeEtcdEndpoints        []string `json:"kubeEtcdEndpoints"`
-	KubeEtcdServiceEnabled   *bool    `json:"kubeEtcdServiceEnabled"`
-	KubeEtcdPort             *int     `json:"kubeEtcdPort"`
-	KubeEtcdTargetPort       *int     `json:"kubeEtcdTargetPort"`
+	ManifestMirror          string   `json:"manifestMirror"`
+	GrafanaEnabled          bool     `json:"grafanaEnabled"`
+	AlertmanagerEnabled     bool     `json:"alertmanagerEnabled"`
+	AutoSwitchPrometheusURL *bool    `json:"autoSwitchPrometheusUrl"`
+	ClearVMSelect           *bool    `json:"clearVmSelect"`
+	KubeEtcdEnabled         *bool    `json:"kubeEtcdEnabled"`
+	KubeEtcdEndpoints       []string `json:"kubeEtcdEndpoints"`
+	KubeEtcdServiceEnabled  *bool    `json:"kubeEtcdServiceEnabled"`
+	KubeEtcdPort            *int     `json:"kubeEtcdPort"`
+	KubeEtcdTargetPort      *int     `json:"kubeEtcdTargetPort"`
 }
 
 func handleK8sAddonsKubePrometheusStackInstall(c *gin.Context, app *ServerApp) {
@@ -524,24 +524,24 @@ func handleK8sAddonsKubePrometheusStackInstall(c *gin.Context, app *ServerApp) {
 	}
 	SetAuditDetail(c, fmt.Sprintf("一键安装 kube-prometheus-stack verify_ok=%v auto_prometheus_url=%v kube_etcd=%v", verification.OK, patched != "", etcdEnabled && len(etcdEps) > 0))
 	c.JSON(http.StatusOK, gin.H{
-		"ok":                         true,
-		"message":                    msg,
-		"manifestMirror":             K8sAddonsManifestMirrorCanonical(mirror),
-		"prometheusBaseURL":          res.PrometheusBaseURL,
-		"prometheusService":          res.ServiceName,
-		"namespace":                  res.Namespace,
-		"runtimePrometheusPatched":   patched != "",
-		"patchedPrometheusUrlK8s":    patched,
-		"patchError":                 errStringPtr(patchErr),
-		"verification":               verification,
-		"reachableHint":              "若 kube-bt-sync 进程运行在集群外，可能无法解析 .svc 地址；请将 prometheusUrlK8s 改为 NodePort、Ingress 或 kubectl port-forward 可达的 URL。",
-		"kubePromStackValuesYaml":    valuesYAML,
+		"ok":                       true,
+		"message":                  msg,
+		"manifestMirror":           K8sAddonsManifestMirrorCanonical(mirror),
+		"prometheusBaseURL":        res.PrometheusBaseURL,
+		"prometheusService":        res.ServiceName,
+		"namespace":                res.Namespace,
+		"runtimePrometheusPatched": patched != "",
+		"patchedPrometheusUrlK8s":  patched,
+		"patchError":               errStringPtr(patchErr),
+		"verification":             verification,
+		"reachableHint":            "若 labplane 进程运行在集群外，可能无法解析 .svc 地址；请将 prometheusUrlK8s 改为 NodePort、Ingress 或 kubectl port-forward 可达的 URL。",
+		"kubePromStackValuesYaml":  valuesYAML,
 		"kubeEtcd": gin.H{
-			"enabled":         etcdEnabled,
-			"endpoints":       etcdEps,
-			"serviceEnabled":  etcdSvc,
-			"port":            etcdPort,
-			"targetPort":      etcdTgt,
+			"enabled":        etcdEnabled,
+			"endpoints":      etcdEps,
+			"serviceEnabled": etcdSvc,
+			"port":           etcdPort,
+			"targetPort":     etcdTgt,
 		},
 	})
 }

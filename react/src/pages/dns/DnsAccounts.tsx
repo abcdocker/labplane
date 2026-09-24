@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Loader2, Plus, RefreshCw, Trash2, Pencil, CheckCircle, XCircle, CloudDownload } from "lucide-react";
+import { KeyRound, Loader2, Plus, RefreshCw, Trash2, Pencil, CheckCircle, XCircle, CloudDownload, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,24 +23,27 @@ type Account = {
 };
 
 const PROVIDERS = [
-  { value: "cloudflare", label: "Cloudflare", fields: [{ key: "apiToken", label: "API Token", placeholder: "Bearer Token（推荐 Edit zone DNS 权限）" }] },
-  { value: "aliyun", label: "阿里云 DNS", fields: [
-    { key: "accessKeyId", label: "AccessKey ID", placeholder: "" },
-    { key: "accessKeySecret", label: "AccessKey Secret", placeholder: "" },
+  { value: "tencent", label: "腾讯云", fields: [
+    { key: "secretId", label: "SecretId", placeholder: "腾讯云控制台获取的 SecretId" },
+    { key: "secretKey", label: "SecretKey", placeholder: "腾讯云控制台获取的 SecretKey" },
   ]},
-  { value: "tencent", label: "腾讯云 DNS", fields: [
-    { key: "secretId", label: "SecretId", placeholder: "" },
-    { key: "secretKey", label: "SecretKey", placeholder: "" },
-  ]},
-  { value: "dnspod", label: "DNSPod", fields: [
-    { key: "secretId", label: "SecretId", placeholder: "" },
-    { key: "secretKey", label: "SecretKey", placeholder: "" },
+  { value: "dnspod", label: "腾讯云 DNSPod", fields: [
+    { key: "secretId", label: "SecretId", placeholder: "腾讯云控制台获取的 SecretId" },
+    { key: "secretKey", label: "SecretKey", placeholder: "腾讯云控制台获取的 SecretKey" },
   ]},
   { value: "dnspod_token", label: "DNSPod Token", fields: [
     { key: "appId", label: "APPID", placeholder: "如：1252194796" },
     { key: "token", label: "Token", placeholder: "DNSPod 控制台生成的 Token" },
   ]},
-  { value: "manual", label: "手动管理", fields: [] },
+  { value: "qiniu", label: "七牛云", fields: [
+    { key: "accessKey", label: "AccessKey", placeholder: "七牛云控制台获取的 AccessKey" },
+    { key: "secretKey", label: "SecretKey", placeholder: "七牛云控制台获取的 SecretKey" },
+  ]},
+  { value: "upyun", label: "又拍云", fields: [
+    { key: "serviceName", label: "服务名称", placeholder: "如：my-bucket" },
+    { key: "operator", label: "操作员", placeholder: "操作员名称" },
+    { key: "password", label: "密码", placeholder: "操作员密码" },
+  ]},
 ];
 
 const PROVIDER_BADGE: Record<string, string> = {
@@ -49,6 +52,8 @@ const PROVIDER_BADGE: Record<string, string> = {
   tencent: "bg-cyan-50 text-cyan-700",
   dnspod: "bg-teal-50 text-teal-700",
   dnspod_token: "bg-teal-50 text-teal-700",
+  qiniu: "bg-violet-50 text-violet-700",
+  upyun: "bg-pink-50 text-pink-700",
   manual: "bg-slate-50 text-slate-700",
 };
 
@@ -57,7 +62,7 @@ function fmtErr(e: unknown) {
 }
 
 type FormState = { name: string; provider: string; config: Record<string, string>; remark: string };
-const defaultForm = (): FormState => ({ name: "", provider: "cloudflare", config: {}, remark: "" });
+const defaultForm = (): FormState => ({ name: "", provider: "tencent", config: {}, remark: "" });
 
 export default function DnsAccounts() {
   const { status: auth } = useAuth();
@@ -76,20 +81,63 @@ export default function DnsAccounts() {
   const [deleteID, setDeleteID] = useState<number | null>(null);
   const [testResult, setTestResult] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
   const [syncResult, setSyncResult] = useState<{ id: number; msg: string } | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const providerDef = PROVIDERS.find((p) => p.value === form.provider) ?? PROVIDERS[0];
 
   const openCreate = () => {
     setEditID(null);
     setForm(defaultForm());
+    setVerifyResult(null);
     setDialogOpen(true);
   };
   const openEdit = async (acc: Account) => {
     const data = await apiGetJson<{ config: Record<string, string> } & Account>(`/api/dns/accounts/${acc.id}`);
     setEditID(acc.id);
     setForm({ name: acc.name, provider: acc.provider, config: data.config ?? {}, remark: acc.remark });
+    setVerifyResult(null);
     setDialogOpen(true);
   };
+
+  const isTencent = ["tencent", "tencentcloud", "dnspod"].includes(form.provider);
+  const isQiniu = form.provider === "qiniu";
+  const isUpyun = form.provider === "upyun";
+  const needsVerify = isTencent || isQiniu || isUpyun;
+
+  const verifyMut = useMutation({
+    mutationFn: async () => {
+      if (isTencent) {
+        return apiPostJson<{ ok: boolean; message?: string; error?: string }>("/api/tencent-cloud/verify-credentials", {
+          secretId: form.config["secretId"] ?? "",
+          secretKey: form.config["secretKey"] ?? "",
+        });
+      }
+      if (isQiniu) {
+        return apiPostJson<{ ok: boolean; message?: string; error?: string }>("/api/qiniu-cloud/verify-credentials", {
+          accessKey: form.config["accessKey"] ?? "",
+          secretKey: form.config["secretKey"] ?? "",
+        });
+      }
+      if (isUpyun) {
+        return apiPostJson<{ ok: boolean; message?: string; error?: string }>("/api/upyun-cloud/verify-credentials", {
+          serviceName: form.config["serviceName"] ?? "",
+          operator: form.config["operator"] ?? "",
+          password: form.config["password"] ?? "",
+        });
+      }
+      return Promise.resolve({ ok: false, message: undefined, error: "当前服务商不支持凭证检测" });
+    },
+    onSuccess: (r) => {
+      const msg = r.ok ? r.message ?? "凭证验证通过" : r.error ?? "验证失败";
+      setVerifyResult({ ok: r.ok, msg });
+      if (r.ok) toast.success(msg);
+      else toast.error(msg);
+    },
+    onError: (e) => {
+      setVerifyResult({ ok: false, msg: fmtErr(e) });
+      toast.error(fmtErr(e));
+    },
+  });
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -147,7 +195,7 @@ export default function DnsAccounts() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">服务商账号</h2>
-          <p className="text-sm text-slate-500">管理 Cloudflare、阿里云、腾讯云等 DNS 服务商的 API 凭证</p>
+          <p className="text-sm text-slate-500">管理腾讯云 DNSPod、七牛云、又拍云等服务商的 API 凭证</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["dns-accounts"] })}>
@@ -285,6 +333,36 @@ export default function DnsAccounts() {
                 />
               </div>
             ))}
+            {needsVerify && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">
+                    {isTencent ? "腾讯云" : isQiniu ? "七牛云" : isUpyun ? "又拍云" : ""}凭证检测
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={verifyMut.isPending || (
+                      isTencent ? (!form.config["secretId"] || !form.config["secretKey"]) :
+                      isQiniu ? (!form.config["accessKey"] || !form.config["secretKey"]) :
+                      isUpyun ? (!form.config["serviceName"] || !form.config["operator"] || !form.config["password"]) :
+                      false
+                    )}
+                    onClick={() => verifyMut.mutate()}
+                  >
+                    {verifyMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1" />}
+                    检测凭证
+                  </Button>
+                </div>
+                {verifyResult && (
+                  <div className={`flex items-center gap-1.5 text-xs ${verifyResult.ok ? "text-emerald-600" : "text-red-600"}`}>
+                    {verifyResult.ok ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                    {verifyResult.msg}
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">保存前会自动验证凭证，建议先点击检测确认可用</p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>备注</Label>
               <Input placeholder="可选" value={form.remark}

@@ -336,10 +336,10 @@ export const PodListBlock: React.FC<PodListBlockProps> = ({
       {showPageHeader && (
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900">
               {allNamespaces ? "Pod（全集群）" : "Pod"}
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-500">
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
               {allNamespaces
                 ? "所有命名空间中的 Pod，卡片展示；点击可进入详情或查看日志。"
                 : "core/v1 Pod · 调度与生命周期"}

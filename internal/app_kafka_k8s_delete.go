@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// DeleteKafkaK8sResources 删除平台一键部署的 Kafka + ZooKeeper：StatefulSet、Headless Service、以及带 kube-bt-sync 标签的 PVC（含 ZK 与 Kafka 的 data-* 卷）。
+// DeleteKafkaK8sResources 删除平台一键部署的 Kafka + ZooKeeper：StatefulSet、Headless Service、以及带 labplane 标签的 PVC（含 ZK 与 Kafka 的 data-* 卷）。
 func DeleteKafkaK8sResources(ctx context.Context, k8s *kubernetes.Clientset, ns, base string) []string {
 	var warnings []string
 	if k8s == nil {
@@ -48,8 +48,8 @@ func DeleteKafkaK8sResources(ctx context.Context, k8s *kubernetes.Clientset, ns,
 
 	sel := labels.Set{
 		"app.kubernetes.io/name":       base,
-		"kube-bt-sync.io/kafka":        "true",
-		"app.kubernetes.io/managed-by": "kube-bt-sync",
+		"labplane.io/kafka":        "true",
+		"app.kubernetes.io/managed-by": "labplane",
 	}.AsSelector().String()
 	pl, err := k8s.CoreV1().PersistentVolumeClaims(ns).List(ctx, metav1.ListOptions{LabelSelector: sel})
 	if err != nil {

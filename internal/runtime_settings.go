@@ -41,28 +41,28 @@ type RuntimeSettings struct {
 	Version     int  `json:"version"`
 	Initialized bool `json:"initialized"`
 
-	BaotaURL                  string `json:"baotaUrl"`
-	BaotaAPIKey               string `json:"baotaApiKey"`
+	BaotaURL    string `json:"baotaUrl"`
+	BaotaAPIKey string `json:"baotaApiKey"`
 	// BaotaTargets 多宝塔实例（企业版多节点等）；非空时同步与面板以列表为准，顶层 baotaUrl/baotaApiKey 在保存时与「默认」行同步。
-	BaotaTargets []RuntimeBaotaTarget `json:"baotaTargets,omitempty"`
-	BaotaSkipTLSVerify        *bool  `json:"baotaSkipTlsVerify,omitempty"`
-	BaotaDisableHTTPKeepAlive *bool  `json:"baotaDisableHttpKeepalive,omitempty"`
-	BaotaHTTPTimeoutSec       int    `json:"baotaHttpTimeoutSec"`
-	BaotaTCPProbeTimeoutSec   int    `json:"baotaTcpProbeTimeoutSec"`
-	BaotaCheckMinIntervalSec  int    `json:"baotaCheckMinIntervalSec"`
-	DDNSHost                  string `json:"ddnsHost"`
-	DefaultPort               string `json:"defaultPort"`
-	BaotaUpstreamHost         string `json:"baotaUpstreamHost,omitempty"`
-	BaotaUpstreamPort         string `json:"baotaUpstreamPort,omitempty"`
-	BaotaUpstreamScheme       string `json:"baotaUpstreamScheme,omitempty"`
-	BaotaSSLCertName          string `json:"baotaSslCertName"`
-	BaotaSSLPemPath           string `json:"baotaSslPemPath,omitempty"`
-	BaotaSSLKeyPath           string `json:"baotaSslKeyPath,omitempty"`
-	BaotaSSLPemContent        string `json:"baotaSslPemContent,omitempty"`
-	BaotaSSLKeyContent        string `json:"baotaSslKeyContent,omitempty"`
-	ClearBaotaSSLMaterial     bool   `json:"clearBaotaSslMaterial,omitempty"`
-	HasBaotaSSLMaterial       *bool  `json:"hasBaotaSslMaterial,omitempty"`
-	SyncIntervalSec           int    `json:"syncIntervalSec"`
+	BaotaTargets              []RuntimeBaotaTarget `json:"baotaTargets,omitempty"`
+	BaotaSkipTLSVerify        *bool                `json:"baotaSkipTlsVerify,omitempty"`
+	BaotaDisableHTTPKeepAlive *bool                `json:"baotaDisableHttpKeepalive,omitempty"`
+	BaotaHTTPTimeoutSec       int                  `json:"baotaHttpTimeoutSec"`
+	BaotaTCPProbeTimeoutSec   int                  `json:"baotaTcpProbeTimeoutSec"`
+	BaotaCheckMinIntervalSec  int                  `json:"baotaCheckMinIntervalSec"`
+	DDNSHost                  string               `json:"ddnsHost"`
+	DefaultPort               string               `json:"defaultPort"`
+	BaotaUpstreamHost         string               `json:"baotaUpstreamHost,omitempty"`
+	BaotaUpstreamPort         string               `json:"baotaUpstreamPort,omitempty"`
+	BaotaUpstreamScheme       string               `json:"baotaUpstreamScheme,omitempty"`
+	BaotaSSLCertName          string               `json:"baotaSslCertName"`
+	BaotaSSLPemPath           string               `json:"baotaSslPemPath,omitempty"`
+	BaotaSSLKeyPath           string               `json:"baotaSslKeyPath,omitempty"`
+	BaotaSSLPemContent        string               `json:"baotaSslPemContent,omitempty"`
+	BaotaSSLKeyContent        string               `json:"baotaSslKeyContent,omitempty"`
+	ClearBaotaSSLMaterial     bool                 `json:"clearBaotaSslMaterial,omitempty"`
+	HasBaotaSSLMaterial       *bool                `json:"hasBaotaSslMaterial,omitempty"`
+	SyncIntervalSec           int                  `json:"syncIntervalSec"`
 
 	DashboardUser          string `json:"dashboardUser"`
 	DashboardPassword      string `json:"dashboardPassword,omitempty"` // bcrypt，由 POST /api/setup 写入
@@ -107,21 +107,25 @@ type RuntimeSettings struct {
 	HarborPassword string `json:"harborPassword,omitempty"`
 	HarborSkipTLS  bool   `json:"harborSkipTls,omitempty"`
 
-	VCenterURL                  string `json:"vcenterUrl"`
-	VCenterUser                 string `json:"vcenterUser"`
-	VCenterPassword             string `json:"vcenterPassword,omitempty"`
-	VCenterInsecure             bool   `json:"vcenterInsecure"`
-	VCenterWmksScriptURL        string `json:"vcenterWmksScriptUrl"`
-	VCenterWmksCssURL           string `json:"vcenterWmksCssUrl"`
-	VCenterUIBaseURL            string `json:"vcenterUiBaseUrl"`
-	VCenterConsoleHost          string `json:"vcenterConsoleHost"`
-	VCenterUIThumbprint         string `json:"vcenterUiThumbprint"`
-	VCenterVMSshUser            string `json:"vcenterVmSshUser"`
-	VCenterVMSshPrivateKeyPath  string `json:"vcenterVmSshPrivateKeyPath"`
-	VCenterVMSshPassword        string `json:"vcenterVmSshPassword,omitempty"`
-	VCenterVMSshKeyPassphrase   string `json:"vcenterVmSshKeyPassphrase,omitempty"`
-	VCenterVMSshPort            int    `json:"vcenterVmSshPort"`
-	VCenterVMSshInsecureHostKey bool   `json:"vcenterVmSshInsecureHostKey"`
+	VCenterURL           string `json:"vcenterUrl"`
+	VCenterUser          string `json:"vcenterUser"`
+	VCenterPassword      string `json:"vcenterPassword,omitempty"`
+	VCenterInsecure      bool   `json:"vcenterInsecure"`
+	VCenterWmksScriptURL string `json:"vcenterWmksScriptUrl"`
+	VCenterWmksCssURL    string `json:"vcenterWmksCssUrl"`
+	VCenterUIBaseURL     string `json:"vcenterUiBaseUrl"`
+	// VCenterConsoleHost 覆盖 WebMKS 票据 URL 中的 ESXi 地址，不改变路径和一次性票据。
+	VCenterConsoleHost string `json:"vcenterConsoleHost"`
+	// VCenterConsoleProxyURL 已废弃，仅保留旧配置兼容；控制台始终直连 ESXi WebMKS。
+	VCenterConsoleProxyURL         string `json:"vcenterConsoleProxyUrl"`
+	VCenterUIThumbprint            string `json:"vcenterUiThumbprint"`
+	VCenterVMSshUser               string `json:"vcenterVmSshUser"`
+	VCenterVMSshPrivateKeyPath     string `json:"vcenterVmSshPrivateKeyPath"`
+	VCenterVMSshPassword           string `json:"vcenterVmSshPassword,omitempty"`
+	VCenterVMSshKeyPassphrase      string `json:"vcenterVmSshKeyPassphrase,omitempty"`
+	VCenterVMSshPort               int    `json:"vcenterVmSshPort"`
+	VCenterVMSshInsecureHostKey    bool   `json:"vcenterVmSshInsecureHostKey"`
+	VCenterVMSshHostKeyFingerprint string `json:"vcenterVmSshHostKeyFingerprint,omitempty"`
 
 	SSHSettingsBackend string `json:"sshSettingsBackend"`
 	EncryptionKey      string `json:"encryptionKey,omitempty"`
@@ -186,6 +190,9 @@ type RuntimeSettings struct {
 	IdracUser     string `json:"idracUser,omitempty"`
 	IdracPassword string `json:"idracPassword,omitempty"`
 	IdracInsecure bool   `json:"idracInsecure,omitempty"`
+	// iDRAC VNC 控制台（需先在 iDRAC 设置中启用 VNC Server）
+	IdracVncPort     int    `json:"idracVncPort,omitempty"`
+	IdracVncPassword string `json:"idracVncPassword,omitempty"`
 	// 控制桌面端 Kubernetes 顶层侧栏菜单：重命名 / 排序 / 隐藏（全局生效）
 	K8sSidebarMenu []RuntimeK8sSidebarMenuItem `json:"k8sSidebarMenu,omitempty"`
 
@@ -502,6 +509,9 @@ func MergeRuntimeConfig(env Config, rs *RuntimeSettings, dataDir string) Config 
 	if rs.VCenterConsoleHost != "" {
 		out.VCenterConsoleHost = rs.VCenterConsoleHost
 	}
+	if rs.VCenterConsoleProxyURL != "" {
+		out.VCenterConsoleProxyURL = rs.VCenterConsoleProxyURL
+	}
 	if rs.VCenterUIThumbprint != "" {
 		out.VCenterUIThumbprint = rs.VCenterUIThumbprint
 	}
@@ -521,6 +531,9 @@ func MergeRuntimeConfig(env Config, rs *RuntimeSettings, dataDir string) Config 
 		out.VCenterVMSshPort = rs.VCenterVMSshPort
 	}
 	out.VCenterVMSshInsecureHostKey = rs.VCenterVMSshInsecureHostKey
+	if strings.TrimSpace(rs.VCenterVMSshHostKeyFingerprint) != "" {
+		out.VCenterVMSshHostKeyFingerprint = strings.TrimSpace(rs.VCenterVMSshHostKeyFingerprint)
+	}
 
 	// 已初始化：与 SSH/Redis/MySQL 相关字段以文件为准（含空值，避免仍被宿主机环境变量覆盖）
 	out.SSHSettingsBackend = SSHSettingsBackend(strings.ToLower(strings.TrimSpace(rs.SSHSettingsBackend)))
@@ -632,6 +645,10 @@ func MergeRuntimeConfig(env Config, rs *RuntimeSettings, dataDir string) Config 
 	out.IdracUser = strings.TrimSpace(rs.IdracUser)
 	out.IdracPassword = rs.IdracPassword
 	out.IdracInsecure = rs.IdracInsecure
+	if rs.IdracVncPort > 0 {
+		out.IdracVncPort = rs.IdracVncPort
+	}
+	out.IdracVncPassword = rs.IdracVncPassword
 
 	return out
 }

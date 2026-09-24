@@ -28,7 +28,7 @@ const (
 	defaultIngressNginxBaremetalURL   = "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/baremetal/deploy.yaml"
 	ingressNginxControllerServiceName = "ingress-nginx-controller"
 	ingressNginxControllerNamespace   = "ingress-nginx"
-	ingressNginxControllerDeployName = "ingress-nginx-controller"
+	ingressNginxControllerDeployName  = "ingress-nginx-controller"
 )
 
 // IngressControllerTemplateMetricsPort 从控制器容器模板解析 metrics 容器端口声明（上游默认 10254；v1.10 不支持 --metrics-port）。
@@ -170,7 +170,7 @@ func applyDynamicYAMLDoc(ctx context.Context, dyn dynamic.Interface, mapper meta
 		return fmt.Errorf("%s 缺少 metadata.name", gvk.Kind)
 	}
 	_, err = dr.Apply(ctx, name, obj, metav1.ApplyOptions{
-		FieldManager: "kube-bt-sync",
+		FieldManager: "labplane",
 		Force:        true,
 	})
 	if err != nil {

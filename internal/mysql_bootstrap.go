@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// mysqlApplyBootstrapDDLs 启动时对 kubebt_* 逐张 CREATE TABLE IF NOT EXISTS。
+// mysqlApplyBootstrapDDLs 启动时对 labplane_* 逐张 CREATE TABLE IF NOT EXISTS。
 // 单表失败只记录日志，不返回错误，其余表与后续 migrate（补列、补索引）仍会继续执行。
 func mysqlApplyBootstrapDDLs(db *sql.DB) error {
 	var failed []string
@@ -19,12 +19,12 @@ func mysqlApplyBootstrapDDLs(db *sql.DB) error {
 	if len(failed) > 0 {
 		log.Printf("MySQL 启动核对: %d 张表 ensure 未成功（将继续 migrate 补全）: %s", len(failed), strings.Join(failed, ", "))
 	} else {
-		log.Printf("MySQL 启动核对: 已校验/创建 %d 张 kubebt 业务表", len(mysqlBootstrapTableDDLs))
+		log.Printf("MySQL 启动核对: 已校验/创建 %d 张 labplane 业务表", len(mysqlBootstrapTableDDLs))
 	}
 	return nil
 }
 
-// mysqlBootstrapMissingTablesOnly 在 migrate 修正索引等问题后调用：仅为当前库中不存在的 kubebt 表执行 CREATE。
+// mysqlBootstrapMissingTablesOnly 在 migrate 修正索引等问题后调用：仅为当前库中不存在的 labplane 表执行 CREATE。
 func mysqlBootstrapMissingTablesOnly(db *sql.DB) {
 	for _, d := range mysqlBootstrapTableDDLs {
 		var n int
@@ -50,13 +50,13 @@ var mysqlBootstrapTableDDLs = []struct {
 	Label string
 	SQL   string
 }{
-	{"kubebt_platform_kv", `
-CREATE TABLE IF NOT EXISTS kubebt_platform_kv (
+	{"labplane_platform_kv", `
+CREATE TABLE IF NOT EXISTS labplane_platform_kv (
   k VARCHAR(512) NOT NULL PRIMARY KEY,
   v MEDIUMTEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_dashboard_users", `
-CREATE TABLE IF NOT EXISTS kubebt_dashboard_users (
+	{"labplane_dashboard_users", `
+CREATE TABLE IF NOT EXISTS labplane_dashboard_users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(64) NOT NULL UNIQUE,
   email VARCHAR(255) NOT NULL DEFAULT '',
@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS kubebt_dashboard_users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_redis_instances", `
-CREATE TABLE IF NOT EXISTS kubebt_app_redis_instances (
+	{"labplane_app_redis_instances", `
+CREATE TABLE IF NOT EXISTS labplane_app_redis_instances (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   mode VARCHAR(32) NOT NULL,
@@ -77,8 +77,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_redis_instances (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_redis_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_redis_templates", `
-CREATE TABLE IF NOT EXISTS kubebt_app_redis_templates (
+	{"labplane_app_redis_templates", `
+CREATE TABLE IF NOT EXISTS labplane_app_redis_templates (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   description VARCHAR(512) NULL,
@@ -88,8 +88,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_redis_templates (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_redis_tpl_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_opensearch_templates", `
-CREATE TABLE IF NOT EXISTS kubebt_app_opensearch_templates (
+	{"labplane_app_opensearch_templates", `
+CREATE TABLE IF NOT EXISTS labplane_app_opensearch_templates (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   description VARCHAR(512) NULL,
@@ -99,8 +99,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_opensearch_templates (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_opensearch_tpl_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_opensearch_instances", `
-CREATE TABLE IF NOT EXISTS kubebt_app_opensearch_instances (
+	{"labplane_app_opensearch_instances", `
+CREATE TABLE IF NOT EXISTS labplane_app_opensearch_instances (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(160) NOT NULL,
   config_json MEDIUMTEXT NOT NULL,
@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_opensearch_instances (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_opensearch_inst_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_kafka_templates", `
-CREATE TABLE IF NOT EXISTS kubebt_app_kafka_templates (
+	{"labplane_app_kafka_templates", `
+CREATE TABLE IF NOT EXISTS labplane_app_kafka_templates (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   description VARCHAR(512) NULL,
@@ -120,8 +120,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_kafka_templates (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_kafka_tpl_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_kafka_instances", `
-CREATE TABLE IF NOT EXISTS kubebt_app_kafka_instances (
+	{"labplane_app_kafka_instances", `
+CREATE TABLE IF NOT EXISTS labplane_app_kafka_instances (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(160) NOT NULL,
   config_json MEDIUMTEXT NOT NULL,
@@ -130,8 +130,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_kafka_instances (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_app_kafka_inst_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_app_cloud_vm_instances", `
-CREATE TABLE IF NOT EXISTS kubebt_app_cloud_vm_instances (
+	{"labplane_app_cloud_vm_instances", `
+CREATE TABLE IF NOT EXISTS labplane_app_cloud_vm_instances (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   namespace VARCHAR(253) NOT NULL,
@@ -141,8 +141,8 @@ CREATE TABLE IF NOT EXISTS kubebt_app_cloud_vm_instances (
   created_by VARCHAR(64) NOT NULL DEFAULT '',
   UNIQUE KEY uniq_cloud_vm_ns_name (namespace, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_k8s_object_revisions", `
-CREATE TABLE IF NOT EXISTS kubebt_k8s_object_revisions (
+	{"labplane_k8s_object_revisions", `
+CREATE TABLE IF NOT EXISTS labplane_k8s_object_revisions (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   namespace VARCHAR(253) NOT NULL,
   kind VARCHAR(128) NOT NULL,
@@ -153,8 +153,8 @@ CREATE TABLE IF NOT EXISTS kubebt_k8s_object_revisions (
   yaml MEDIUMTEXT NOT NULL,
   INDEX idx_k8s_obj_rev_resource (namespace(128), kind(64), res_name(128), id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_openclaw_instance_secrets", `
-CREATE TABLE IF NOT EXISTS kubebt_openclaw_instance_secrets (
+	{"labplane_openclaw_instance_secrets", `
+CREATE TABLE IF NOT EXISTS labplane_openclaw_instance_secrets (
   openclaw_instance_id VARCHAR(64) NOT NULL PRIMARY KEY,
   telegram_bot_token_enc MEDIUMTEXT NULL,
   telegram_enabled TINYINT(1) NOT NULL DEFAULT 0,
@@ -162,8 +162,8 @@ CREATE TABLE IF NOT EXISTS kubebt_openclaw_instance_secrets (
   google_checked_at VARCHAR(64) NOT NULL DEFAULT '',
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_audit_log", `
-CREATE TABLE IF NOT EXISTS kubebt_audit_log (
+	{"labplane_audit_log", `
+CREATE TABLE IF NOT EXISTS labplane_audit_log (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   ts VARCHAR(64) NOT NULL,
@@ -178,8 +178,8 @@ CREATE TABLE IF NOT EXISTS kubebt_audit_log (
   INDEX idx_audit_created (created_at),
   INDEX idx_audit_action (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_doc_categories", `
-CREATE TABLE IF NOT EXISTS kubebt_doc_categories (
+	{"labplane_doc_categories", `
+CREATE TABLE IF NOT EXISTS labplane_doc_categories (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   parent_id BIGINT UNSIGNED NULL,
@@ -187,15 +187,15 @@ CREATE TABLE IF NOT EXISTS kubebt_doc_categories (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_doc_cat_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_doc_tags", `
-CREATE TABLE IF NOT EXISTS kubebt_doc_tags (
+	{"labplane_doc_tags", `
+CREATE TABLE IF NOT EXISTS labplane_doc_tags (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_doc_tag_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_docs", `
-CREATE TABLE IF NOT EXISTS kubebt_docs (
+	{"labplane_docs", `
+CREATE TABLE IF NOT EXISTS labplane_docs (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(512) NOT NULL DEFAULT '',
   body_markdown MEDIUMTEXT NOT NULL,
@@ -209,15 +209,15 @@ CREATE TABLE IF NOT EXISTS kubebt_docs (
   INDEX idx_docs_cat (category_id),
   INDEX idx_docs_updated (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_doc_tag_map", `
-CREATE TABLE IF NOT EXISTS kubebt_doc_tag_map (
+	{"labplane_doc_tag_map", `
+CREATE TABLE IF NOT EXISTS labplane_doc_tag_map (
   doc_id BIGINT UNSIGNED NOT NULL,
   tag_id BIGINT UNSIGNED NOT NULL,
   PRIMARY KEY (doc_id, tag_id),
   INDEX idx_doc_tag_tag (tag_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_doc_versions", `
-CREATE TABLE IF NOT EXISTS kubebt_doc_versions (
+	{"labplane_doc_versions", `
+CREATE TABLE IF NOT EXISTS labplane_doc_versions (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   doc_id BIGINT UNSIGNED NOT NULL,
   version_no INT NOT NULL,
@@ -229,8 +229,8 @@ CREATE TABLE IF NOT EXISTS kubebt_doc_versions (
   UNIQUE KEY uq_doc_ver (doc_id, version_no),
   INDEX idx_doc_versions_doc (doc_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`},
-	{"kubebt_doc_media", `
-CREATE TABLE IF NOT EXISTS kubebt_doc_media (
+	{"labplane_doc_media", `
+CREATE TABLE IF NOT EXISTS labplane_doc_media (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   doc_id BIGINT UNSIGNED NULL,
   kind VARCHAR(16) NOT NULL DEFAULT 'image',
@@ -253,7 +253,7 @@ CREATE TABLE IF NOT EXISTS dns_accounts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   provider VARCHAR(50) NOT NULL,
-  config_json TEXT NOT NULL DEFAULT '{}',
+  config_json TEXT NOT NULL,
   remark VARCHAR(255) NOT NULL DEFAULT '',
   created_by VARCHAR(100) NOT NULL DEFAULT '',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -307,8 +307,8 @@ CREATE TABLE IF NOT EXISTS dns_failover_tasks (
   check_interval INT NOT NULL DEFAULT 60,
   check_timeout INT NOT NULL DEFAULT 10,
   max_errors INT NOT NULL DEFAULT 3,
-  failover_value TEXT NOT NULL DEFAULT '',
-  original_value TEXT NOT NULL DEFAULT '',
+  failover_value TEXT NOT NULL,
+  original_value TEXT NOT NULL,
   status TINYINT NOT NULL DEFAULT 1,
   error_count INT NOT NULL DEFAULT 0,
   last_check_at DATETIME,
@@ -323,9 +323,9 @@ CREATE TABLE IF NOT EXISTS dns_failover_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   task_id INT NOT NULL,
   action VARCHAR(50) NOT NULL,
-  old_value TEXT NOT NULL DEFAULT '',
-  new_value TEXT NOT NULL DEFAULT '',
-  message TEXT NOT NULL DEFAULT '',
+  old_value TEXT NOT NULL,
+  new_value TEXT NOT NULL,
+  message TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_dns_failover_logs_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
@@ -337,11 +337,11 @@ CREATE TABLE IF NOT EXISTS dns_scheduled_tasks (
   domain_id INT NOT NULL,
   record_id VARCHAR(200) NOT NULL DEFAULT '',
   action VARCHAR(20) NOT NULL DEFAULT 'modify',
-  new_value TEXT NOT NULL DEFAULT '',
+  new_value TEXT NOT NULL,
   scheduled_at DATETIME NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   executed_at DATETIME,
-  message TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
   created_by VARCHAR(100) NOT NULL DEFAULT '',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
@@ -351,11 +351,11 @@ CREATE TABLE IF NOT EXISTS dns_cert_orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   account_id INT NOT NULL DEFAULT 0,
-  domains TEXT NOT NULL DEFAULT '[]',
+  domains TEXT NOT NULL,
   email VARCHAR(255) NOT NULL DEFAULT '',
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
-  cert_pem MEDIUMTEXT NOT NULL DEFAULT '',
-  key_pem MEDIUMTEXT NOT NULL DEFAULT '',
+  cert_pem MEDIUMTEXT NOT NULL,
+  key_pem MEDIUMTEXT NOT NULL,
   issued_at DATETIME,
   expire_at DATETIME,
   auto_renew TINYINT NOT NULL DEFAULT 1,
@@ -366,8 +366,8 @@ CREATE TABLE IF NOT EXISTS dns_cert_orders (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`},
 
-	{"kubebt_k8s_restart_ai_reports", `
-CREATE TABLE IF NOT EXISTS kubebt_k8s_restart_ai_reports (
+	{"labplane_k8s_restart_ai_reports", `
+CREATE TABLE IF NOT EXISTS labplane_k8s_restart_ai_reports (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   kind VARCHAR(48) NOT NULL,
   subject VARCHAR(512) NOT NULL DEFAULT '',

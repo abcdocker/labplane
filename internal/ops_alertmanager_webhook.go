@@ -19,13 +19,13 @@ const alertmanagerWebhookMaxBody = 1 << 20 // 1 MiB
 
 // alertmanagerWebhookPayload Alertmanager 向 webhook_configs.url POST 的 JSON（字段子集即可解析）。
 type alertmanagerWebhookPayload struct {
-	Status            string `json:"status"`
-	Receiver          string `json:"receiver"`
-	GroupKey          string `json:"groupKey"`
-	ExternalURL       string `json:"externalURL"`
+	Status            string            `json:"status"`
+	Receiver          string            `json:"receiver"`
+	GroupKey          string            `json:"groupKey"`
+	ExternalURL       string            `json:"externalURL"`
 	CommonLabels      map[string]string `json:"commonLabels"`
 	CommonAnnotations map[string]string `json:"commonAnnotations"`
-	Alerts              []struct {
+	Alerts            []struct {
 		Status       string            `json:"status"`
 		Labels       map[string]string `json:"labels"`
 		Annotations  map[string]string `json:"annotations"`
@@ -151,7 +151,7 @@ func handleAlertmanagerWebhook(app *ServerApp) gin.HandlerFunc {
 		}
 		gotTok := strings.TrimSpace(c.Query("token"))
 		if gotTok == "" {
-			gotTok = strings.TrimSpace(c.GetHeader("X-Kubebt-Webhook-Token"))
+			gotTok = strings.TrimSpace(c.GetHeader("X-LabPlane-Webhook-Token"))
 		}
 		if !constantTimeStringEq(gotTok, wantTok) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

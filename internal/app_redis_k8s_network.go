@@ -29,6 +29,8 @@ type redisK8sNetworkService struct {
 	ClusterDNS     string             `json:"clusterDNS"`
 	Ports          []redisK8sPortDesc `json:"ports"`
 	LoadBalancerIP string             `json:"loadBalancerIP,omitempty"`
+	ExternalIPs    []string           `json:"externalIPs,omitempty"`
+	HostNetwork    bool               `json:"hostNetwork,omitempty"`
 	Note           string             `json:"note,omitempty"`
 }
 
@@ -91,10 +93,46 @@ func CollectRedisK8sDeployNetwork(ctx context.Context, k8s *kubernetes.Clientset
 				item.LoadBalancerIP = host
 			}
 		}
+		// hostNetwork 模式下收集 Pod 所在节点的 hostIP 作为外部访问地址
+		if opts.HostNetwork {
+			item.HostNetwork = true
+			var podList *corev1.PodList
+			switch topologyMode(opts.Topology) {
+			case "cluster":
+				if strings.HasSuffix(svc.Name, "-cluster-headless") {
+					podList, _ = k8s.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+						LabelSelector: "redis-app=" + base + ",redis-topology=cluster",
+					})
+				}
+			case "sentinel":
+				if strings.HasSuffix(svc.Name, "-master") {
+					podList, _ = k8s.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+						LabelSelector: "redis-app=" + base + ",redis-topology=sentinel,role=master",
+					})
+				}
+			default:
+				podList, _ = k8s.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+					LabelSelector: "redis-app=" + base,
+				})
+			}
+			if podList != nil {
+				seen := make(map[string]bool)
+				for _, po := range podList.Items {
+					ip := strings.TrimSpace(po.Status.HostIP)
+					if ip != "" && !seen[ip] {
+						seen[ip] = true
+						item.ExternalIPs = append(item.ExternalIPs, ip)
+					}
+				}
+			}
+		}
 		switch topologyMode(opts.Topology) {
 		case "cluster":
 			if strings.HasSuffix(svc.Name, "-cluster-headless") {
 				item.Note = "集群内 Pod DNS：如 " + base + "-0." + svc.Name + "." + ns + ".svc.cluster.local"
+				if opts.HostNetwork {
+					item.Note += "；hostNetwork 模式下每个 Pod 直接绑定节点 IP（见 外部访问地址）"
+				}
 			} else if strings.HasSuffix(svc.Name, "-cluster-access") {
 				item.Note = "集群外访问（NodePort/LB）经本 Service；Redis 端口见 ports.redis"
 			}
@@ -108,6 +146,9 @@ func CollectRedisK8sDeployNetwork(ctx context.Context, k8s *kubernetes.Clientset
 			item.Note = "内网访问 " + item.ClusterDNS + ":" + fmtRedisMainPort(svc)
 			if svc.Spec.Type == corev1.ServiceTypeNodePort || svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
 				item.Note += "；NodePort 模式请使用 任意节点IP:nodePort（见 ports 中 nodePort）"
+			}
+			if opts.HostNetwork {
+				item.Note += "；hostNetwork 模式下 Pod 直接使用节点 IP（见 外部访问地址）"
 			}
 		}
 		out = append(out, item)

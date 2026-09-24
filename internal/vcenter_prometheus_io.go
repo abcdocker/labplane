@@ -395,11 +395,11 @@ func handleVCenterVMsPrometheusIO(c *gin.Context, cfg Config) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"prometheusConfigured":  true,
-		"ratesByName":           ratesByName,
-		"needVcenterFallback":   needFallback,
-		"note":                  note,
-		"queriesUsed":           gin.H{"diskRead": qDr, "diskWrite": qDw, "netRx": qNrx, "netTx": qNtx},
+		"prometheusConfigured": true,
+		"ratesByName":          ratesByName,
+		"needVcenterFallback":  needFallback,
+		"note":                 note,
+		"queriesUsed":          gin.H{"diskRead": qDr, "diskWrite": qDw, "netRx": qNrx, "netTx": qNtx},
 	})
 }
 

@@ -214,20 +214,8 @@ export type VCenterVMDetailResponse = {
 };
 
 export type VCenterWebmksResponse = {
-  host: string;
-  port: number;
-  sslThumbprint?: string;
-  ticket: string;
-  cfgFile?: string;
-  wssUrl: string;
+  ready: boolean;
+  powerState: string;
   proxyPath: string;
-  hint?: string;
-};
-
-/** 官方 webconsole.html 链接（govc vm.console -h5 同源） */
-export type VCenterConsoleHtmlResponse = {
-  url: string;
-  /** 与浏览器地址栏一致；需已登录 vCenter SSO */
-  vsphereClientUrl?: string;
   hint?: string;
 };

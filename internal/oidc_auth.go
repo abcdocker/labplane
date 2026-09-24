@@ -19,15 +19,15 @@ import (
 )
 
 const (
-	oidcStateCookie       = "oidc_state"
-	oidcNonceCookie       = "oidc_nonce"
-	oidcIntentCookie      = "oidc_intent"
-	oidcIntentLogin       = "login"
-	oidcIntentBind        = "bind"
-	oidcBindTargetCookie  = "oidc_bind_target"
-	oidcBindReturnCookie  = "oidc_bind_return" // "settings" | "users"
-	oidcBindReturnUsers   = "users"
-	oidcBindReturnSettings = "settings"
+	oidcStateCookie           = "oidc_state"
+	oidcNonceCookie           = "oidc_nonce"
+	oidcIntentCookie          = "oidc_intent"
+	oidcIntentLogin           = "login"
+	oidcIntentBind            = "bind"
+	oidcBindTargetCookie      = "oidc_bind_target"
+	oidcBindReturnCookie      = "oidc_bind_return" // "settings" | "users"
+	oidcBindReturnUsers       = "users"
+	oidcBindReturnSettings    = "settings"
 	oidcPostLoginReturnCookie = "oidc_post_login_return" // base64url(UTF-8 path); 登录成功后跳转
 )
 
@@ -367,7 +367,7 @@ func handleOIDCAdminBindStart(app *ServerApp) gin.HandlerFunc {
 		}
 		ctx0, cancel0 := context.WithTimeout(c.Request.Context(), 8*time.Second)
 		var one int
-		err := db.QueryRowContext(ctx0, `SELECT 1 FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`, target).Scan(&one)
+		err := db.QueryRowContext(ctx0, `SELECT 1 FROM labplane_dashboard_users WHERE username = ? LIMIT 1`, target).Scan(&one)
 		cancel0()
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
@@ -564,7 +564,7 @@ func handleOIDCCallback(app *ServerApp) gin.HandlerFunc {
 				if sessRole == DashboardRoleAdmin && tgt != "" {
 					ctxT, cancelT := context.WithTimeout(ctx, 8*time.Second)
 					var x int
-					e2 := db.QueryRowContext(ctxT, `SELECT 1 FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`, tgt).Scan(&x)
+					e2 := db.QueryRowContext(ctxT, `SELECT 1 FROM labplane_dashboard_users WHERE username = ? LIMIT 1`, tgt).Scan(&x)
 					cancelT()
 					if e2 == nil {
 						bindUser = tgt
@@ -573,7 +573,7 @@ func handleOIDCCallback(app *ServerApp) gin.HandlerFunc {
 			}
 			ctxB, cancelB := context.WithTimeout(ctx, 12*time.Second)
 			var otherUser string
-			err = db.QueryRowContext(ctxB, `SELECT username FROM kubebt_dashboard_users WHERE oidc_issuer = ? AND oidc_sub = ? AND username <> ? LIMIT 1`, iss, sub, bindUser).Scan(&otherUser)
+			err = db.QueryRowContext(ctxB, `SELECT username FROM labplane_dashboard_users WHERE oidc_issuer = ? AND oidc_sub = ? AND username <> ? LIMIT 1`, iss, sub, bindUser).Scan(&otherUser)
 			cancelB()
 			if err == nil && strings.TrimSpace(otherUser) != "" {
 				log.Printf("oidc bind conflict: sub already bound to %q", otherUser)
@@ -586,7 +586,7 @@ func handleOIDCCallback(app *ServerApp) gin.HandlerFunc {
 				return
 			}
 			ctxU, cancelU := context.WithTimeout(ctx, 12*time.Second)
-			_, err = db.ExecContext(ctxU, `UPDATE kubebt_dashboard_users SET oidc_issuer = ?, oidc_sub = ? WHERE username = ?`, iss, sub, bindUser)
+			_, err = db.ExecContext(ctxU, `UPDATE labplane_dashboard_users SET oidc_issuer = ?, oidc_sub = ? WHERE username = ?`, iss, sub, bindUser)
 			cancelU()
 			if err != nil {
 				log.Printf("oidc bind update: %v", err)
@@ -618,7 +618,7 @@ func handleOIDCCallback(app *ServerApp) gin.HandlerFunc {
 		ctxRole, cancelRole := context.WithTimeout(ctx, 10*time.Second)
 		var username, r string
 		var dis int
-		err = db.QueryRowContext(ctxRole, `SELECT username, role, disabled FROM kubebt_dashboard_users WHERE oidc_issuer = ? AND oidc_sub = ? LIMIT 1`, iss, sub).Scan(&username, &r, &dis)
+		err = db.QueryRowContext(ctxRole, `SELECT username, role, disabled FROM labplane_dashboard_users WHERE oidc_issuer = ? AND oidc_sub = ? LIMIT 1`, iss, sub).Scan(&username, &r, &dis)
 		cancelRole()
 		if errors.Is(err, sql.ErrNoRows) {
 			redirectLoginErrorWithHint(c, cfg, "尚未绑定 Authentik", "请先用平台用户名或邮箱与密码登录，打开「账户与平台」完成 Authentik 绑定后再使用 OIDC 登录。")

@@ -350,7 +350,7 @@ export default function DocsMedia() {
                   <Input
                     id="cos-prefix"
                     className="font-mono text-sm"
-                    placeholder="kubebt-docs"
+                    placeholder="labplane-docs"
                     value={prefix}
                     onChange={(e) => setPrefix(e.target.value)}
                   />
@@ -408,7 +408,7 @@ export default function DocsMedia() {
               </div>
               <p className="text-xs text-slate-600">
                 保存前可先「测试连接」。仅填 Bucket/Region 时测试会使用已保存的密钥（若已有控制台配置）。
-                环境变量 KUBEBT_COS_* 在未保存控制台配置时仍生效；保存控制台配置后将优先使用控制台值。
+                环境变量 LABPLANE_COS_* 在未保存控制台配置时仍生效；保存控制台配置后将优先使用控制台值。
               </p>
             </div>
           ) : null}

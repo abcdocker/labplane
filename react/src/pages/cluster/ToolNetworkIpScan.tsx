@@ -91,17 +91,17 @@ const ToolNetworkIpScan: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">内网工具箱 · 空闲 IP 探测</h1>
-        <p className="mt-2 max-w-3xl text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-slate-900">内网工具箱 · 空闲 IP 探测</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
           在 <strong>Dashboard Pod</strong> 内发起 TCP 连接探测（常见端口）。Pod 内通常无 ICMP
           权限，故不使用 ping。若防火墙丢弃探测，可能被标为「疑似空闲」。单次最多{" "}
           <span className="font-mono">512</span> 个地址。
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">网段</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">网段</h2>
+        <p className="mt-1 text-sm text-slate-500">
           每行一个 IPv4 CIDR（如 <code className="text-xs">10.20.0.0/24</code>
           ），保存后可在下方选择「按已保存网段扫描」。
         </p>
@@ -109,7 +109,7 @@ const ToolNetworkIpScan: React.FC = () => {
           <Label htmlFor="segments">网段列表</Label>
           <textarea
             id="segments"
-            className="min-h-[120px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-sm"
+            className="min-h-[120px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 font-mono text-sm"
             value={segmentInput}
             onChange={(e) => setSegmentInput(e.target.value)}
             placeholder={"10.0.0.0/24\n10.0.1.0/24"}
@@ -141,9 +141,9 @@ const ToolNetworkIpScan: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">单次指定网段扫描</h2>
-        <p className="mt-1 text-sm text-gray-500">不覆盖已保存列表，仅本次使用。</p>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">单次指定网段扫描</h2>
+        <p className="mt-1 text-sm text-slate-500">不覆盖已保存列表，仅本次使用。</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
             <Label htmlFor="oneoff">CIDR</Label>
@@ -191,15 +191,15 @@ const ToolNetworkIpScan: React.FC = () => {
           ) : null}
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg bg-white/80 px-3 py-2 text-sm">
-              <span className="text-gray-500">总计</span>{" "}
+              <span className="text-slate-500">总计</span>{" "}
               <span className="font-semibold">{runMut.data.run.summary.total}</span>
             </div>
             <div className="rounded-lg bg-white/80 px-3 py-2 text-sm">
-              <span className="text-gray-500">疑似占用</span>{" "}
+              <span className="text-slate-500">疑似占用</span>{" "}
               <span className="font-semibold text-amber-800">{runMut.data.run.summary.used}</span>
             </div>
             <div className="rounded-lg bg-white/80 px-3 py-2 text-sm">
-              <span className="text-gray-500">疑似空闲</span>{" "}
+              <span className="text-slate-500">疑似空闲</span>{" "}
               <span className="font-semibold text-blue-800">
                 {runMut.data.run.summary.likelyFree}
               </span>
@@ -236,9 +236,9 @@ const ToolNetworkIpScan: React.FC = () => {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-gray-900">历史记录</h2>
+          <h2 className="text-lg font-semibold text-slate-900">历史记录</h2>
           <Button
             type="button"
             variant="outline"
@@ -248,24 +248,24 @@ const ToolNetworkIpScan: React.FC = () => {
             刷新列表
           </Button>
         </div>
-        {historyQ.isLoading && <p className="mt-4 text-sm text-gray-500">加载中…</p>}
+        {historyQ.isLoading && <p className="mt-4 text-sm text-slate-500">加载中…</p>}
         {historyQ.data?.runs && historyQ.data.runs.length === 0 && (
-          <p className="mt-4 text-sm text-gray-500">暂无记录，保存网段并执行扫描后会保留在此。</p>
+          <p className="mt-4 text-sm text-slate-500">暂无记录，保存网段并执行扫描后会保留在此。</p>
         )}
         <div className="mt-4 space-y-4">
           {historyQ.data?.runs?.map((run) => (
             <details
               key={run.id}
-              className="rounded-lg border border-gray-100 bg-gray-50/80 px-4 py-3"
+              className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3"
             >
-              <summary className="cursor-pointer text-sm font-medium text-gray-900">
+              <summary className="cursor-pointer text-sm font-medium text-slate-900">
                 {run.segment} · {formatDateTimeShanghai(run.startedAt)}{" "}
                 <span className="ml-2 inline-flex flex-wrap items-center gap-1.5 font-normal">
                   <Badge className="border-amber-300 bg-amber-50 font-normal text-amber-950">占用 {run.summary.used}</Badge>
                   <Badge className="border-blue-300 bg-blue-50 font-normal text-blue-950">空闲 {run.summary.likelyFree}</Badge>
                 </span>
               </summary>
-              <div className="mt-3 max-h-[240px] overflow-auto rounded border border-gray-100 bg-white">
+              <div className="mt-3 max-h-[240px] overflow-auto rounded border border-slate-100 bg-white">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -294,7 +294,7 @@ const ToolNetworkIpScan: React.FC = () => {
                 </Table>
               </div>
               {run.results.length > 256 && (
-                <p className="mt-2 text-xs text-gray-500">仅显示前 256 行，完整数据请查看接口返回。</p>
+                <p className="mt-2 text-xs text-slate-500">仅显示前 256 行，完整数据请查看接口返回。</p>
               )}
             </details>
           ))}
@@ -302,7 +302,7 @@ const ToolNetworkIpScan: React.FC = () => {
       </div>
 
       {lastRun && !runMut.data?.run && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500">
           最近一次扫描：{lastRun.segment} · {formatDateTimeShanghai(lastRun.startedAt)}
         </p>
       )}

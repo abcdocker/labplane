@@ -49,7 +49,7 @@ export function DocExcalidrawPane({ docId, value, onChange }: Props) {
       const payload = JSON.stringify({
         type: "excalidraw",
         version: 2,
-        source: "kube-bt-sync",
+        source: "labplane",
         elements,
         appState: excalidrawAppStateForStorage(appState),
         files: files && typeof files === "object" ? files : {},

@@ -63,7 +63,7 @@ const ClusterRBACServiceAccountDetail: React.FC = () => {
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-gray-900">ServiceAccount 详情</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900">ServiceAccount 详情</h2>
         <p className="mt-1 font-mono text-sm text-slate-600">
           {namespace}/{name}
         </p>

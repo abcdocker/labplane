@@ -20,12 +20,12 @@ import (
 )
 
 const (
-	toolboxIPSegmentsKVKey      = "toolbox_ip_segments_v1"
-	toolboxIPScanHistoryKVKey   = "toolbox_ip_scan_history_v1"
-	maxIPScanAddresses          = 512
-	ipScanWorkerCount           = 48
-	ipScanDialTimeout           = 280 * time.Millisecond
-	maxIPScanHistoryRuns        = 80
+	toolboxIPSegmentsKVKey    = "toolbox_ip_segments_v1"
+	toolboxIPScanHistoryKVKey = "toolbox_ip_scan_history_v1"
+	maxIPScanAddresses        = 512
+	ipScanWorkerCount         = 48
+	ipScanDialTimeout         = 280 * time.Millisecond
+	maxIPScanHistoryRuns      = 80
 )
 
 var toolboxIPScanMu sync.Mutex
@@ -47,9 +47,9 @@ type ipScanRun struct {
 	PodSourceIP string            `json:"podSourceIp,omitempty"`
 	Results     []ipScanResultRow `json:"results"`
 	Summary     struct {
-		Total       int `json:"total"`
-		Used        int `json:"used"`
-		LikelyFree  int `json:"likelyFree"`
+		Total      int `json:"total"`
+		Used       int `json:"used"`
+		LikelyFree int `json:"likelyFree"`
 	} `json:"summary"`
 	Note string `json:"note,omitempty"`
 }
@@ -350,7 +350,7 @@ func handleToolboxIPScanRun(c *gin.Context, app *ServerApp) {
 	run.EndedAt = time.Now().In(BeijingLocation()).Format(time.RFC3339Nano)
 
 	if err := appendIPScanHistory(app, run); err != nil {
-		RespondAPIError500(c, "保存历史失败: " + err.Error())
+		RespondAPIError500(c, "保存历史失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"run": run})

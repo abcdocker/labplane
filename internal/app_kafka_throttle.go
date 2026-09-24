@@ -103,7 +103,7 @@ func appKafkaSetTopicThrottle(ctx context.Context, cl *kgo.Client, topic string,
 	}
 	for _, r := range ar.Resources {
 		if r.ErrorCode != 0 {
-			return fmt.Errorf("设置主题限速失败: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return fmt.Errorf("设置主题限速失败: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 	}
 	return nil

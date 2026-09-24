@@ -154,8 +154,8 @@ func handleOpenSearchTemplateCreate(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var body struct {
-		Name        string                    `json:"name"`
-		Description string                    `json:"description"`
+		Name        string                      `json:"name"`
+		Description string                      `json:"description"`
 		Config      AppOpenSearchTemplateConfig `json:"config"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -207,8 +207,8 @@ func handleOpenSearchTemplateUpdate(c *gin.Context, app *ServerApp) {
 		return
 	}
 	var body struct {
-		Name        string                    `json:"name"`
-		Description string                    `json:"description"`
+		Name        string                      `json:"name"`
+		Description string                      `json:"description"`
 		Config      AppOpenSearchTemplateConfig `json:"config"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -316,15 +316,15 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 
 	db := app.MySQLDB()
 	opts := OpenSearchK8sDeployOpts{
-		Namespace:       ns,
-		BaseName:        base,
-		ClusterName:     strings.TrimSpace(body.ClusterName),
-		ServiceType:     strings.TrimSpace(body.ServiceType),
-		NodePortHTTP:    body.NodePortHTTP,
-		NodePortDash:    body.NodePortDashboards,
-		JavaOptsMaster:  strings.TrimSpace(body.JavaOptsMaster),
-		JavaOptsData:    strings.TrimSpace(body.JavaOptsData),
-		ExtraYml:        strings.TrimSpace(body.ExtraOpensearchYml),
+		Namespace:         ns,
+		BaseName:          base,
+		ClusterName:       strings.TrimSpace(body.ClusterName),
+		ServiceType:       strings.TrimSpace(body.ServiceType),
+		NodePortHTTP:      body.NodePortHTTP,
+		NodePortDash:      body.NodePortDashboards,
+		JavaOptsMaster:    strings.TrimSpace(body.JavaOptsMaster),
+		JavaOptsData:      strings.TrimSpace(body.JavaOptsData),
+		ExtraYml:          strings.TrimSpace(body.ExtraOpensearchYml),
 		IndexTemplateJSON: strings.TrimSpace(body.IndexTemplateJSON),
 		MasterStorageSize: strings.TrimSpace(body.MasterStorageSize),
 		DataStorageSize:   strings.TrimSpace(body.DataStorageSize),
@@ -397,17 +397,17 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 	internalDash := fmt.Sprintf("http://%s.%s.svc.cluster.local:5601", dashSvc, ns)
 
 	stored := map[string]interface{}{
-		"kind":              "opensearch-k8s",
-		"namespace":         ns,
-		"baseName":          base,
-		"clusterName":       firstNonEmpty(strings.TrimSpace(opts.ClusterName), base),
-		"templateId":        opts.TemplateID,
-		"templateName":      opts.TemplateName,
-		"serviceType":       strings.TrimSpace(opts.ServiceType),
-		"httpService":       dataSvc,
-		"dashboardsService": dashSvc,
-		"internalHttp":      internalHTTP,
-		"internalDashboards": internalDash,
+		"kind":                "opensearch-k8s",
+		"namespace":           ns,
+		"baseName":            base,
+		"clusterName":         firstNonEmpty(strings.TrimSpace(opts.ClusterName), base),
+		"templateId":          opts.TemplateID,
+		"templateName":        opts.TemplateName,
+		"serviceType":         strings.TrimSpace(opts.ServiceType),
+		"httpService":         dataSvc,
+		"dashboardsService":   dashSvc,
+		"internalHttp":        internalHTTP,
+		"internalDashboards":  internalDash,
 		"vectorOpenSearchUrl": internalHTTP,
 	}
 	snap, _ := json.Marshal(stored)
@@ -420,7 +420,7 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 		defer cancel()
 		iname := openSearchInstanceName(ns, base)
 		var existing int64
-		qerr := db.QueryRowContext(ctx2, `SELECT id FROM kubebt_app_opensearch_instances WHERE name=?`, iname).Scan(&existing)
+		qerr := db.QueryRowContext(ctx2, `SELECT id FROM labplane_app_opensearch_instances WHERE name=?`, iname).Scan(&existing)
 		if qerr == sql.ErrNoRows {
 			id, ierr := appOpenSearchInsert(ctx2, db, iname, string(snap), user)
 			if ierr != nil {
@@ -455,7 +455,7 @@ func handleOpenSearchK8sDeploy(c *gin.Context, app *ServerApp) {
 		"instancePersistError": nullIfEmptyStr(instanceErr),
 		"hints": []string{
 			"集群内应用与 Vector 采集请使用 internalHttp（ClusterIP）；虚拟机侧采集需 NodePort 或 Ingress 等可路由地址。",
-			"若配置了 indexTemplateJSON，将创建 Job 在集群就绪后注册 composable index template（名称 kubebt-<deploymentName>）。",
+			"若配置了 indexTemplateJSON，将创建 Job 在集群就绪后注册 composable index template（名称 labplane-<deploymentName>）。",
 		},
 	})
 }

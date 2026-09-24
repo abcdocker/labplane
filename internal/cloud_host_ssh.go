@@ -54,7 +54,8 @@ func cloudSSHReady(ctx context.Context, cfg Config, store SSHSettingsStore, clou
 	if err != nil || rec == nil {
 		return false
 	}
-	return rec.hasAuth()
+	return rec.hasAuth() &&
+		(rec.InsecureHostKey || strings.TrimSpace(rec.HostKeyFingerprint) != "")
 }
 
 func buildSSHClientConfigForCloudHost(cfg Config, st *SSHVMStored, host *CloudHost) (*ssh.ClientConfig, error) {
@@ -73,6 +74,10 @@ func buildSSHClientConfigForCloudHost(cfg Config, st *SSHVMStored, host *CloudHo
 	keyPath := strings.TrimSpace(cfg.VCenterVMSshPrivateKeyPath)
 	keyPass := cfg.VCenterVMSshKeyPassphrase
 	insecure := cfg.VCenterVMSshInsecureHostKey
+	hostKeyFingerprint := strings.TrimSpace(host.SSHHostKeyFingerprint)
+	if hostKeyFingerprint == "" {
+		hostKeyFingerprint = cfg.VCenterVMSshHostKeyFingerprint
+	}
 	if st != nil {
 		if st.Password != "" {
 			pw = st.Password
@@ -81,6 +86,9 @@ func buildSSHClientConfigForCloudHost(cfg Config, st *SSHVMStored, host *CloudHo
 			keyPass = st.KeyPassphrase
 		}
 		insecure = st.InsecureHostKey
+		if strings.TrimSpace(st.HostKeyFingerprint) != "" {
+			hostKeyFingerprint = st.HostKeyFingerprint
+		}
 	}
 
 	var methods []ssh.AuthMethod
@@ -119,13 +127,14 @@ func buildSSHClientConfigForCloudHost(cfg Config, st *SSHVMStored, host *CloudHo
 	if len(methods) == 0 {
 		return nil, fmt.Errorf("请配置私钥（文件路径或页面粘贴 PEM）或密码（全局或本机已保存凭据）")
 	}
-	if !insecure {
-		return nil, fmt.Errorf("当前仅支持 insecure 主机密钥校验（VCENTER_VM_SSH_INSECURE_HOST_KEY 或页面勾选）")
+	hostKeyCallback, err := pinnedSSHHostKeyCallback(insecure, hostKeyFingerprint)
+	if err != nil {
+		return nil, err
 	}
 	return &ssh.ClientConfig{
 		User:            user,
 		Auth:            methods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         15 * time.Second,
 	}, nil
 }
@@ -160,7 +169,7 @@ func handleCloudHostSSHWS(c *gin.Context, app *ServerApp) {
 	}
 	if !cloudSSHReady(ctx, app.Cfg(), store, cloudKey, key, host) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "未配置 SSH：请设置全局 VCENTER_VM_SSH_USER 与密码/私钥，或在启用 SSH 存储与 KUBEBT_ENCRYPTION_KEY 后于页面保存该主机凭据",
+			"error": "未配置 SSH：请设置全局 VCENTER_VM_SSH_USER 与密码/私钥，或在启用 SSH 存储与 LABPLANE_ENCRYPTION_KEY 后于页面保存该主机凭据",
 		})
 		return
 	}
@@ -312,6 +321,7 @@ func handleGetCloudHostSSHSettings(c *gin.Context, app *ServerApp) {
 			out["port"] = rec.Port
 		}
 		out["insecureHostKey"] = rec.InsecureHostKey
+		out["hostKeyFingerprint"] = rec.HostKeyFingerprint
 		out["passwordSet"] = strings.TrimSpace(rec.Password) != ""
 		out["privateKeySet"] = strings.TrimSpace(rec.PrivateKeyPEM) != ""
 	}
@@ -327,6 +337,7 @@ func handleGetCloudHostSSHSettings(c *gin.Context, app *ServerApp) {
 	}
 	if rec == nil {
 		out["insecureHostKey"] = app.Cfg().VCenterVMSshInsecureHostKey
+		out["hostKeyFingerprint"] = app.Cfg().VCenterVMSshHostKeyFingerprint
 	}
 	out["canConnect"] = cloudSSHReady(ctx, app.Cfg(), store, cloudKey, key, host)
 	c.JSON(http.StatusOK, out)
@@ -340,7 +351,7 @@ func handlePutCloudHostSSHSettings(c *gin.Context, app *ServerApp) {
 	}
 	key, err := sshEncryptionKey(app.Cfg())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "KUBEBT_ENCRYPTION_KEY: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "LABPLANE_ENCRYPTION_KEY: " + err.Error()})
 		return
 	}
 	id := strings.TrimSpace(c.Param("id"))
@@ -359,12 +370,13 @@ func handlePutCloudHostSSHSettings(c *gin.Context, app *ServerApp) {
 		return
 	}
 	patch := &sshVMPutInput{
-		User:            body.User,
-		Password:        body.Password,
-		PrivateKeyPEM:   body.PrivateKeyPEM,
-		KeyPassphrase:   body.KeyPassphrase,
-		Port:            body.Port,
-		InsecureHostKey: body.InsecureHostKey,
+		User:               body.User,
+		Password:           body.Password,
+		PrivateKeyPEM:      body.PrivateKeyPEM,
+		KeyPassphrase:      body.KeyPassphrase,
+		Port:               body.Port,
+		InsecureHostKey:    body.InsecureHostKey,
+		HostKeyFingerprint: body.HostKeyFingerprint,
 	}
 	ctx := c.Request.Context()
 	cloudKey := cloudHostSSHStorageKey(id)

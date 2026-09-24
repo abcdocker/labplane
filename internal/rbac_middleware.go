@@ -194,6 +194,9 @@ func viewerEndpointForbidden(method, path string) bool {
 	if strings.HasPrefix(path, "/api/k8s/secrets") {
 		return true
 	}
+	if path == "/api/k8s/secret-data" {
+		return true
+	}
 	// CRD / 自定义资源：viewer 仅可 GET（含清单与 YAML）
 	if strings.HasPrefix(path, "/api/k8s/crds") {
 		if method != http.MethodGet && method != http.MethodHead {
@@ -206,7 +209,7 @@ func viewerEndpointForbidden(method, path string) bool {
 	if strings.Contains(path, "/ssh") || strings.Contains(path, "/sftp/") {
 		return true
 	}
-	if strings.Contains(path, "console-ws") || strings.Contains(path, "console-html") || strings.Contains(path, "/webmks") {
+	if strings.Contains(path, "console-ws") || strings.Contains(path, "/webmks") {
 		return true
 	}
 	if strings.Contains(path, "/ssh-settings") {

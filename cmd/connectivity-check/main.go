@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"kube-bt-sync/internal"
+	"github.com/abcdocker/labplane/internal"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,7 +29,7 @@ func main() {
 		fatalf("配置错误: %v", err)
 	}
 
-	fmt.Println("== kube-bt-sync connectivity check ==")
+	fmt.Println("== labplane connectivity check ==")
 	fmt.Printf("K8s namespace: %s\n", cfg.KubeNamespace)
 	fmt.Printf("Baota URL: %s（仅 TCP 探活面板端口，不调用 HTTP API）\n", cfg.BaotaURL)
 	fmt.Println()

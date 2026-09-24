@@ -9,7 +9,7 @@ export function harborRepoUrlPath(repoPath: string): string {
 
 /**
  * Harbor 列表返回的 name 常为「项目/仓库」；路由已在 /p/:project 下，制品 API 也按项目拆分，
- * 此处去掉与当前项目重复的前缀，避免 tools + tools/kube-bt-sync 误拼成错误的 Harbor path。
+ * 此处去掉与当前项目重复的前缀，避免 tools + tools/labplane 误拼成错误的 Harbor path。
  */
 export function harborRepoRelativeToProject(project: string, repoName: string): string {
   const p = project.trim().replace(/^\/+|\/+$/g, "");

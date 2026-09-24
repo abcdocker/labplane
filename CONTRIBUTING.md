@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对 Kube-BT-Sync 的兴趣！我们欢迎 Issue、Pull Request 和改进建议。
+感谢你对 LabPlane 的兴趣！我们欢迎 Issue、Pull Request 和改进建议。
 
 ## 如何贡献
 
@@ -27,8 +27,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/your-org/kube-bt-sync.git
-cd kube-bt-sync
+git clone https://github.com/abcdocker/labplane.git
+cd labplane
 
 # 2. 启动后端 + 前端（一键脚本）
 ./run.sh
@@ -44,7 +44,7 @@ npm run dev
 ### 项目结构速览
 
 ```
-kube-bt-sync/
+labplane/
 ├── cmd/                    # 独立工具（如连通性检查）
 ├── internal/               # Go 后端核心代码
 │   ├── *.go                # HTTP Handler、业务逻辑

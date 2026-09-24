@@ -42,7 +42,9 @@ func (c Config) vCenterVMSshConfigured() bool {
 	if strings.TrimSpace(c.VCenterVMSshUser) == "" {
 		return false
 	}
-	return strings.TrimSpace(c.VCenterVMSshPrivateKeyPath) != "" || c.VCenterVMSshPassword != ""
+	hasAuth := strings.TrimSpace(c.VCenterVMSshPrivateKeyPath) != "" || c.VCenterVMSshPassword != ""
+	hasHostTrust := c.VCenterVMSshInsecureHostKey || strings.TrimSpace(c.VCenterVMSshHostKeyFingerprint) != ""
+	return hasAuth && hasHostTrust
 }
 
 func (v *vCenterClient) Reset() {

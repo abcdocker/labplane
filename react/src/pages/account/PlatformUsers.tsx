@@ -251,7 +251,7 @@ function ModuleSelectRow({
 }) {
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <Label className="shrink-0 text-sm text-gray-700">{label}</Label>
+      <Label className="shrink-0 text-sm text-slate-700">{label}</Label>
       <Select
         value={value}
         onValueChange={(v) => onChange(v as ModuleAccess)}
@@ -498,7 +498,7 @@ const PlatformUsers: React.FC = () => {
   if (authLoading && !status) {
     return (
       <div className="mx-auto max-w-4xl pb-12">
-        <p className="text-gray-500">加载中…</p>
+        <p className="text-slate-500">加载中…</p>
       </div>
     );
   }
@@ -512,8 +512,8 @@ const PlatformUsers: React.FC = () => {
     <div className="mx-auto max-w-4xl pb-12">
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">平台用户</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-slate-900">平台用户</h1>
+          <p className="mt-1 text-sm text-slate-500">
             依赖 MySQL 存储；可为非管理员配置各模块可见性与读写；不勾选「自定义」时与旧版 viewer 一致。可配置授权登录 IP（白名单）及是否允许多 IP 同时在线。
           </p>
         </div>
@@ -554,11 +554,147 @@ const PlatformUsers: React.FC = () => {
         </Alert>
       )}
 
-      {listQ.isLoading && <p className="text-gray-500">加载中…</p>}
+      {listQ.isLoading && <p className="text-slate-500">加载中…</p>}
       {listQ.error && <p className="text-red-600">{(listQ.error as Error).message}</p>}
 
       {listQ.data && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <>
+          <div className="grid gap-3 md:hidden">
+            {(listQ.data.users ?? []).length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                暂无用户，点击「新建用户」添加。
+              </div>
+            ) : (
+              (listQ.data.users ?? []).map((u) => (
+                <article
+                  key={u.virtual ? `v-${u.username}` : u.id}
+                  className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="break-all font-mono text-sm font-bold text-slate-900">{u.username}</h3>
+                      <p className="mt-0.5 break-all text-xs text-slate-500">{u.email || "—"}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                        {u.role}
+                      </span>
+                      <span className={`text-xs ${u.disabled ? "text-red-600" : "text-emerald-700"}`}>
+                        {u.disabled ? "已禁用" : "正常"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mt-3 grid min-w-0 gap-2.5 text-xs">
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">OIDC 绑定</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {u.virtual ? "—" : u.oidcBound ? "已绑定" : "未绑定"}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">两步验证</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {u.totpEnabled ? "已开启" : u.totpConfigured ? "未启用" : "未配置"}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <dt className="shrink-0 text-slate-400">登录限制</dt>
+                      <dd className="min-w-0 text-right text-slate-700">
+                        {(u.allowedLoginIps ?? "").trim() ? "IP 白名单" : "IP 不限"}
+                        <span className="text-slate-400"> · </span>
+                        {u.allowMultiIpLogin ? "可多 IP 在线" : "单会话"}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    {!u.virtual && status?.oidcLogin ? (
+                      u.oidcBound ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 border-amber-200 text-xs text-amber-950"
+                          disabled={!usersMgmtOk}
+                          onClick={() => {
+                            setOidcUnbindRow(u);
+                            setOidcUnbindPwd("");
+                          }}
+                        >
+                          取消绑定
+                        </Button>
+                      ) : (
+                        <a
+                          href={`${API_BASE}/api/admin/users/oidc/bind/start?username=${encodeURIComponent(u.username)}`}
+                          className="inline-flex h-7 items-center text-xs font-medium text-sky-700 underline"
+                        >
+                          绑定 OIDC
+                        </a>
+                      )
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!usersMgmtOk || totpProvisionMut.isPending}
+                      onClick={() => {
+                        setTotpPwdTarget(u);
+                        setOperatorPassword("");
+                        setTotpPwdOpen(true);
+                      }}
+                    >
+                      {u.totpConfigured ? "重新生成二维码" : "生成二维码"}
+                    </Button>
+                    {u.totpEnabled ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-red-600"
+                        disabled={!usersMgmtOk || totpDisableMut.isPending}
+                        onClick={() => {
+                          setTotpDisableTarget(u);
+                          setOperatorPasswordDisable("");
+                          setTotpDisableOpen(true);
+                        }}
+                      >
+                        关闭
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      disabled={!!u.virtual}
+                      title={u.virtual ? "内置账号请在运行时配置中管理；可在此配置二次验证" : undefined}
+                      onClick={() => openEdit(u)}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-red-600"
+                      disabled={!!u.virtual}
+                      onClick={() => {
+                        if (u.virtual) return;
+                        setDeleteTarget(u);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -575,7 +711,7 @@ const PlatformUsers: React.FC = () => {
             <TableBody>
               {(listQ.data.users ?? []).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-sm text-gray-500">
+                  <TableCell colSpan={8} className="py-8 text-center text-sm text-slate-500">
                     暂无用户，点击「新建用户」添加。
                   </TableCell>
                 </TableRow>
@@ -586,9 +722,9 @@ const PlatformUsers: React.FC = () => {
                     <TableCell>{u.email || "—"}</TableCell>
                     <TableCell>{u.role}</TableCell>
                     <TableCell>{u.disabled ? "已禁用" : "正常"}</TableCell>
-                    <TableCell className="min-w-[8rem] text-sm text-gray-700">
+                    <TableCell className="min-w-[8rem] text-sm text-slate-700">
                       {u.virtual ? (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-slate-400">—</span>
                       ) : u.oidcBound ? (
                         <div className="flex flex-col gap-1">
                           <span className="text-emerald-700">已绑定</span>
@@ -610,7 +746,7 @@ const PlatformUsers: React.FC = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1">
-                          <span className="text-gray-500">未绑定</span>
+                          <span className="text-slate-500">未绑定</span>
                           {status?.oidcLogin ? (
                             <a
                               href={`${API_BASE}/api/admin/users/oidc/bind/start?username=${encodeURIComponent(u.username)}`}
@@ -622,7 +758,7 @@ const PlatformUsers: React.FC = () => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-700">
+                    <TableCell className="text-sm text-slate-700">
                       <div className="flex flex-col gap-1.5">
                         <span>
                           {u.totpEnabled
@@ -665,14 +801,14 @@ const PlatformUsers: React.FC = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[10rem] text-xs text-gray-700">
+                    <TableCell className="max-w-[10rem] text-xs text-slate-700">
                       <div className="flex flex-col gap-1">
                         <span>
                           {(u.allowedLoginIps ?? "").trim()
                             ? "IP 白名单"
                             : "IP 不限"}
                         </span>
-                        <span className="text-gray-500">
+                        <span className="text-slate-500">
                           {u.allowMultiIpLogin ? "可多 IP 在线" : "单会话（新登录踢旧）"}
                         </span>
                       </div>
@@ -708,7 +844,8 @@ const PlatformUsers: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -717,13 +854,13 @@ const PlatformUsers: React.FC = () => {
           className="left-[50%] top-[50%] max-h-[min(90vh,900px)] w-[min(96vw,56rem)] translate-x-[-50%] translate-y-[-50%] gap-0 overflow-hidden p-0 sm:max-w-none"
         >
           <div className="max-h-[min(90vh,900px)] overflow-y-auto">
-            <DialogHeader className="border-b border-gray-100 px-6 py-4 text-left">
+            <DialogHeader className="border-b border-slate-100 px-6 py-4 text-left">
               <DialogTitle>{edit ? "编辑用户" : "新建用户"}</DialogTitle>
             </DialogHeader>
 
             <div className="grid gap-6 px-6 py-5 md:grid-cols-2 md:gap-8">
               <div className="min-w-0 space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">账号</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">账号</p>
                 <div className="space-y-2">
                   <Label>用户名</Label>
                   <Input
@@ -764,8 +901,8 @@ const PlatformUsers: React.FC = () => {
                   </Select>
                 </div>
                 {edit && (
-                  <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
-                    <span className="text-sm text-gray-700">禁用账号</span>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
+                    <span className="text-sm text-slate-700">禁用账号</span>
                     <Switch
                       checked={edit.disabled}
                       onCheckedChange={(v) => setEdit({ ...edit, disabled: v })}
@@ -773,7 +910,7 @@ const PlatformUsers: React.FC = () => {
                   </div>
                 )}
                 <Separator />
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">登录安全</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">登录安全</p>
                 <div className="space-y-2">
                   <Label>授权登录 IP（可选）</Label>
                   <Textarea
@@ -785,14 +922,14 @@ const PlatformUsers: React.FC = () => {
                     rows={4}
                     className="min-h-[88px] font-mono text-xs"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     需在反向代理后正确识别客户端 IP（如配置可信代理）。未列入的 IP 将无法登录。
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">允许多 IP 同时登录</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-slate-900">允许多 IP 同时登录</p>
+                    <p className="text-xs text-slate-500">
                       开启后不同来源 IP 可各保留一个会话；关闭时新登录会使其他 IP 的会话失效。
                     </p>
                   </div>
@@ -800,19 +937,19 @@ const PlatformUsers: React.FC = () => {
                 </div>
               </div>
 
-              <div className="min-w-0 space-y-4 md:border-l md:border-gray-100 md:pl-8">
+              <div className="min-w-0 space-y-4 md:border-l md:border-slate-100 md:pl-8">
                 {showPermUi ? (
                   <>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">模块权限</p>
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">模块权限</p>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">自定义模块权限</p>
-                        <p className="text-xs text-gray-500">关闭时使用与旧版 viewer 相同的默认规则</p>
+                        <p className="text-sm font-medium text-slate-900">自定义模块权限</p>
+                        <p className="text-xs text-slate-500">关闭时使用与旧版 viewer 相同的默认规则</p>
                       </div>
                       <Switch checked={useCustomPermissions} onCheckedChange={setUseCustomPermissions} />
                     </div>
                     {useCustomPermissions && (
-                      <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-3">
+                      <div className="space-y-3 rounded-xl border border-slate-100 bg-white p-3">
                         <ModuleSelectRow
                           label="Kubernetes"
                           value={permForm.k8s}
@@ -834,7 +971,7 @@ const PlatformUsers: React.FC = () => {
                           onChange={(v) => setModule("appcenter", v)}
                         />
                         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                          <Label className="shrink-0 text-sm text-gray-700">应用中心 · Redis</Label>
+                          <Label className="shrink-0 text-sm text-slate-700">应用中心 · Redis</Label>
                           <Select
                             value={permForm.appcenterRedis}
                             onValueChange={(v) => {
@@ -863,7 +1000,7 @@ const PlatformUsers: React.FC = () => {
                           </p>
                         )}
                         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                          <Label className="shrink-0 text-sm text-gray-700">应用中心 · 云主机</Label>
+                          <Label className="shrink-0 text-sm text-slate-700">应用中心 · 云主机</Label>
                           <Select
                             value={permForm.appcenterCloudVm}
                             onValueChange={(v) => {
@@ -892,10 +1029,10 @@ const PlatformUsers: React.FC = () => {
                           </p>
                         )}
                         {permForm.appcenter !== "none" ? (
-                          <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                             <div className="min-w-0 pr-2">
-                              <Label className="text-sm text-gray-700">云主机 · 查看 Hysteria2 客户端</Label>
-                              <p className="mt-0.5 text-[11px] leading-snug text-gray-500">
+                              <Label className="text-sm text-slate-700">云主机 · 查看 Hysteria2 客户端</Label>
+                              <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
                                 开启后：可验证平台密码查看已保存的分享链接/YAML；列表与 OpenClaw 向导可展示集群内 Hysteria 端点概要。未开启则仅知「已安装」、不暴露明文与内网地址。
                               </p>
                             </div>
@@ -907,20 +1044,20 @@ const PlatformUsers: React.FC = () => {
                             />
                           </div>
                         ) : null}
-                        <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-                          <Label className="text-sm text-gray-700">敏感数据脱敏（列表概要）</Label>
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                          <Label className="text-sm text-slate-700">敏感数据脱敏（列表概要）</Label>
                           <Switch
                             checked={permForm.maskSensitiveData}
                             onCheckedChange={(v) => setPermForm((f) => ({ ...f, maskSensitiveData: v }))}
                           />
                         </div>
                         {permForm.k8s === "rw" && (
-                          <div className="space-y-3 border-t border-gray-100 pt-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                          <div className="space-y-3 border-t border-slate-100 pt-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                               Kubernetes 细粒度
                             </p>
                             <div className="flex items-center justify-between gap-3">
-                              <Label className="text-sm text-gray-700">Pod 终端（exec）</Label>
+                              <Label className="text-sm text-slate-700">Pod 终端（exec）</Label>
                               <Switch
                                 checked={permForm.k8sPodExec}
                                 onCheckedChange={(v) =>
@@ -929,7 +1066,7 @@ const PlatformUsers: React.FC = () => {
                               />
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                              <Label className="text-sm text-gray-700">删除 Pod</Label>
+                              <Label className="text-sm text-slate-700">删除 Pod</Label>
                               <Switch
                                 checked={permForm.k8sPodDelete}
                                 onCheckedChange={(v) =>
@@ -939,11 +1076,11 @@ const PlatformUsers: React.FC = () => {
                             </div>
                           </div>
                         )}
-                        <div className="space-y-2 border-t border-gray-100 pt-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="space-y-2 border-t border-slate-100 pt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                             菜单与工作台
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-slate-500">
                             取消勾选则隐藏对应入口；未列出项仍按模块权限推断。
                           </p>
                           {(Object.keys(MENU_LABELS) as (keyof MenuVisibility)[]).map((k) => (
@@ -964,7 +1101,7 @@ const PlatformUsers: React.FC = () => {
                               />
                               <label
                                 htmlFor={`menu-${k}`}
-                                className="cursor-pointer text-sm leading-snug text-gray-700"
+                                className="cursor-pointer text-sm leading-snug text-slate-700"
                               >
                                 {MENU_LABELS[k]}
                               </label>
@@ -975,7 +1112,7 @@ const PlatformUsers: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-slate-500">
                     管理员拥有全部模块权限；无需在此配置。
                   </p>
                 )}
@@ -1018,7 +1155,7 @@ const PlatformUsers: React.FC = () => {
             <DialogTitle>两步验证 · {totpRow?.username ?? ""}</DialogTitle>
           </DialogHeader>
           {totpRes?.qrPngBase64 ? (
-            <div className="flex justify-center rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex justify-center rounded-lg border border-slate-200 bg-white p-4">
               <img
                 src={`data:image/png;base64,${totpRes.qrPngBase64}`}
                 width={220}
@@ -1027,10 +1164,10 @@ const PlatformUsers: React.FC = () => {
               />
             </div>
           ) : (
-            <p className="text-sm text-gray-500">未返回二维码，请重试。</p>
+            <p className="text-sm text-slate-500">未返回二维码，请重试。</p>
           )}
           {totpRes?.secret ? (
-            <p className="break-all font-mono text-xs text-gray-600">
+            <p className="break-all font-mono text-xs text-slate-600">
               密钥（手动录入）：{totpRes.secret}
             </p>
           ) : null}
@@ -1056,7 +1193,7 @@ const PlatformUsers: React.FC = () => {
           <DialogHeader>
             <DialogTitle>确认操作 · 生成两步验证</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             为「{totpPwdTarget?.username}」{totpPwdTarget?.totpConfigured ? "重新生成" : "生成"}
             二维码。请输入<strong>您当前登录管理员</strong>的密码。
           </p>
@@ -1102,7 +1239,7 @@ const PlatformUsers: React.FC = () => {
           <DialogHeader>
             <DialogTitle>关闭两步验证</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             将关闭用户「{totpDisableTarget?.username}」的两步验证。请输入<strong>您当前登录管理员</strong>的密码。
           </p>
           <div className="space-y-2">
@@ -1147,7 +1284,7 @@ const PlatformUsers: React.FC = () => {
           <DialogHeader>
             <DialogTitle>取消 OIDC 绑定</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             将解除用户「{oidcUnbindRow?.username}」与 IdP 的关联。请输入<strong>您当前登录管理员</strong>的密码。
           </p>
           <div className="space-y-2">

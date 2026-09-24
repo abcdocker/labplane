@@ -15,7 +15,7 @@ const ViewerRedirect: React.FC<Props> = ({ to, children }) => {
   const q = useAppConfig();
   if (q.isPending || q.isLoading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
         加载权限…
       </div>
     );

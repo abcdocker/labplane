@@ -6,73 +6,77 @@ import (
 	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
 )
 
-// StartIngressWatcher 启动纯事件驱动的监听器（main 中默认未调用，可自行 go StartIngressWatcher(ctx, app)）。
+// StartIngressWatcher 使用 SharedInformer 本地缓存监听 Ingress，并将短时间内的连续变更合并为一次同步。
 func StartIngressWatcher(ctx context.Context, app *ServerApp) {
 	if app == nil || app.K8s() == nil {
 		return
 	}
-	k8sClient := app.K8s()
-	log.Println("ingress-watcher: K8s Ingress Watch 已启动")
-
-	for {
-		if ctx.Err() != nil {
-			log.Println("ingress-watcher: 已停止")
+	factory := informers.NewSharedInformerFactory(app.K8s(), 10*time.Minute)
+	informer := factory.Networking().V1().Ingresses().Informer()
+	changed := make(chan struct{}, 1)
+	notify := func(obj interface{}) {
+		ing, ok := obj.(*networkingv1.Ingress)
+		if !ok {
+			if tombstone, tombstoneOK := obj.(cache.DeletedFinalStateUnknown); tombstoneOK {
+				ing, ok = tombstone.Obj.(*networkingv1.Ingress)
+			}
+		}
+		if !ok || ing == nil || !IsManagedIngress(ing.Annotations) {
 			return
 		}
-		watcher, err := k8sClient.NetworkingV1().Ingresses("").Watch(ctx, metav1.ListOptions{})
-		if err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			log.Printf("ingress-watcher: Watch 失败，5s 后重试: %v", err)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(5 * time.Second):
-			}
-			continue
+		select {
+		case changed <- struct{}{}:
+		default:
 		}
+	}
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    notify,
+		UpdateFunc: func(_, next interface{}) { notify(next) },
+		DeleteFunc: notify,
+	})
+	if err != nil {
+		log.Printf("ingress-informer: 注册事件处理器失败: %v", err)
+		return
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				watcher.Stop()
-				log.Println("ingress-watcher: 已停止")
-				return
-			case event, open := <-watcher.ResultChan():
-				if !open {
-					watcher.Stop()
-					goto reconnect
-				}
-				ing, ingOK := event.Object.(*networkingv1.Ingress)
-				if !ingOK {
-					continue
-				}
-
-				if !IsManagedIngress(ing.Annotations) {
-					continue
-				}
-
-				switch event.Type {
-				case "ADDED":
-					log.Printf("ingress-watcher: ADDED %s/%s，触发同步", ing.Namespace, ing.Name)
-					TriggerSync(app)
-				case "MODIFIED":
-					log.Printf("ingress-watcher: MODIFIED %s/%s，触发同步", ing.Namespace, ing.Name)
-					TriggerSync(app)
-				case "DELETED":
-					log.Printf("ingress-watcher: DELETED %s/%s", ing.Namespace, ing.Name)
-				}
-			}
+	factory.Start(ctx.Done())
+	if !cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
+		if ctx.Err() == nil {
+			log.Printf("ingress-informer: 缓存同步失败")
 		}
-	reconnect:
+		return
+	}
+	log.Printf("ingress-informer: 已启动（10m 全量 resync，800ms 事件合并）")
+
+	var timer *time.Timer
+	var timerC <-chan time.Time
+	for {
 		select {
 		case <-ctx.Done():
+			if timer != nil {
+				timer.Stop()
+			}
 			return
-		case <-time.After(2 * time.Second):
+		case <-changed:
+			if timer == nil {
+				timer = time.NewTimer(800 * time.Millisecond)
+			} else {
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(800 * time.Millisecond)
+			}
+			timerC = timer.C
+		case <-timerC:
+			timerC = nil
+			go RunBaotaIngressSync(ctx, app, "watcher")
 		}
 	}
 }

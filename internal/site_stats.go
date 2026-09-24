@@ -14,11 +14,11 @@ import (
 // 进程内站点访问统计（重启清零）；与 audit.jsonl 互补。
 var siteStatsMu sync.Mutex
 var (
-	siteTotalReq int64
-	siteByPath   = map[string]int64{}
-	siteByIP     = map[string]int64{}
+	siteTotalReq      int64
+	siteByPath        = map[string]int64{}
+	siteByIP          = map[string]int64{}
 	siteLoginFailByIP = map[string]int64{}
-	siteStarted  = time.Now().UTC()
+	siteStarted       = time.Now().UTC()
 )
 
 const siteStatsMaxKeys = 8000

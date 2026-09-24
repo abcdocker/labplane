@@ -27,10 +27,10 @@ type vmlogNginxAggResult struct {
 }
 
 var (
-	reNginxCombined = regexp.MustCompile(`^(\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"([A-Z]+)\s+(\S+)\s+HTTP/[^"]+"\s+(\d{3})(?:\s+(\d+|-))?`)
-	reNginxLoose    = regexp.MustCompile(`"(?:GET|POST|HEAD|PUT|DELETE|PATCH|OPTIONS)\s+(\S+)\s+HTTP/[^"]+"`)
+	reNginxCombined    = regexp.MustCompile(`^(\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"([A-Z]+)\s+(\S+)\s+HTTP/[^"]+"\s+(\d{3})(?:\s+(\d+|-))?`)
+	reNginxLoose       = regexp.MustCompile(`"(?:GET|POST|HEAD|PUT|DELETE|PATCH|OPTIONS)\s+(\S+)\s+HTTP/[^"]+"`)
 	reNginxStatusLoose = regexp.MustCompile(`\s(\d{3})(?:\s|$)`)
-	reIPv4Start     = regexp.MustCompile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b`)
+	reIPv4Start        = regexp.MustCompile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b`)
 )
 
 func topCounts(m map[string]int, n int) []gin.H {

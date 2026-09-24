@@ -62,7 +62,7 @@ func appKafkaDescribeTopicConfigs(ctx context.Context, cl *kgo.Client, topic str
 	var out []map[string]interface{}
 	for _, r := range dr.Resources {
 		if r.ErrorCode != 0 {
-			return nil, fmt.Errorf("DescribeConfigs: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return nil, fmt.Errorf("DescribeConfigs: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 		for _, e := range r.Configs {
 			row := map[string]interface{}{
@@ -123,7 +123,7 @@ func appKafkaIncrementalAlterTopicConfigs(ctx context.Context, cl *kgo.Client, t
 	}
 	for _, r := range ar.Resources {
 		if r.ErrorCode != 0 {
-			return fmt.Errorf("AlterConfig: %s (%d)", r.ErrorMessage, r.ErrorCode)
+			return fmt.Errorf("AlterConfig: %s (%d)", kafkaDerefStrPtr(r.ErrorMessage), r.ErrorCode)
 		}
 	}
 	return nil

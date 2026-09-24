@@ -93,12 +93,12 @@ func handleK8sRBACOverview(c *gin.Context, k8s *kubernetes.Clientset) {
 		if apierrors.IsForbidden(err) {
 			warnings = append(warnings, "无权列出 Namespace，无法展示命名空间内的 Role、RoleBinding、ServiceAccount（可与 kubectl get sa -A 所需权限对比并调整 RBAC）")
 			c.JSON(http.StatusOK, gin.H{
-				"clusterRoles":         clusterRoles,
-				"clusterRoleBindings":  crBindings,
-				"roles":                roles,
-				"roleBindings":         roleBindings,
-				"serviceAccounts":      serviceAccounts,
-				"warnings":             warnings,
+				"clusterRoles":        clusterRoles,
+				"clusterRoleBindings": crBindings,
+				"roles":               roles,
+				"roleBindings":        roleBindings,
+				"serviceAccounts":     serviceAccounts,
+				"warnings":            warnings,
 			})
 			return
 		}

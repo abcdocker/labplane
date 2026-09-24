@@ -1,6 +1,6 @@
 # Kafka 限速压测操作手册
 
-> **适用范围**：任意 Kafka 集群（含 kube-bt-sync 平台部署）；所有操作仅使用 Kafka 原生工具（`kafka-configs.sh` / `kafka-producer-perf-test.sh` / `kafka-consumer-perf-test.sh`），不依赖任何平台 API。
+> **适用范围**：任意 Kafka 集群（含 labplane 平台部署）；所有操作仅使用 Kafka 原生工具（`kafka-configs.sh` / `kafka-producer-perf-test.sh` / `kafka-consumer-perf-test.sh`），不依赖任何平台 API。
 >
 > **支持环境**：Linux 主机直接运行 / Kubernetes Pod exec 进入运行 / Kubernetes Job 自动运行。
 >
@@ -1089,7 +1089,7 @@ kafka-topics.sh \
 
 有输出内容（如 `Partition: 0 Leader: 1 Replicas: 1,2,0 Isr: 1`，ISR 数量少于副本数）表示复制已被限速。
 
-### 7.3 通过 kube-bt-sync 平台验证（可选）
+### 7.3 通过 labplane 平台验证（可选）
 
 若同时在平台上配置了限速，通过以下命令与平台 UI 数据交叉验证：
 

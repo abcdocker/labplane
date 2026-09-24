@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	prometheusMu                   sync.RWMutex
+	prometheusMu                 sync.RWMutex
 	prometheusURLOverride        string // 全局兜底（兼容旧版「进程内覆盖」）
 	prometheusURLOverrideK8s     string
 	prometheusURLOverrideVCenter string

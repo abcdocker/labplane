@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Copy, Loader2, Play, RefreshCw, Terminal } from "lucide-react";
@@ -22,6 +22,22 @@ type VmLogStatusMinimal = {
   configured?: boolean;
   baseUrlHint?: string;
 };
+
+type VmLogCollectorProfile = {
+  id: string;
+  label: string;
+  description: string;
+  defaultPaths: string[];
+  logSource: string;
+  querySource: string;
+  custom?: boolean;
+};
+
+type VmLogSourcesResponse = {
+  collectorProfiles: VmLogCollectorProfile[];
+};
+
+const EMPTY_COLLECTOR_PROFILES: VmLogCollectorProfile[] = [];
 
 function formatLocalDateTime(input?: string | number | Date | null): string {
   if (input == null || input === "") return "—";
@@ -164,24 +180,6 @@ type VmShipperEnabledItem = {
   finishedAt?: string;
 };
 
-const VM_SHIPPER_PRESETS: { id: string; label: string; hint: string }[] = [
-  { id: "baota-nginx", label: "宝塔 Nginx", hint: "/www/wwwlogs/*.log" },
-  { id: "baota-mysql", label: "宝塔 / MySQL", hint: "多路径：data/*.err、mysqld.log 等" },
-  { id: "baota-redis", label: "宝塔 / Redis", hint: "/www/server/redis/*.log 等" },
-  { id: "system-common", label: "系统日志（CentOS / Ubuntu）", hint: "/var/log/messages、syslog、auth.log、secure 等" },
-  { id: "custom", label: "仅自定义路径", hint: "下方每行一个路径，支持通配 *" },
-];
-
-const VM_SHIPPER_DEFAULT_SYSTEM_PATHS = [
-  "/var/log/messages",
-  "/var/log/secure",
-  "/var/log/syslog",
-  "/var/log/auth.log",
-  "/var/log/kern.log",
-  "/var/log/cloud-init.log",
-  "/var/log/cloud-init-output.log",
-];
-
 /** 虚拟机 / 宝塔 → VictoriaLogs Vector 采集助手（原日志查询页内嵌块，现独立复用） */
 export const VmLogShipperAssistant: React.FC = () => {
   const { status } = useAuth();
@@ -192,7 +190,10 @@ export const VmLogShipperAssistant: React.FC = () => {
     queryFn: ({ signal }) => apiGetJson<VmLogStatusMinimal>("/api/ops/vmlog/status", { signal }),
   });
   const st = statusQ.data;
-
+  const sourcesQ = useQuery({
+    queryKey: ["ops-vmlog-sources"],
+    queryFn: ({ signal }) => apiGetJson<VmLogSourcesResponse>("/api/ops/vmlog/sources", { signal }),
+  });
   const [shipperPreset, setShipperPreset] = useState("baota-nginx");
   const [shipperTarget, setShipperTarget] = useState<"cloud" | "vcenter">("cloud");
   const [shipperHostId, setShipperHostId] = useState("");
@@ -202,7 +203,7 @@ export const VmLogShipperAssistant: React.FC = () => {
   const [shipperVmLabel, setShipperVmLabel] = useState("");
   const [shipperVlOverride, setShipperVlOverride] = useState("");
   const [shipperOsUrl, setShipperOsUrl] = useState("");
-  const [shipperOsIndexPrefix, setShipperOsIndexPrefix] = useState("kubebt-vmlog");
+  const [shipperOsIndexPrefix, setShipperOsIndexPrefix] = useState("labplane-vmlog");
   const [shipperOsUser, setShipperOsUser] = useState("");
   const [shipperOsPassword, setShipperOsPassword] = useState("");
   const [shipperLogSrc, setShipperLogSrc] = useState("");
@@ -211,6 +212,12 @@ export const VmLogShipperAssistant: React.FC = () => {
   const [shipperTaskId, setShipperTaskId] = useState("");
   const [shipperTaskNoticeAt, setShipperTaskNoticeAt] = useState("");
   const [shipperApplyDialogOpen, setShipperApplyDialogOpen] = useState(false);
+  const collectorProfiles = sourcesQ.data?.collectorProfiles ?? EMPTY_COLLECTOR_PROFILES;
+  const selectedProfile = collectorProfiles.find((profile) => profile.id === shipperPreset);
+  const systemPaths = useMemo(
+    () => collectorProfiles.find((profile) => profile.id === "system-common")?.defaultPaths ?? [],
+    [collectorProfiles],
+  );
 
   const cloudHostsQ = useQuery({
     queryKey: ["cloud-hosts-list"],
@@ -230,7 +237,7 @@ export const VmLogShipperAssistant: React.FC = () => {
       .map((s) => s.trim())
       .filter(Boolean);
     const mergedLogPaths = Array.from(
-      new Set([...(shipperIncludeSystemLogs ? VM_SHIPPER_DEFAULT_SYSTEM_PATHS : []), ...lines]),
+      new Set([...(shipperIncludeSystemLogs ? systemPaths : []), ...lines]),
     );
     const payload: Record<string, unknown> = {
       preset: shipperPreset,
@@ -269,6 +276,7 @@ export const VmLogShipperAssistant: React.FC = () => {
     shipperVcenterMoref,
     shipperVlOverride,
     shipperVmLabel,
+    systemPaths,
   ]);
 
   const shipperTaskQ = useQuery({
@@ -462,7 +470,7 @@ export const VmLogShipperAssistant: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {VM_SHIPPER_PRESETS.map((p) => (
+                  {collectorProfiles.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.label}
                     </SelectItem>
@@ -470,7 +478,9 @@ export const VmLogShipperAssistant: React.FC = () => {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-slate-500">
-                {VM_SHIPPER_PRESETS.find((x) => x.id === shipperPreset)?.hint}
+                {selectedProfile
+                  ? `${selectedProfile.description}${selectedProfile.defaultPaths.length ? ` · ${selectedProfile.defaultPaths.join("、")}` : ""}`
+                  : "正在加载采集模板…"}
               </p>
             </div>
             <div className="space-y-1.5 md:col-span-2">
@@ -527,7 +537,7 @@ export const VmLogShipperAssistant: React.FC = () => {
                   <Label className="text-xs">索引前缀</Label>
                   <Input
                     className="font-mono text-xs"
-                    placeholder="kubebt-vmlog"
+                    placeholder="labplane-vmlog"
                     value={shipperOsIndexPrefix}
                     onChange={(e) => setShipperOsIndexPrefix(e.target.value)}
                   />

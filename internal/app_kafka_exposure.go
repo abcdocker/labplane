@@ -49,7 +49,7 @@ func kafkaNodePortServiceName(base string, index int) string {
 
 func kafkaNodePortServiceMetaLabels(base string) map[string]string {
 	l := kafkaLabels(base, "kafka")
-	l["kube-bt-sync.io/kafka-nodeport"] = "true"
+	l["labplane.io/kafka-nodeport"] = "true"
 	return l
 }
 

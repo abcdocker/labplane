@@ -49,7 +49,7 @@ func runK8sRestartCorrelationAndPurge(app *ServerApp) {
 	const minR = int32(5)
 	type hit struct {
 		ns, name string
-		rst       int32
+		rst      int32
 	}
 	var hits []hit
 	nsCount := map[string]int{}
@@ -120,7 +120,7 @@ func runK8sRestartCorrelationAndPurge(app *ServerApp) {
 		"kubeSystemHighRestart":  kubeHigh,
 		"totalHighRestartPods":   len(hits),
 		"etcdNameHit":            etcdAny,
-		"topNamespaces":        topNs,
+		"topNamespaces":          topNs,
 	}
 	title := "异常 Pod 关联分析（整点）"
 	body := md.String()

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useK8sObjectYamlTabBuffer } from "./useK8sObjectYamlTabBuffer";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, FileCode2, KeyRound, LayoutGrid } from "lucide-react";
+import { ChevronRight, Copy, Eye, EyeOff, FileCode2, KeyRound, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { apiGetJson, apiPostJson } from "@/lib/api";
+import { copyToClipboardSafe } from "@/lib/clipboard";
+import { toast } from "sonner";
 import { parseAge } from "./parseAge";
 import { K8sObjectRevisionTriggerButton } from "@/components/K8sObjectRevisionDialog";
 import { K8sRelationsCard } from "./K8sRelationsCard";
@@ -30,9 +32,176 @@ type SecretRow = {
   age: string;
 };
 
+type SecretDataItem = {
+  key: string;
+  encoded: string | null;
+  decoded: string;
+  source: "data" | "stringData";
+};
+
+type SecretDataResponse = {
+  type: string;
+  items: SecretDataItem[];
+};
+
 function validTab(v: string | null): "overview" | "yaml" {
   if (v === "yaml" || v === "overview") return v;
   return "overview";
+}
+
+function SecretDataCard({
+  query,
+}: {
+  query: ReturnType<typeof useQuery<SecretDataResponse, Error>>;
+}) {
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [showAll, setShowAll] = useState(false);
+
+  const toggleReveal = (key: string) => {
+    setRevealed((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCopy = (text: string, label: string) => {
+    void copyToClipboardSafe(text).then(() => toast.success(`已复制 ${label}`));
+  };
+
+  if (query.isLoading) {
+    return (
+      <Card className="border-slate-200/90 shadow-sm">
+        <CardContent className="py-8 text-center text-sm text-slate-500">
+          加载 Secret 数据中…
+        </CardContent>
+      </Card>
+    );
+  }
+  if (query.error) {
+    return (
+      <Card className="border-slate-200/90 shadow-sm">
+        <CardContent className="py-4 text-sm text-red-700">
+          加载 Secret 数据失败: {(query.error as Error).message}
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!query.data || query.data.items.length === 0) {
+    return (
+      <Card className="border-slate-200/90 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-slate-600">数据</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-slate-500">无数据项</CardContent>
+      </Card>
+    );
+  }
+
+  const items = query.data.items;
+
+  return (
+    <Card className="border-slate-200/90 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-slate-600">数据</CardTitle>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs text-slate-600"
+            onClick={() => {
+              const nextShowAll = !showAll;
+              setShowAll(nextShowAll);
+              setRevealed((prev) => {
+                const next: Record<string, boolean> = {};
+                items.forEach((it) => {
+                  next[it.key] = nextShowAll;
+                });
+                return next;
+              });
+            }}
+          >
+            {showAll ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showAll ? "全部隐藏" : "全部显示"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.map((item) => {
+          const isRevealed = !!revealed[item.key];
+          const displayDecoded = isRevealed ? item.decoded : "•".repeat(Math.min(item.decoded.length, 24));
+          const displayEncoded = item.encoded
+            ? isRevealed
+              ? item.encoded
+              : "•".repeat(Math.min(item.encoded.length, 24))
+            : null;
+          return (
+            <div key={item.key} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-semibold text-slate-800">{item.key}</span>
+                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-slate-600">
+                    {item.source}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-slate-500"
+                  onClick={() => toggleReveal(item.key)}
+                  title={isRevealed ? "隐藏" : "显示"}
+                >
+                  {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    明文
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-slate-700">
+                      {displayDecoded}
+                    </pre>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0 text-slate-500"
+                    onClick={() => handleCopy(item.decoded, "明文")}
+                    title="复制明文"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {displayEncoded !== null && (
+                  <div className="flex items-start gap-2">
+                    <span className="mt-1 shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                      Base64
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-slate-500">
+                        {displayEncoded}
+                      </pre>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 shrink-0 p-0 text-slate-500"
+                      onClick={() => item.encoded && handleCopy(item.encoded, "Base64")}
+                      title="复制 Base64"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
 }
 
 const ClusterSecretDetail: React.FC = () => {
@@ -85,6 +254,15 @@ const ClusterSecretDetail: React.FC = () => {
         `/api/k8s/object-yaml?kind=${encodeURIComponent("Secret")}&namespace=${encodeURIComponent(namespace)}&name=${encodeURIComponent(secretName)}`
       , { signal }),
     enabled: Boolean(namespace && secretName && tab === "yaml"),
+  });
+
+  const secretDataQ = useQuery({
+    queryKey: ["k8s-secret-data", namespace, secretName],
+    queryFn: ({ signal }) =>
+      apiGetJson<SecretDataResponse>(
+        `/api/k8s/secret-data?namespace=${encodeURIComponent(namespace)}&name=${encodeURIComponent(secretName)}`
+      , { signal }),
+    enabled: Boolean(namespace && secretName && tab === "overview"),
   });
 
   const yamlResourceKey = `Secret|${namespace}|${secretName}`;
@@ -237,6 +415,7 @@ const ClusterSecretDetail: React.FC = () => {
                 <p className="text-lg font-medium text-slate-900">{parseAge(row.age)}</p>
               </CardContent>
             </Card>
+            <SecretDataCard query={secretDataQ} />
             <K8sRelationsCard namespace={namespace} kind="Secret" name={secretName} />
           </TabsContent>
 

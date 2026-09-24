@@ -161,14 +161,14 @@ const VCenterHosts: React.FC = () => {
   ).length;
 
   if (statusQ.isLoading) {
-    return <p className="text-gray-500">加载中…</p>;
+    return <p className="text-slate-500">加载中…</p>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-gray-900">宿主机</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">宿主机</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             物理 ESXi 主机资源与连接状态。名称可能含表情或长文本，请使用卡片底部按钮「查看详情」进入（按主机 ID 跳转，不依赖名称）。
           </p>

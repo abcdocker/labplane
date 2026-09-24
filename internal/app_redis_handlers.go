@@ -45,10 +45,12 @@ func registerAppCenterRoutes(api *gin.RouterGroup, app *ServerApp) {
 	g.PUT("/templates/:id", func(c *gin.Context) { handleAppRedisTemplateUpdate(c, app) })
 	g.DELETE("/templates/:id", func(c *gin.Context) { handleAppRedisTemplateDelete(c, app) })
 
-	registerAppOpenClawRoutes(api, app)
 	registerOpenSearchAppCenterRoutes(api, app)
 	registerKafkaAppCenterRoutes(api, app)
 	registerDnsAppCenterRoutes(api, app)
+	registerTencentCloudAppCenterRoutes(api, app)
+	registerQiniuCloudAppCenterRoutes(api, app)
+	registerUpyunCloudAppCenterRoutes(api, app)
 }
 
 func appCenterRedisWriteDenied(c *gin.Context) bool {
@@ -125,10 +127,10 @@ func handleAppRedisStatus(c *gin.Context, app *ServerApp) {
 		keyErr = err
 	}
 	out := gin.H{
-		"mysqlReachable":    app.MySQLDB() != nil,
-		"encryptionReady":   keyErr == nil,
-		"mirrorRedisOk":     app.Redis() != nil && cfg.RuntimeDualWriteRedis,
-		"dualWriteRedis":    cfg.RuntimeDualWriteRedis,
+		"mysqlReachable":  app.MySQLDB() != nil,
+		"encryptionReady": keyErr == nil,
+		"mirrorRedisOk":   app.Redis() != nil && cfg.RuntimeDualWriteRedis,
+		"dualWriteRedis":  cfg.RuntimeDualWriteRedis,
 	}
 	if keyErr != nil {
 		out["encryptionError"] = keyErr.Error()
@@ -782,6 +784,7 @@ type redisK8sDeployBody struct {
 	ServiceType          string `json:"serviceType,omitempty"`
 	NodePortRedis        int32  `json:"nodePortRedis,omitempty"`
 	NodePortClusterBus   int32  `json:"nodePortClusterBus,omitempty"`
+	HostNetwork          bool   `json:"hostNetwork,omitempty"`
 	/** TemplateID 已连接 MySQL 时必选，从模版中心加载镜像与拉取凭据 */
 	TemplateID int64 `json:"templateId"`
 	/** 无 MySQL 时可选：imagePullSecrets 名称 */
@@ -885,6 +888,7 @@ func handleAppRedisK8sDeploy(c *gin.Context, app *ServerApp) {
 	opts.ServiceType = strings.TrimSpace(body.ServiceType)
 	opts.NodePortRedis = body.NodePortRedis
 	opts.NodePortClusterBus = body.NodePortClusterBus
+	opts.HostNetwork = body.HostNetwork
 
 	db := app.MySQLDB()
 	if db != nil {
@@ -967,7 +971,7 @@ func handleAppRedisK8sDeploy(c *gin.Context, app *ServerApp) {
 				ctx2, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 				defer cancel()
 				var existing int64
-				qerr := db.QueryRowContext(ctx2, `SELECT id FROM kubebt_app_redis_instances WHERE name=?`, name).Scan(&existing)
+				qerr := db.QueryRowContext(ctx2, `SELECT id FROM labplane_app_redis_instances WHERE name=?`, name).Scan(&existing)
 				if qerr == sql.ErrNoRows {
 					id, ierr := appRedisInsert(ctx2, db, name, string(st.Mode), string(b), createdBy)
 					if ierr != nil {
@@ -1001,9 +1005,13 @@ func handleAppRedisK8sDeploy(c *gin.Context, app *ServerApp) {
 		"deployment": opts.DeploymentName,
 	}
 	if len(networkSvcs) > 0 {
+		hint := "集群内使用 clusterDNS（或 ClusterIP）；NodePort 请用 任意节点 IP:nodePort 访问 Redis 端口。"
+		if opts.HostNetwork {
+			hint = "hostNetwork 模式已启用，Pod 直接使用节点网络；外部可通过「外部访问地址」中的节点 IP 直接访问 Redis 端口。"
+		}
 		out["network"] = gin.H{
 			"services": networkSvcs,
-			"hint":     "集群内使用 clusterDNS（或 ClusterIP）；NodePort 请用 任意节点 IP:nodePort 访问 Redis 端口。",
+			"hint":     hint,
 		}
 	}
 	if instanceID > 0 {
@@ -1136,8 +1144,8 @@ func handleAppRedisTemplateGet(c *gin.Context, app *ServerApp) {
 }
 
 type appRedisTemplateWriteBody struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
 	Config      *AppRedisTemplateConfig `json:"config"`
 }
 

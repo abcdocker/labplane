@@ -58,7 +58,6 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
   const [serviceName, setServiceName] = useState("");
   const [port, setPort] = useState<number>(80);
   const [domain, setDomain] = useState("");
-  const [syncAnnotation, setSyncAnnotation] = useState<"i4t" | "kube-bt">("i4t");
   const [baotaSyncEnabled, setBaotaSyncEnabled] = useState(defaultBaotaSyncEnabled);
   const [baotaHttpsEnabled, setBaotaHttpsEnabled] = useState(false);
   const [baotaSslCertName, setBaotaSslCertName] = useState("");
@@ -132,7 +131,6 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
       enableBaotaSync: baotaSyncEnabled,
       enableBaotaHttps: baotaSyncEnabled && baotaHttpsEnabled,
       baotaSslCertName: certName,
-      syncAnnotation,
       customDdnsPort: "",
       ddnsScheme: effectiveOriginScheme,
       baotaTargetId: multiBaota.length > 1 ? baotaTargetId.trim() : "",
@@ -162,7 +160,10 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${className}`}>
+    <form
+      onSubmit={handleSubmit}
+      className={`grid min-w-0 gap-4 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full sm:grid-cols-2 lg:grid-cols-3 ${className}`}
+    >
       {lockedNamespace ? (
         <div className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-3">
           <span className="font-medium text-slate-700">命名空间</span>
@@ -172,9 +173,9 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
         </div>
       ) : (
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-700">命名空间</span>
+          <span className="font-medium text-slate-700">命名空间</span>
           <select
-            className="rounded-lg border border-gray-200 px-3 py-2 text-gray-900"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
             value={namespace}
             onChange={(e) => {
               setNamespace(e.target.value);
@@ -191,9 +192,9 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
         </label>
       )}
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-gray-700">后端 Service</span>
+        <span className="font-medium text-slate-700">后端 Service</span>
         <select
-          className="rounded-lg border border-gray-200 px-3 py-2 text-gray-900"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
           value={serviceName}
           onChange={(e) => setServiceName(e.target.value)}
         >
@@ -206,9 +207,9 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-gray-700">端口</span>
+        <span className="font-medium text-slate-700">端口</span>
         <select
-          className="rounded-lg border border-gray-200 px-3 py-2 text-gray-900"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
           value={String(port)}
           onChange={(e) => setPort(Number(e.target.value))}
         >
@@ -220,26 +221,26 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-        <span className="font-medium text-gray-700">访问域名 (rules.host)</span>
+        <span className="font-medium text-slate-700">访问域名 (rules.host)</span>
         <input
-          className="rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm"
+          className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm"
           placeholder="app.example.com"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-gray-700">Ingress 名称（可空）</span>
+        <span className="font-medium text-slate-700">Ingress 名称（可空）</span>
         <input
-          className="rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm"
+          className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm"
           placeholder="默认: service-name-ingress"
           value={ingressName}
           onChange={(e) => setIngressName(e.target.value)}
         />
       </label>
-      <div className="flex flex-col justify-center gap-2 rounded-lg border border-gray-200 px-3 py-3 sm:col-span-2 lg:col-span-3">
+      <div className="flex flex-col justify-center gap-2 rounded-lg border border-slate-200 px-3 py-3 sm:col-span-2 lg:col-span-3">
         <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={`${idPrefix}-baota-sync`} className="text-sm font-medium text-gray-700">
+          <Label htmlFor={`${idPrefix}-baota-sync`} className="text-sm font-medium text-slate-700">
             同步到宝塔
           </Label>
           <Switch
@@ -255,29 +256,21 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
             }}
           />
         </div>
-        <p className="text-xs text-gray-500">
-          关闭则不下发 <code className="rounded bg-gray-100 px-0.5">baota-sync</code> 注解，宝塔同步任务会忽略该 Ingress。
+        <p className="text-xs text-slate-500">
+          关闭则不下发 <code className="rounded bg-slate-100 px-0.5">baota-sync</code> 注解，宝塔同步任务会忽略该 Ingress。
         </p>
       </div>
 
       {baotaSyncEnabled ? (
         <>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">同步注解键</span>
-            <select
-              className="rounded-lg border border-gray-200 px-3 py-2 text-gray-900"
-              value={syncAnnotation}
-              onChange={(e) => setSyncAnnotation(e.target.value === "kube-bt" ? "kube-bt" : "i4t")}
-            >
-              <option value="i4t">i4t.com/baota-sync（README 默认）</option>
-              <option value="kube-bt">kube-bt-sync.io/baota-sync</option>
-            </select>
-          </label>
+          <p className="text-xs text-slate-500">
+            同步注解：<code className="rounded bg-slate-100 px-0.5">labplane.io/baota-sync</code>
+          </p>
           {multiBaota.length > 1 ? (
             <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-2">
-              <span className="font-medium text-gray-700">宝塔实例（写入 baota-target 注解）</span>
+              <span className="font-medium text-slate-700">宝塔实例（写入 baota-target 注解）</span>
               <select
-                className="rounded-lg border border-gray-200 px-3 py-2 text-gray-900"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
                 value={baotaTargetId}
                 onChange={(e) => setBaotaTargetId(e.target.value)}
               >
@@ -295,9 +288,9 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
             <span className="font-mono text-slate-800"> {effectiveOriginScheme.toUpperCase()}://{originHost || "未设置"}:{effectiveOriginPort}</span>
             。勾选“开启宝塔 HTTPS”后会切到 HTTPS 回源；若宝塔设置中填写了固定回源端口，则仍优先使用该端口。
           </div>
-          <div className="flex flex-col justify-center gap-2 rounded-lg border border-gray-200 px-3 py-3 sm:col-span-2 lg:col-span-3">
+          <div className="flex flex-col justify-center gap-2 rounded-lg border border-slate-200 px-3 py-3 sm:col-span-2 lg:col-span-3">
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${idPrefix}-baota-https`} className="text-sm font-medium text-gray-700">
+              <Label htmlFor={`${idPrefix}-baota-https`} className="text-sm font-medium text-slate-700">
                 开启宝塔 HTTPS
               </Label>
               <Switch
@@ -312,16 +305,16 @@ const IngressGraphicalForm: React.FC<IngressGraphicalFormProps> = ({
                 }}
               />
             </div>
-            <p className="text-xs text-gray-500">
-              开启后会追加 <code className="rounded bg-gray-100 px-0.5">baota-https</code> 注解，并让宝塔反代按 HTTPS 回源；端口优先使用宝塔设置中的固定回源端口，未设置时默认走本地 Ingress HTTPS 端口。HTTP 对外访问仍保留。
+            <p className="text-xs text-slate-500">
+              开启后会追加 <code className="rounded bg-slate-100 px-0.5">baota-https</code> 注解，并让宝塔反代按 HTTPS 回源；端口优先使用宝塔设置中的固定回源端口，未设置时默认走本地 Ingress HTTPS 端口。HTTP 对外访问仍保留。
             </p>
           </div>
           {baotaHttpsEnabled ? (
             <div className="grid gap-4 sm:col-span-2 lg:col-span-3 lg:grid-cols-3">
               <label className="flex flex-col gap-1 text-sm lg:col-span-3">
-                <span className="font-medium text-gray-700">证书名（可选）</span>
+                <span className="font-medium text-slate-700">证书名（可选）</span>
                 <input
-                  className="rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm"
+                  className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm"
                   placeholder={globalCertHint ? `留空使用全局 ${globalCertHint}` : "留空则使用运行时配置 baotaSslCertName 或平台已保存证书内容"}
                   value={baotaSslCertName}
                   onChange={(e) => setBaotaSslCertName(e.target.value)}

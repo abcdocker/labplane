@@ -5,6 +5,7 @@ import Header from "./Header";
 import RedisStatusBanner from "./RedisStatusBanner";
 import PlatformVersionBanner from "./PlatformVersionBanner";
 import UserGuideSheet from "./UserGuideSheet";
+import AiAssistantPopup from "./AiAssistantPopup";
 import AppLayoutMobile from "./AppLayoutMobile";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,7 +32,7 @@ const AppLayout: React.FC = () => {
   return (
     <div
       data-cmp="AppLayout"
-      className="flex h-screen min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#F1F5F9] font-sans"
+      className="flex h-dvh min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#F1F5F9] font-sans"
     >
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-white shadow-custom">
         {!isDocsShell && !hideAppChrome ? <Sidebar /> : null}
@@ -77,6 +78,7 @@ const AppLayout: React.FC = () => {
         </div>
       </div>
       <UserGuideSheet />
+      <AiAssistantPopup />
     </div>
   );
 };

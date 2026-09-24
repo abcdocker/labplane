@@ -24,7 +24,8 @@ func sshEffectiveReady(ctx context.Context, cfg Config, store SSHSettingsStore, 
 	if err != nil || rec == nil {
 		return false
 	}
-	return rec.hasAuth()
+	return rec.hasAuth() &&
+		(rec.InsecureHostKey || strings.TrimSpace(rec.HostKeyFingerprint) != "")
 }
 
 func handleGetVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettingsStore) {
@@ -56,6 +57,7 @@ func handleGetVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettings
 			out["user"] = cfg.VCenterVMSshUser
 			out["port"] = cfg.VCenterVMSshPort
 			out["insecureHostKey"] = cfg.VCenterVMSshInsecureHostKey
+			out["hostKeyFingerprint"] = cfg.VCenterVMSshHostKeyFingerprint
 			out["passwordSet"] = strings.TrimSpace(cfg.VCenterVMSshPassword) != ""
 			out["privateKeySet"] = strings.TrimSpace(cfg.VCenterVMSshPrivateKeyPath) != ""
 		}
@@ -83,6 +85,7 @@ func handleGetVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettings
 			out["port"] = rec.Port
 		}
 		out["insecureHostKey"] = rec.InsecureHostKey
+		out["hostKeyFingerprint"] = rec.HostKeyFingerprint
 		out["passwordSet"] = strings.TrimSpace(rec.Password) != ""
 		out["privateKeySet"] = strings.TrimSpace(rec.PrivateKeyPEM) != ""
 	}
@@ -94,18 +97,20 @@ func handleGetVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettings
 	}
 	if rec == nil {
 		out["insecureHostKey"] = cfg.VCenterVMSshInsecureHostKey
+		out["hostKeyFingerprint"] = cfg.VCenterVMSshHostKeyFingerprint
 	}
 	out["canConnect"] = sshEffectiveReady(ctx, cfg, store, moref, key)
 	c.JSON(http.StatusOK, out)
 }
 
 type sshPutBody struct {
-	User            string  `json:"user"`
-	Password        *string `json:"password"`
-	PrivateKeyPEM   *string `json:"privateKeyPem"`
-	KeyPassphrase   *string `json:"keyPassphrase"`
-	Port            *int    `json:"port"`
-	InsecureHostKey *bool   `json:"insecureHostKey"`
+	User               string  `json:"user"`
+	Password           *string `json:"password"`
+	PrivateKeyPEM      *string `json:"privateKeyPem"`
+	KeyPassphrase      *string `json:"keyPassphrase"`
+	Port               *int    `json:"port"`
+	InsecureHostKey    *bool   `json:"insecureHostKey"`
+	HostKeyFingerprint *string `json:"hostKeyFingerprint"`
 }
 
 func handlePutVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettingsStore) {
@@ -115,7 +120,7 @@ func handlePutVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettings
 	}
 	key, err := sshEncryptionKey(cfg)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "KUBEBT_ENCRYPTION_KEY: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "LABPLANE_ENCRYPTION_KEY: " + err.Error()})
 		return
 	}
 	moref := strings.TrimSpace(c.Param("moref"))
@@ -133,12 +138,13 @@ func handlePutVCenterVMSSHSettings(c *gin.Context, cfg Config, store SSHSettings
 		return
 	}
 	patch := &sshVMPutInput{
-		User:            body.User,
-		Password:        body.Password,
-		PrivateKeyPEM:   body.PrivateKeyPEM,
-		KeyPassphrase:   body.KeyPassphrase,
-		Port:            body.Port,
-		InsecureHostKey: body.InsecureHostKey,
+		User:               body.User,
+		Password:           body.Password,
+		PrivateKeyPEM:      body.PrivateKeyPEM,
+		KeyPassphrase:      body.KeyPassphrase,
+		Port:               body.Port,
+		InsecureHostKey:    body.InsecureHostKey,
+		HostKeyFingerprint: body.HostKeyFingerprint,
 	}
 	ctx := c.Request.Context()
 	if err := store.PutVM(ctx, moref, patch, key); err != nil {

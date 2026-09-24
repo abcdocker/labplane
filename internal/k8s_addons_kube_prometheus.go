@@ -20,7 +20,7 @@ import (
 // 固定 release/命名空间，避免与用户已有 monitoring 命名空间混用。
 const (
 	kubePromStackReleaseName = "kbt-prom"
-	kubePromStackNamespace   = "kube-bt-sync-monitoring"
+	kubePromStackNamespace   = "labplane-monitoring"
 )
 
 // 优先 56.21.0；失败时依次尝试备用版本（GitHub release 资源名均为 kube-prometheus-stack-X.Y.Z.tgz）。
@@ -223,7 +223,7 @@ func InstallKubePrometheusStack(ctx context.Context, app *ServerApp, mirror Mani
 		return nil, fmt.Errorf("未找到 helm 可执行文件：请在镜像内放置 /app/helm，或设置 HELM_BIN，或将 helm 加入 PATH: %w", err)
 	}
 
-	workDir, err := os.MkdirTemp("", "kubebt-kps-*")
+	workDir, err := os.MkdirTemp("", "labplane-kps-*")
 	if err != nil {
 		return nil, err
 	}

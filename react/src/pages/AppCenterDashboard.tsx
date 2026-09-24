@@ -47,14 +47,6 @@ export default function AppCenterDashboard() {
       apiGetJson<{ instances: unknown[] }>("/api/app-center/cloud-vm/instances", { signal }),
   });
 
-  const openClawQ = useQuery({
-    queryKey: ["app-center-openclaw-instances"],
-    queryFn: ({ signal }) =>
-      apiGetJson<{ instances: { id: string; displayName?: string; namespace?: string; deploymentName?: string }[] }>(
-        "/api/app-center/openclaw/instances"
-      , { signal }),
-  });
-
   const kafkaQ = useQuery({
     queryKey: ["app-center-kafka-instances-dash"],
     queryFn: ({ signal }) => apiGetJson<{ instances: unknown[] }>("/api/app-center/kafka/instances", { signal }),
@@ -80,7 +72,6 @@ export default function AppCenterDashboard() {
 
   const nInst = listQ.data?.instances?.length ?? 0;
   const nCloudVm = cloudVmQ.data?.instances?.length ?? 0;
-  const nOpenClaw = openClawQ.data?.instances?.length ?? 0;
   const nKafka = kafkaQ.data?.instances?.length ?? 0;
   const nOpenSearch = openSearchQ.data?.instances?.length ?? 0;
   const nDnsAccounts = dnsAccountsQ.data?.accounts?.length ?? 0;
@@ -100,7 +91,7 @@ export default function AppCenterDashboard() {
               Dashboard
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-              纳管 Redis、Kafka、云主机、OpenClaw 等实例数量与全局依赖（MySQL、加密、Redis 双写）；点下方卡片进入各子模块。
+              纳管 Redis、Kafka、云主机等实例数量与全局依赖（MySQL、加密、Redis 双写）；点下方卡片进入各子模块。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -131,16 +122,6 @@ export default function AppCenterDashboard() {
             >
               <Link to="/cluster/apps/cloud-vm">
                 云主机
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="secondary"
-              className="h-10 shrink-0 gap-1.5 border-violet-200/80 bg-violet-50/80 shadow-sm hover:bg-violet-100/80"
-            >
-              <Link to="/cluster/apps/openclaw">
-                OpenClaw
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -199,24 +180,6 @@ export default function AppCenterDashboard() {
             <div>
               <p className="text-xs font-medium text-slate-500">云主机实例</p>
               <p className="text-2xl font-semibold tabular-nums text-slate-900">{nCloudVm}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border border-violet-100 bg-white p-4 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 text-violet-700">
-              <Bot className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-slate-500">OpenClaw 网关</p>
-              <p className="text-2xl font-semibold tabular-nums text-slate-900">{nOpenClaw}</p>
-              {openClawQ.data?.instances && openClawQ.data.instances.length > 0 ? (
-                <p className="mt-1 truncate text-[11px] text-slate-500" title={openClawQ.data.instances.map((i) => i.displayName || i.deploymentName).join(" · ")}>
-                  {openClawQ.data.instances
-                    .slice(0, 2)
-                    .map((i) => i.displayName || i.deploymentName || i.id)
-                    .join(" · ")}
-                  {openClawQ.data.instances.length > 2 ? ` 等 ${openClawQ.data.instances.length} 套` : ""}
-                </p>
-              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">

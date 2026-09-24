@@ -29,9 +29,9 @@ func TestVmlogAggregateNginxStyle_combined(t *testing.T) {
 func TestVmlogAggregateNginxStyle_rowFields(t *testing.T) {
 	rows := []map[string]any{
 		{
-			"_msg":       `"GET /index.html HTTP/1.1" 200`,
+			"_msg":        `"GET /index.html HTTP/1.1" 200`,
 			"remote_addr": "10.0.0.5",
-			"http_host":  "www.example.com",
+			"http_host":   "www.example.com",
 		},
 	}
 	res := vmlogAggregateNginxStyle(rows, 10, "")

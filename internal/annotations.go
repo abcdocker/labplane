@@ -10,7 +10,7 @@ func IsManagedIngress(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
 	}
-	return annotations["i4t.com/baota-sync"] == "true" || annotations["kube-bt-sync.io/baota-sync"] == "true"
+	return annotations["labplane.io/baota-sync"] == "true"
 }
 
 type BaotaHTTPSConfig struct {
@@ -20,15 +20,11 @@ type BaotaHTTPSConfig struct {
 	KeyPath  string
 }
 
-func baotaAnnotationValue(annotations map[string]string, legacyKey, modernKey string) string {
+func baotaAnnotationValue(annotations map[string]string, key string) string {
 	if annotations == nil {
 		return ""
 	}
-	v := strings.TrimSpace(annotations[legacyKey])
-	if v != "" {
-		return v
-	}
-	return strings.TrimSpace(annotations[modernKey])
+	return strings.TrimSpace(annotations[key])
 }
 
 // BaotaHTTPSFromAnnotations 是否为本站开启宝塔 HTTPS；证书来源按注解优先级返回，实际全局回退在 EnsureBaotaHTTPS 中处理。
@@ -37,10 +33,10 @@ func BaotaHTTPSFromAnnotations(annotations map[string]string) BaotaHTTPSConfig {
 	if annotations == nil {
 		return cfg
 	}
-	cfg.Enable = annotations["i4t.com/baota-https"] == "true" || annotations["kube-bt-sync.io/baota-https"] == "true"
-	cfg.CertName = baotaAnnotationValue(annotations, "i4t.com/baota-ssl-cert-name", "kube-bt-sync.io/baota-ssl-cert-name")
-	cfg.PemPath = baotaAnnotationValue(annotations, "i4t.com/baota-ssl-pem-path", "kube-bt-sync.io/baota-ssl-pem-path")
-	cfg.KeyPath = baotaAnnotationValue(annotations, "i4t.com/baota-ssl-key-path", "kube-bt-sync.io/baota-ssl-key-path")
+	cfg.Enable = annotations["labplane.io/baota-https"] == "true"
+	cfg.CertName = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-cert-name")
+	cfg.PemPath = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-pem-path")
+	cfg.KeyPath = baotaAnnotationValue(annotations, "labplane.io/baota-ssl-key-path")
 	return cfg
 }
 
@@ -68,7 +64,7 @@ func baotaOriginDefaultPortForScheme(cfg Config, scheme string) string {
 }
 
 // BaotaOriginTarget 返回宝塔反向代理实际使用的回源 host / scheme / port。
-// 默认取全局设置；若 Ingress 带旧的 ddns-scheme / ddns-port 注解，则继续按注解覆盖以兼容历史 YAML。
+// 默认取全局设置；若 Ingress 带 ddns-scheme / ddns-port 注解，则按注解覆盖。
 // 若未显式声明 ddns-scheme，但已开启 baota-https，则默认切到 https 回源端口。
 func BaotaOriginTarget(cfg Config, annotations map[string]string) (host string, scheme string, port string) {
 	host = strings.TrimSpace(cfg.BaotaUpstreamHost)
@@ -80,10 +76,7 @@ func BaotaOriginTarget(cfg Config, annotations map[string]string) (host string, 
 	if annotations == nil {
 		return host, scheme, port
 	}
-	overrideScheme := strings.ToLower(strings.TrimSpace(annotations["i4t.com/ddns-scheme"]))
-	if overrideScheme == "" {
-		overrideScheme = strings.ToLower(strings.TrimSpace(annotations["kube-bt-sync.io/ddns-scheme"]))
-	}
+	overrideScheme := strings.ToLower(strings.TrimSpace(annotations["labplane.io/ddns-scheme"]))
 	if overrideScheme == "http" || overrideScheme == "https" {
 		scheme = overrideScheme
 		port = baotaOriginDefaultPortForScheme(cfg, scheme)
@@ -91,10 +84,7 @@ func BaotaOriginTarget(cfg Config, annotations map[string]string) (host string, 
 		scheme = "https"
 		port = baotaOriginDefaultPortForScheme(cfg, scheme)
 	}
-	overridePort := strings.TrimSpace(annotations["i4t.com/ddns-port"])
-	if overridePort == "" {
-		overridePort = strings.TrimSpace(annotations["kube-bt-sync.io/ddns-port"])
-	}
+	overridePort := strings.TrimSpace(annotations["labplane.io/ddns-port"])
 	if overridePort != "" {
 		port = overridePort
 	}
@@ -112,18 +102,12 @@ func BaotaDDNSTargetFromAnnotations(annotations map[string]string, defaultHTTPPo
 		}
 		return scheme, port
 	}
-	rawScheme := strings.ToLower(strings.TrimSpace(annotations["i4t.com/ddns-scheme"]))
-	if rawScheme == "" {
-		rawScheme = strings.ToLower(strings.TrimSpace(annotations["kube-bt-sync.io/ddns-scheme"]))
-	}
+	rawScheme := strings.ToLower(strings.TrimSpace(annotations["labplane.io/ddns-scheme"]))
 	if rawScheme == "https" {
 		scheme = "https"
 		port = strings.TrimSpace(defaultHTTPSPort)
 	}
-	customPort := strings.TrimSpace(annotations["i4t.com/ddns-port"])
-	if customPort == "" {
-		customPort = strings.TrimSpace(annotations["kube-bt-sync.io/ddns-port"])
-	}
+	customPort := strings.TrimSpace(annotations["labplane.io/ddns-port"])
 	if customPort != "" {
 		port = customPort
 	}

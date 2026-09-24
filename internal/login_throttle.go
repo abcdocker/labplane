@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,10 +18,10 @@ import (
 )
 
 const (
-	loginFailCaptchaAfter   = 3
-	loginFailAdminAlertAt   = 20
-	loginCaptchaTTL         = 10 * time.Minute
-	adminPasswordFailBanAt  = 5
+	loginFailCaptchaAfter    = 3
+	loginFailAdminAlertAt    = 20
+	loginCaptchaTTL          = 10 * time.Minute
+	adminPasswordFailBanAt   = 5
 	adminPasswordBanDuration = 10 * time.Minute
 )
 
@@ -205,10 +206,7 @@ func handleAuthLoginChallenge(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusOK, gin.H{"captchaRequired": false})
 			return
 		}
-		n1, _ := rand.Int(rand.Reader, big.NewInt(9))
-		n2, _ := rand.Int(rand.Reader, big.NewInt(9))
-		a := int(n1.Int64()) + 1
-		b := int(n2.Int64()) + 1
+		a, b := randIntOneToNine(), randIntOneToNine()
 		sum := a + b
 		id := newCaptchaID()
 		storeCaptchaAnswer(id, fmt.Sprintf("%d", sum), ip)
@@ -220,14 +218,23 @@ func handleAuthLoginChallenge(app *ServerApp) gin.HandlerFunc {
 	}
 }
 
+// randIntOneToNine 生成 1~9 的随机整数，优先 crypto/rand，失败时 fallback 到 math/rand。
+func randIntOneToNine() int {
+	n, err := rand.Int(rand.Reader, big.NewInt(9))
+	if err == nil && n != nil {
+		return int(n.Int64()) + 1
+	}
+	return mathrand.Intn(9) + 1
+}
+
 const securityLoginAlertFile = "security-login-alert.json"
 
 // SecurityLoginAlertState 管理员铃铛：登录暴力尝试告警（持久化，进程重启后仍可提示）。
 type SecurityLoginAlertState struct {
-	Unread    bool      `json:"unread"`
-	Message   string    `json:"message,omitempty"`
-	LastAt    time.Time `json:"lastAt,omitempty"`
-	SourceIP  string    `json:"sourceIp,omitempty"`
+	Unread   bool      `json:"unread"`
+	Message  string    `json:"message,omitempty"`
+	LastAt   time.Time `json:"lastAt,omitempty"`
+	SourceIP string    `json:"sourceIp,omitempty"`
 }
 
 func loadSecurityLoginAlert(dataDir string) (SecurityLoginAlertState, error) {

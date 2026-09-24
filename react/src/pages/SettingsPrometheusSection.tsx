@@ -238,10 +238,10 @@ const SettingsPrometheusSection: React.FC<SettingsPrometheusSectionProps> = ({
   const k8sUrlHint = k8sScope?.urlHint ?? promStatusQ.data?.urlHint;
 
   return (
-    <div className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-5">
+    <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-base font-bold text-gray-900">
+          <h2 className="text-base font-bold text-slate-900">
             {en ? "Kubernetes monitoring (Prometheus · VM)" : "Kubernetes 监控（Prometheus · VM）"}
           </h2>
           <span
@@ -251,7 +251,7 @@ const SettingsPrometheusSection: React.FC<SettingsPrometheusSectionProps> = ({
             VM
           </span>
         </div>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-slate-500">
           {en ? (
             <>
               Prometheus: <code className="text-[11px]">prometheusUrlK8s</code> / env{" "}
@@ -308,13 +308,13 @@ const SettingsPrometheusSection: React.FC<SettingsPrometheusSectionProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600">
                 {en ? "K8s scope:" : "K8s 数据源："}
                 {k8sConfigured ? (en ? " configured" : "已配置") : en ? " not set" : "未配置"}{" "}
                 {k8sUrlHint ? `（${k8sUrlHint}）` : ""}
               </p>
               {cfg?.vmSelectUrlK8sHint ? (
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-slate-600">
                   {en ? "VictoriaMetrics (vmselect) field: " : "已填写 vmselect（vmSelectUrlK8s）："}
                   <span className="font-mono">{cfg.vmSelectUrlK8sHint}</span>
                   {en ? " (takes precedence over Prometheus URL)" : "（查询时优先于 prometheusUrlK8s）"}
@@ -364,7 +364,7 @@ const SettingsPrometheusSection: React.FC<SettingsPrometheusSectionProps> = ({
                 )}
                 {candidates.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-gray-600">
+                    <Label className="text-xs text-slate-600">
                       {en ? "Pick a candidate (HTTP base URL)" : "选择候选（HTTP 基址）"}
                     </Label>
                     <Select
@@ -386,13 +386,13 @@ const SettingsPrometheusSection: React.FC<SettingsPrometheusSectionProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-slate-500">
                       {en ? "Heuristic match on name/port; verify TLS if needed." : "按名称与端口启发式匹配；若需 HTTPS 请手动改。"}
                     </p>
                   </div>
                 )}
                 {discoverScanDone && !discoverQ.isFetching && candidates.length === 0 && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     {en ? "No Prometheus-like Services found." : "未发现疑似 Prometheus 的 Service。"}
                   </p>
                 )}

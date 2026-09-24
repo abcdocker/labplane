@@ -212,14 +212,14 @@ func handleK8sCRDList(c *gin.Context, k8s *kubernetes.Clientset, rc *rest.Config
 		plural, _, _ := unstructured.NestedString(u.Object, "spec", "names", "plural")
 		scope, _, _ := unstructured.NestedString(u.Object, "spec", "scope")
 		items = append(items, gin.H{
-			"name":            name,
-			"group":           group,
-			"kind":            kind,
-			"plural":          plural,
-			"scope":           scope,
-			"storageVersion":  crdStorageVersion(&u),
-			"createdAt":       metav1TimeRFC3339(u.GetCreationTimestamp()),
-			"established":     crdEstablished(&u),
+			"name":           name,
+			"group":          group,
+			"kind":           kind,
+			"plural":         plural,
+			"scope":          scope,
+			"storageVersion": crdStorageVersion(&u),
+			"createdAt":      metav1TimeRFC3339(u.GetCreationTimestamp()),
+			"established":    crdEstablished(&u),
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"items": items})
@@ -365,10 +365,10 @@ func handleK8sCustomResourceList(c *gin.Context, k8s *kubernetes.Clientset, rc *
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"crdName": crdName,
-		"scope":   scope,
-		"gvr":     gin.H{"group": gvr.Group, "version": gvr.Version, "resource": gvr.Resource},
-		"items":   rows,
+		"crdName":  crdName,
+		"scope":    scope,
+		"gvr":      gin.H{"group": gvr.Group, "version": gvr.Version, "resource": gvr.Resource},
+		"items":    rows,
 		"continue": list.GetContinue(),
 	})
 }

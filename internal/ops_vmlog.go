@@ -88,11 +88,11 @@ func discoverVictoriaLogsInCluster(ctx context.Context, k8s *kubernetes.Clientse
 			seen[key] = struct{}{}
 			suggested := fmt.Sprintf("http://%s.%s.svc:%d", s.Name, ns, port)
 			out = append(out, gin.H{
-				"namespace":     ns,
-				"service":     s.Name,
+				"namespace":    ns,
+				"service":      s.Name,
 				"suggestedUrl": suggested,
-				"port":        port,
-				"hint":        "Helm 部署 VictoriaLogs 时 Service 端口多为 9428；若 chart 使用不同端口请以 kubectl get svc 为准。",
+				"port":         port,
+				"hint":         "Helm 部署 VictoriaLogs 时 Service 端口多为 9428；若 chart 使用不同端口请以 kubectl get svc 为准。",
 			})
 		}
 	}
@@ -115,11 +115,11 @@ func discoverVictoriaLogsInCluster(ctx context.Context, k8s *kubernetes.Clientse
 			port := pickVictoriaLogsServicePort(s)
 			suggested := fmt.Sprintf("http://%s.%s.svc:%d", s.Name, ns, port)
 			out = append(out, gin.H{
-				"namespace":     ns,
-				"service":     s.Name,
+				"namespace":    ns,
+				"service":      s.Name,
 				"suggestedUrl": suggested,
-				"port":        port,
-				"hint":        "匹配标签 app.kubernetes.io/name=victoria-logs",
+				"port":         port,
+				"hint":         "匹配标签 app.kubernetes.io/name=victoria-logs",
 			})
 		}
 	}
@@ -270,7 +270,7 @@ func buildOpsVmLogStatusPayload(ctx context.Context, app *ServerApp) gin.H {
 	}
 	geoMMDB := effectiveGeoLiteCountryMMDB(app.Runtime(), cfg)
 	out["nginxGeoLiteConfigured"] = strings.TrimSpace(geoMMDB) != ""
-	out["nginxGeoHint"] = "Nginx 访问统计：未配置时按内网/公网粗分；填写 MaxMind GeoLite2-Country.mmdb 路径（环境变量 KUBEBT_GEOLITE2_COUNTRY_MMDB 或运行时 geoLite2CountryMmdb）可展示国家/地区 Top。"
+	out["nginxGeoHint"] = "Nginx 访问统计：未配置时按内网/公网粗分；填写 MaxMind GeoLite2-Country.mmdb 路径（环境变量 LABPLANE_GEOLITE2_COUNTRY_MMDB 或运行时 geoLite2CountryMmdb）可展示国家/地区 Top。"
 	if app.K8s() != nil {
 		out["discovered"] = discoverVictoriaLogsInCluster(ctx, app.K8s())
 	}
@@ -306,7 +306,8 @@ func fetchVictoriaLogsNDJSON(ctx context.Context, cfg Config, baseRaw string, qu
 	}
 	form := url.Values{}
 	form.Set("query", query)
-	form.Set("limit", fmt.Sprintf("%d", effLimit))
+	// 多取一条用于判断是否达到扫描上限；响应仍严格返回 effLimit 条。
+	form.Set("limit", fmt.Sprintf("%d", effLimit+1))
 	if strings.TrimSpace(start) != "" {
 		form.Set("start", strings.TrimSpace(start))
 	}
@@ -332,8 +333,8 @@ func fetchVictoriaLogsNDJSON(ctx context.Context, cfg Config, baseRaw string, qu
 	const maxTok = 1024 * 1024
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, maxTok)
-	rows = make([]map[string]any, 0, effLimit)
-	for scanner.Scan() && len(rows) < effLimit {
+	rows = make([]map[string]any, 0, effLimit+1)
+	for len(rows) <= effLimit && scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
@@ -348,7 +349,11 @@ func fetchVictoriaLogsNDJSON(ctx context.Context, cfg Config, baseRaw string, qu
 	if serr := scanner.Err(); serr != nil {
 		return rows, true, serr.Error(), effLimit, nil
 	}
-	return rows, false, "", effLimit, nil
+	if len(rows) > effLimit {
+		rows = rows[:effLimit]
+		truncated = true
+	}
+	return rows, truncated, "", effLimit, nil
 }
 
 func handleOpsVmLogQuery(app *ServerApp) gin.HandlerFunc {
@@ -401,6 +406,7 @@ func handleOpsVmLogQuery(app *ServerApp) gin.HandlerFunc {
 var (
 	vmlogErrorWordRE = regexp.MustCompile(`(?i)\b(error|fatal|panic|exception|traceback|critical|crit|alert|emerg|failed|failure|crash(?:ed)?|denied|refused)\b`)
 	vmlogWarnWordRE  = regexp.MustCompile(`(?i)\b(warn(?:ing)?|timeout|timed out|retry(?:ing)?|degraded|slow|unhealthy|disconnect(?:ed)?|backoff|throttle(?:d)?)\b`)
+	vmlogFieldNameRE = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]{0,127}$`)
 )
 
 type opsVmLogOverviewBody struct {
@@ -960,7 +966,7 @@ type vmLogHitsResponse struct {
 
 func vmlogTrendCacheKey(query, start, end, step string) string {
 	sum := sha256.Sum256([]byte("vmlog-trend-v1\x00" + query + "\x00" + start + "\x00" + end + "\x00" + step))
-	return "kubebt:vmlog:trend:" + hex.EncodeToString(sum[:])
+	return "labplane:vmlog:trend:" + hex.EncodeToString(sum[:])
 }
 
 func fetchVictoriaLogsHits(ctx context.Context, cfg Config, baseRaw, query, start, end, step string) (*vmLogHitsResponse, error) {
@@ -1401,7 +1407,11 @@ func vmlogKeywordQuery(field, keyword string) string {
 	case "filename", "host", "job", "vm_host", "log_source", "stream":
 		return fmt.Sprintf("%s:%s", strings.TrimSpace(field), logsQLQuoteValue(kw))
 	default:
-		return fmt.Sprintf("%s:%s", strings.TrimSpace(field), logsQLQuoteValue(kw))
+		fieldName := strings.TrimSpace(field)
+		if !vmlogFieldNameRE.MatchString(fieldName) {
+			return logsQLQuoteValue(kw)
+		}
+		return fmt.Sprintf("%s:%s", fieldName, logsQLQuoteValue(kw))
 	}
 }
 
@@ -1478,6 +1488,7 @@ type opsVmLogStatsBody struct {
 	Category      string `json:"category"`
 	K8sNamespace  string `json:"k8sNamespace"`
 	K8sPodName    string `json:"k8sPodName"`
+	Host          string `json:"host"`
 	Keyword       string `json:"keyword"`
 	KeywordField  string `json:"keywordField"`
 	WindowMinutes int    `json:"windowMinutes"`
@@ -1546,7 +1557,17 @@ func vmlogPullMatchedRows(ctx context.Context, app *ServerApp, body opsVmLogStat
 
 	var rows []map[string]any
 	var terr error
-	rows, truncated, scanWarn, _, terr = fetchVictoriaLogsNDJSON(ctx, cfg, base, "*", fetchLimit, startS, endS)
+	query := buildVmLogQuery(body.Category, body.K8sNamespace, body.Keyword, body.KeywordField, body.K8sPodName)
+	if host := strings.TrimSpace(body.Host); host != "" {
+		h := logsQLQuoteValue(host)
+		hostQuery := fmt.Sprintf("(vm_host:%s OR host:%s OR hostname:%s OR kubernetes.node_name:%s)", h, h, h, h)
+		if query == "*" {
+			query = hostQuery
+		} else {
+			query = "(" + query + ") AND " + hostQuery
+		}
+	}
+	rows, truncated, scanWarn, _, terr = fetchVictoriaLogsNDJSON(ctx, cfg, base, query, fetchLimit, startS, endS)
 	if terr != nil {
 		return nil, 0, false, "", win, startT, endT, terr
 	}
@@ -1707,25 +1728,25 @@ func handleOpsVmLogStats(app *ServerApp) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"category":       cat,
-			"k8sNamespace":   k8sNs,
-			"k8sPodName":     podName,
-			"keyword":        kw,
-			"keywordField":   kwField,
-			"windowMinutes":  win,
-			"windowStart":    startT.Format(time.RFC3339Nano),
-			"windowEnd":      endT.Format(time.RFC3339Nano),
-			"bucketMinutes":  actualBucketMin,
-			"refreshedAt":    endT.Format(time.RFC3339Nano),
-			"totalFetched":   totalFetched,
-			"totalMatched":   totalMatchedAccurate,
-			"matchedWithTs":  timeOK,
-			"truncated":      truncated,
-			"scanWarning":    scanWarn,
-			"summary":        vmlogSummarizeRows(vmlogSummaryScope(cat), matched),
-			"buckets":        buckets,
-			"recent":         preview,
-			"nginxAgg":       nginxAgg,
+			"category":      cat,
+			"k8sNamespace":  k8sNs,
+			"k8sPodName":    podName,
+			"keyword":       kw,
+			"keywordField":  kwField,
+			"windowMinutes": win,
+			"windowStart":   startT.Format(time.RFC3339Nano),
+			"windowEnd":     endT.Format(time.RFC3339Nano),
+			"bucketMinutes": actualBucketMin,
+			"refreshedAt":   endT.Format(time.RFC3339Nano),
+			"totalFetched":  totalFetched,
+			"totalMatched":  totalMatchedAccurate,
+			"matchedWithTs": timeOK,
+			"truncated":     truncated,
+			"scanWarning":   scanWarn,
+			"summary":       vmlogSummarizeRows(vmlogSummaryScope(cat), matched),
+			"buckets":       buckets,
+			"recent":        preview,
+			"nginxAgg":      nginxAgg,
 		})
 	}
 }

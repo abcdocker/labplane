@@ -265,7 +265,7 @@ func handlePutRuntimeSettings(app *ServerApp) gin.HandlerFunc {
 		}
 		if clearBaotaSSLMaterial {
 			if err := clearStoredBaotaSSLMaterial(app, tmp); err != nil {
-				RespondAPIError500(c, "清空宝塔 HTTPS 证书失败: " + err.Error())
+				RespondAPIError500(c, "清空宝塔 HTTPS 证书失败: "+err.Error())
 				return
 			}
 		} else if incomingBaotaSSLPemContent != "" || incomingBaotaSSLKeyContent != "" {

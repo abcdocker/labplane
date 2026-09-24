@@ -11,14 +11,14 @@ import (
 
 // AppKafkaTemplateConfig 应用中心 Kafka+ZK 模版：镜像、副本、存储与 Kafka 调优（KAFKA_CFG_* 附加行）。
 type AppKafkaTemplateConfig struct {
-	ZookeeperImage string `json:"zookeeperImage"`
-	KafkaImage     string `json:"kafkaImage"`
-	BusyboxImage   string `json:"busyboxImage,omitempty"`
+	ZookeeperImage  string `json:"zookeeperImage"`
+	KafkaImage      string `json:"kafkaImage"`
+	BusyboxImage    string `json:"busyboxImage,omitempty"`
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 	// ZkReplicas / KafkaReplicas 默认 3；每套部署一组 ZK + Kafka（1:1）
-	ZkReplicas    int `json:"zkReplicas,omitempty"`
-	KafkaReplicas int `json:"kafkaReplicas,omitempty"`
-	ZkStorageSize string `json:"zkStorageSize,omitempty"`
+	ZkReplicas       int    `json:"zkReplicas,omitempty"`
+	KafkaReplicas    int    `json:"kafkaReplicas,omitempty"`
+	ZkStorageSize    string `json:"zkStorageSize,omitempty"`
 	KafkaStorageSize string `json:"kafkaStorageSize,omitempty"`
 	// ExtraKafkaCfgLines 每行一个 KAFKA_CFG_* 环境变量，如 KAFKA_CFG_NUM_IO_THREADS=16
 	ExtraKafkaCfgLines []string `json:"extraKafkaCfgLines,omitempty"`
@@ -90,7 +90,7 @@ func appKafkaTemplateListFromMySQL(ctx context.Context, db *sql.DB) ([]appKafkaT
 		return nil, nil
 	}
 	rows, err := db.QueryContext(ctx,
-		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM kubebt_app_kafka_templates ORDER BY id DESC`)
+		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM labplane_app_kafka_templates ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func appKafkaTemplateGetByID(ctx context.Context, db *sql.DB, id int64) (*appKaf
 	var desc sql.NullString
 	var created, updated sql.NullTime
 	err := db.QueryRowContext(ctx,
-		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM kubebt_app_kafka_templates WHERE id=?`,
+		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM labplane_app_kafka_templates WHERE id=?`,
 		id,
 	).Scan(&r.ID, &r.Name, &desc, &r.ConfigJSON, &created, &updated, &r.CreatedBy)
 	if err != nil {
@@ -141,13 +141,13 @@ func appKafkaTemplateGetByID(ctx context.Context, db *sql.DB, id int64) (*appKaf
 }
 
 func appKafkaTemplateDelete(ctx context.Context, db *sql.DB, id int64) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM kubebt_app_kafka_templates WHERE id=?`, id)
+	_, err := db.ExecContext(ctx, `DELETE FROM labplane_app_kafka_templates WHERE id=?`, id)
 	return err
 }
 
 func appKafkaTemplateInsert(ctx context.Context, db *sql.DB, name, description, configJSON, createdBy string) (int64, error) {
 	res, err := db.ExecContext(ctx,
-		`INSERT INTO kubebt_app_kafka_templates (name, description, config_json, created_by) VALUES (?,?,?,?)`,
+		`INSERT INTO labplane_app_kafka_templates (name, description, config_json, created_by) VALUES (?,?,?,?)`,
 		name, nullIfEmpty(description), configJSON, createdBy)
 	if err != nil {
 		return 0, err
@@ -157,7 +157,7 @@ func appKafkaTemplateInsert(ctx context.Context, db *sql.DB, name, description, 
 
 func appKafkaTemplateUpdate(ctx context.Context, db *sql.DB, id int64, name, description, configJSON string) error {
 	_, err := db.ExecContext(ctx,
-		`UPDATE kubebt_app_kafka_templates SET name=?, description=?, config_json=? WHERE id=?`,
+		`UPDATE labplane_app_kafka_templates SET name=?, description=?, config_json=? WHERE id=?`,
 		name, nullIfEmpty(description), configJSON, id)
 	return err
 }

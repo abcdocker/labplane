@@ -1,19 +1,52 @@
 # 完整功能（Ingress 同步 + 集群控制台 UI + YAML 下发）所需权限。
 # 若仅需 Ingress 同步，可改为仅保留 networking.k8s.io/ingresses 规则。
+#
+# ── 生产环境收窄建议 ──────────────────────────────────────────────────────────
+# 1) 全命名空间 Secret 只读（下方 "services, configmaps, secrets" 规则）：
+#    从该规则中删除 "secrets"，另行为需要的命名空间创建 Role + RoleBinding：
+#
+#      apiVersion: rbac.authorization.k8s.io/v1
+#      kind: Role
+#      metadata:
+#        name: labplane-secret-read
+#        namespace: <目标命名空间>
+#      rules:
+#        - apiGroups: [""]
+#          resources: ["secrets"]
+#          verbs: ["get", "list", "watch"]
+#      ---
+#      apiVersion: rbac.authorization.k8s.io/v1
+#      kind: RoleBinding
+#      metadata:
+#        name: labplane-secret-read
+#        namespace: <目标命名空间>
+#      roleRef:
+#        apiGroup: rbac.authorization.k8s.io
+#        kind: Role
+#        name: labplane-secret-read
+#      subjects:
+#        - kind: ServiceAccount
+#          name: labplane
+#          namespace: labplane
+#
+# 2) 全资源只读兜底（下方 apiGroups ["*"] 规则）：只管理已知资源类型时可整条删除。
+# 3) Helm 部署对应开关：charts/labplane/values.yaml 的
+#    rbac.allowClusterSecretRead / rbac.readAllClusterResources。
+# ─────────────────────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kube-bt-sync
-  namespace: kube-bt-sync
+  name: labplane
+  namespace: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kube-bt-sync
+  name: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
 rules:
   - apiGroups: [""]
     resources: ["namespaces", "nodes", "persistentvolumeclaims", "events"]
@@ -39,12 +72,20 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses", "ingressclasses"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Gateway API（gateway.networking.k8s.io）：路由管理面板 CRUD。
+  # ClusterRole 中未安装对应 CRD 时这些规则不生效，无副作用。
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gatewayclasses", "gateways", "httproutes", "grpcroutes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["discovery.k8s.io"]
     resources: ["endpointslices"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch", "delete"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
   # OpenClaw：以网关 SA 用户做 SubjectAccessReview，核对与 ClusterRole 是否一致（client-go 有效权限）
   - apiGroups: ["authorization.k8s.io"]
     resources: ["subjectaccessreviews"]
@@ -52,19 +93,19 @@ rules:
   # 各 CRD 对应 API 组下的自定义资源实例（动态 GVR）
   - apiGroups: ["*"]
     resources: ["*"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kube-bt-sync
+  name: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kube-bt-sync
+  name: labplane
 subjects:
   - kind: ServiceAccount
-    name: kube-bt-sync
-    namespace: kube-bt-sync
+    name: labplane
+    namespace: labplane

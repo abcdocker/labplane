@@ -14,13 +14,13 @@ func dialRedisLightWithRetry(cfg Config) (*RedisLight, error) {
 		return nil, nil
 	}
 	attempts := 10
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_REDIS_DIAL_ATTEMPTS")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_REDIS_DIAL_ATTEMPTS")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= 60 {
 			attempts = n
 		}
 	}
 	base := 250 * time.Millisecond
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_REDIS_DIAL_BACKOFF_MS")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_REDIS_DIAL_BACKOFF_MS")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 50 && n <= 10000 {
 			base = time.Duration(n) * time.Millisecond
 		}

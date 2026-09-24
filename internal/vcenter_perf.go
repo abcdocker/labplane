@@ -740,7 +740,7 @@ func handleVCenterVMMetrics(c *gin.Context, vc *vCenterClient) {
 			"series":      gin.H{},
 			"units":       gin.H{},
 			"missing":     missing,
-			"note": strings.Join(noteParts, "") + " QueryPerf 未返回实体指标。请在 vCenter「设置 → 常规 → 统计信息」提高统计级别并确认已启用 Past Day / Past Week 等间隔。",
+			"note":        strings.Join(noteParts, "") + " QueryPerf 未返回实体指标。请在 vCenter「设置 → 常规 → 统计信息」提高统计级别并确认已启用 Past Day / Past Week 等间隔。",
 		})
 		return
 	}
@@ -914,11 +914,10 @@ func handleVCenterVMMetrics(c *gin.Context, vc *vCenterClient) {
 		"series":      series,
 		"units":       units,
 		"missing":     missing,
-		"note": strings.Join(noteParts, "") + " CPU/内存为平均占用率；磁盘/网络为各实例求和（KB/s）。磁盘优先 disk.*，无则 virtualDisk.*；网络优先 net.received/transmitted，无则 net.bytesRx/bytesTx。",
+		"note":        strings.Join(noteParts, "") + " CPU/内存为平均占用率；磁盘/网络为各实例求和（KB/s）。磁盘优先 disk.*，无则 virtualDisk.*；网络优先 net.received/transmitted，无则 net.bytesRx/bytesTx。",
 	}
 	if usedDiskNetRT {
 		resp["diskNetRealtime"] = diskNetRT
 	}
 	c.JSON(http.StatusOK, resp)
 }
-

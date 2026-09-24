@@ -5,40 +5,47 @@
 #
 # 多副本与性能（底层说明）：
 # - 单 Pod 内仅 1 个 Go 进程；横向扩展请提高 replicas，并用 Service 负载均衡。
-# - 每个 Pod 会跑全套后台协程；多副本时务必仅 1 个 Pod 保持 KUBEBT_ENABLE_BACKGROUND_JOBS=true（默认），
-#   其余副本设 KUBEBT_ENABLE_BACKGROUND_JOBS=false，否则宝塔 Ingress 同步、告警巡检、出站通知、审计裁剪等会重复执行。
+# - 每个 Pod 会跑全套后台协程；多副本时务必仅 1 个 Pod 保持 LABPLANE_ENABLE_BACKGROUND_JOBS=true（默认），
+#   其余副本设 LABPLANE_ENABLE_BACKGROUND_JOBS=false，否则宝塔 Ingress 同步、告警巡检、出站通知、审计裁剪等会重复执行。
 # - 登录失败限流等仍有一部分进程内内存状态，多副本下阈值按 Pod 分散；生产建议前置统一 WAF/网关限流。
 # - 会话 nonce 在 MySQL platform_kv 时多副本可共享；若仅用文件 KV+共享 PVC，须注意并发写（推荐 MySQL）。
-# - KUBEBT_GOMAXPROCS 建议与 resources.limits.cpu 整核数一致（如 limits.cpu: "2" 则设 KUBEBT_GOMAXPROCS=2）。
-# - KUBEBT_PERFORMANCE_MODE=true 时 Gin 走 release 模式并启用命名空间列表 Redis 短缓存（需 Redis）。
+# - LABPLANE_GOMAXPROCS 建议与 resources.limits.cpu 整核数一致（如 limits.cpu: "2" 则设 LABPLANE_GOMAXPROCS=2）。
+# - LABPLANE_PERFORMANCE_MODE=true 时 Gin 走 release 模式并启用命名空间列表 Redis 短缓存（需 Redis）。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kube-bt-sync
-  namespace: kube-bt-sync
+  name: labplane
+  namespace: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
 spec:
-  # 多副本示例：replicas: 3，且仅其中 1 个 Pod 不要设置 KUBEBT_ENABLE_BACKGROUND_JOBS=false，其余为 false。
+  # 多副本示例：replicas: 3，且仅其中 1 个 Pod 不要设置 LABPLANE_ENABLE_BACKGROUND_JOBS=false，其余为 false。
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: kube-bt-sync
+      app.kubernetes.io/name: labplane
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: kube-bt-sync
+        app.kubernetes.io/name: labplane
     spec:
-      serviceAccountName: kube-bt-sync
+      serviceAccountName: labplane
       securityContext:
         fsGroup: 65532
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: kube-bt-sync
-          image: harbor.frps.cn/kube-bt-sync-main/v1:v1.0.0
+        - name: labplane
+          image: ghcr.io/abcdocker/labplane:v2.0.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: http
               containerPort: 8080
@@ -47,15 +54,15 @@ spec:
             - name: TZ
               value: "Asia/Shanghai"
             # 可选：首次部署前也可通过 Web /setup 写入；此处用于无人值守或 CI
-            - name: KUBEBT_DATA_DIR
+            - name: LABPLANE_DATA_DIR
               value: "/data"
             # 与 limits.cpu 对齐，避免 P 线程数大于 cgroup 配额
-            # - name: KUBEBT_GOMAXPROCS
+            # - name: LABPLANE_GOMAXPROCS
             #   value: "2"
             # 多副本时额外 Pod 设为 false
-            # - name: KUBEBT_ENABLE_BACKGROUND_JOBS
+            # - name: LABPLANE_ENABLE_BACKGROUND_JOBS
             #   value: "false"
-            # - name: KUBEBT_PERFORMANCE_MODE
+            # - name: LABPLANE_PERFORMANCE_MODE
             #   value: "true"
             # 示例：宝塔与 DDNS（建议用 Secret 引用，勿直接写密钥）
             # - name: BAOTA_URL
@@ -63,7 +70,7 @@ spec:
             # - name: BAOTA_API_KEY
             #   valueFrom:
             #     secretKeyRef:
-            #       name: kube-bt-sync-secrets
+            #       name: labplane-secrets
             #       key: baota-api-key
             # - name: DDNS_HOST
             #   value: "home.example.com"
@@ -71,18 +78,25 @@ spec:
             #   value: "38333"
             # - name: SYNC_INTERVAL_SEC
             #   value: "30"
+          # Optional: create this Secret as documented in README/deploy/secret-example.yaml.
+          envFrom:
+            - secretRef:
+                name: labplane-secrets
+                optional: true
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /readyz
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /livez
               port: http
             initialDelaySeconds: 15
             periodSeconds: 30
@@ -94,6 +108,8 @@ spec:
               cpu: "1"
               memory: "512Mi"
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: data
           persistentVolumeClaim:
-            claimName: kube-bt-sync-data
+            claimName: labplane-data

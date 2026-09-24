@@ -7,14 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '手动发布版本号（如 v1.0.0）'
+        description: '手动发布版本号（如 v2.0.0）'
         required: true
-        default: 'v1.0.0'
+        default: 'v2.0.0'
 
 env:
-  # Harbor 配置
-  HARBOR_REGISTRY: harbor.frps.cn
-  IMAGE_NAME: kube-bt-sync-main/v1
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ------------------------------------------------------------------------------
@@ -26,10 +25,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: '20'
           cache: 'npm'
@@ -39,70 +38,101 @@ jobs:
         working-directory: react
         run: |
           npm ci
+          npm audit --audit-level=high
+          npm run lint
+          npm run typecheck
+          npm test
           npm run build
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.25'
 
       # 代理仅在本步骤生效，不影响 actions/checkout 等官方 Action
-      - name: Build multi-platform binaries
+      - name: Test backend
+        run: go test ./...
+
+      - name: Build multi-platform release bundles
         env:
           https_proxy: ${{ vars.HTTPS_PROXY }}
           http_proxy: ${{ vars.HTTP_PROXY }}
           all_proxy: ${{ vars.ALL_PROXY }}
         run: |
-          VERSION="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          mkdir -p dist
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          rm -rf build/release dist
+          mkdir -p build/release dist
           for os in linux darwin windows; do
             for arch in amd64 arm64; do
               if [ "$os" = "windows" ] && [ "$arch" = "arm64" ]; then continue; fi
-              output="kube-bt-sync-${os}-${arch}"
-              if [ "$os" = "windows" ]; then output="${output}.exe"; fi
-              echo "Building $os/$arch -> $output"
+              package="labplane-${os}-${arch}"
+              package_dir="build/release/${package}"
+              binary="labplane"
+              if [ "$os" = "windows" ]; then binary="${binary}.exe"; fi
+              mkdir -p "${package_dir}/react"
+              echo "Building $os/$arch -> ${package}/${binary}"
               GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath \
-                -ldflags="-s -w -X kube-bt-sync/internal.BuildVersion=${VERSION}" \
-                -o dist/$output .
+                -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${VERSION}" \
+                -o "${package_dir}/${binary}" .
+              cp -R react/dist "${package_dir}/react/dist"
+              cp -R templates "${package_dir}/templates"
+              cp LICENSE README.md SECURITY.md "${package_dir}/"
+              if [ "$os" = "windows" ]; then
+                (cd build/release && zip -qr "../../dist/${package}.zip" "${package}")
+              else
+                tar -C build/release -czf "dist/${package}.tar.gz" "${package}"
+              fi
             done
           done
-          ls -la dist/
+          image_name="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+          image_ref="${REGISTRY}/${image_name}:${VERSION}"
+          cp deploy/labplane-all.yaml dist/labplane-all.yaml
+          sed -i "s#ghcr.io/abcdocker/labplane:v2.0.0#${image_ref}#g" dist/labplane-all.yaml
+          printf 'Release manifest image: %s\n' "${image_ref}"
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -lh dist/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.2
         with:
-          tag_name: ${{ github.ref_name || github.event.inputs.tag }}
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           files: dist/*
           generate_release_notes: true
 
   # ------------------------------------------------------------------------------
-  # Job 2: 构建多平台 Docker 镜像并推送到 Harbor
+  # Job 2: 构建多平台 Docker 镜像并推送到 GHCR
   # ------------------------------------------------------------------------------
   build-docker:
     runs-on: ubuntu-latest
     needs: build-binaries
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4.2.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.3.0
 
-      - name: Login to Harbor
-        uses: docker/login-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4.6.0
         with:
-          registry: ${{ env.HARBOR_REGISTRY }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract image metadata
         id: meta
-        run: |
-          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.event.inputs.tag || github.ref_name }}
+            type=raw,value=latest
 
       # 代理仅在本步骤生效
       - name: Build and push Docker image
@@ -110,15 +140,16 @@ jobs:
           https_proxy: ${{ vars.HTTPS_PROXY }}
           http_proxy: ${{ vars.HTTP_PROXY }}
           all_proxy: ${{ vars.ALL_PROXY }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-            ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          provenance: mode=max
+          sbom: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_VERSION=${{ steps.meta.outputs.tag }}
+            BUILD_VERSION=${{ github.event.inputs.tag || github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

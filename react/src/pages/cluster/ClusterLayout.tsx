@@ -30,25 +30,6 @@ const ClusterLayout: React.FC = () => {
     pathname.startsWith("/cluster/bastion/") ||
     pathname === "/cluster/vcenter/bastion" ||
     pathname.startsWith("/cluster/vcenter/bastion/");
-  /** 子页自带标题（如 Cluster / vCenter Settings）时不再重复「Kubernetes 集群」横幅 */
-  const hideClusterIntro =
-    pathname === "/cluster/pod-restart-reports" ||
-    pathname === "/cluster/settings" ||
-    pathname === "/cluster/etcd" ||
-    pathname === "/cluster/vcenter/settings" ||
-    pathname === "/cluster/vcenter/dashboard" ||
-    pathname === "/cluster/vcenter/gpu" ||
-    pathname === "/cluster/vcenter/router" ||
-    isBastionShell ||
-    pathname.startsWith("/cluster/vcenter/bastion/console/") ||
-    pathname.startsWith("/cluster/bastion/console/") ||
-    isCloudHostsSection ||
-    isAppsSection ||
-    isBastionSection ||
-    isAiInspectSection ||
-    isToolboxSection ||
-    isHarborSection;
-
   const configQ = useAppConfig();
 
   const pending = configQ.isPending || configQ.isLoading;
@@ -90,29 +71,20 @@ const ClusterLayout: React.FC = () => {
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[min(100%,1600px)] px-1 pb-12 sm:px-0",
+        "mx-auto w-full max-w-[min(100%,1920px)] px-1 pb-3 sm:px-0 sm:pb-8 lg:pb-12",
         isBastionShell && "h-full min-h-0 max-w-none px-0 pb-0"
       )}
     >
-      {!hideClusterIntro && (
+      {isVCenterSection && (
         <div className="mb-6">
-          {isVCenterSection ? (
-            <>
-              <h1 className="mb-2 text-2xl font-bold text-gray-900">vSphere / vCenter</h1>
-              <p className="text-sm text-gray-500">
-                虚拟机列表与控制台；连接信息保存在「运行时配置」。未配置时将显示下方向导。
-              </p>
-            </>
-          ) : (
-            <>
-              <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-slate-100">Kubernetes 集群</h1>
-              <p className="text-sm text-gray-500 dark:text-slate-400">概览：集群态 → 命名空间 → Pod</p>
-            </>
-          )}
+          <h1 className="mb-2 text-2xl font-bold text-slate-900">vSphere / vCenter</h1>
+          <p className="text-sm text-slate-500">
+            虚拟机列表与控制台；连接信息保存在「运行时配置」。未配置时将显示下方向导。
+          </p>
         </div>
       )}
       {!isAppsSection && !isAiInspectSection && pending && (
-        <p className="mb-2 text-sm text-gray-500">正在加载集群配置…</p>
+        <p className="mb-2 text-sm text-slate-500">正在加载集群配置…</p>
       )}
       {!isAppsSection && !isAiInspectSection && failed && (
         <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">

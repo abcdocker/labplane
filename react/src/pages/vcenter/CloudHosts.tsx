@@ -43,6 +43,7 @@ export type CloudHostRow = {
   sshHost: string;
   sshPort: number;
   sshUser: string;
+  sshHostKeyFingerprint?: string;
   nodeExporterInstance?: string;
   comment?: string;
 };
@@ -74,6 +75,7 @@ type CloudHostForm = {
   sshHost: string;
   sshPort: string;
   sshUser: string;
+  sshHostKeyFingerprint: string;
   sshPassword: string;
   sshPrivateKeyPem: string;
   comment: string;
@@ -84,6 +86,7 @@ const emptyForm: CloudHostForm = {
   sshHost: "",
   sshPort: "22",
   sshUser: "",
+  sshHostKeyFingerprint: "",
   sshPassword: "",
   sshPrivateKeyPem: "",
   comment: "",
@@ -155,6 +158,7 @@ const CloudHosts: React.FC = () => {
         sshHost: form.sshHost.trim(),
         sshPort: Number.isFinite(sshPort) && sshPort > 0 ? sshPort : 22,
         sshUser: form.sshUser.trim(),
+        sshHostKeyFingerprint: form.sshHostKeyFingerprint.trim(),
         sshPassword: form.sshPassword,
         sshPrivateKeyPem: form.sshPrivateKeyPem.trim(),
         comment: form.comment.trim(),
@@ -205,6 +209,7 @@ const CloudHosts: React.FC = () => {
       sshHost: h.sshHost,
       sshPort: String(h.sshPort || 22),
       sshUser: h.sshUser || "",
+      sshHostKeyFingerprint: h.sshHostKeyFingerprint || "",
       sshPassword: "",
       sshPrivateKeyPem: "",
       comment: h.comment || "",
@@ -222,16 +227,16 @@ const CloudHosts: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
             <Cloud className="h-7 w-7 text-violet-600" />
             公有云主机
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-gray-500">
-            登记 SSH；<strong className="font-medium text-gray-700">CPU / 内存 / 磁盘使用率 / 磁盘与网络 IO</strong>{" "}
+          <p className="mt-1 max-w-3xl text-sm text-slate-500">
+            登记 SSH；<strong className="font-medium text-slate-700">CPU / 内存 / 磁盘使用率 / 磁盘与网络 IO</strong>{" "}
             均从 Prometheus 抓取 node_exporter（与 vCenter 无关）。请在「运行时配置」中填写{" "}
-            <code className="rounded bg-gray-100 px-1 text-xs">prometheusUrlCloud</code> 或兜底{" "}
+            <code className="rounded bg-slate-100 px-1 text-xs">prometheusUrlCloud</code> 或兜底{" "}
             <code className="text-xs">prometheusUrl</code>。Prometheus 中该主机的{" "}
-            <code className="rounded bg-gray-100 px-1 text-xs">instance</code> 须与列表 SSH 地址一致，一般为{" "}
+            <code className="rounded bg-slate-100 px-1 text-xs">instance</code> 须与列表 SSH 地址一致，一般为{" "}
             <code className="text-xs">云主机IP:9100</code>（与 node_exporter 监听一致）。
           </p>
         </div>
@@ -247,11 +252,11 @@ const CloudHosts: React.FC = () => {
         </div>
       )}
 
-      {listQ.isLoading && <p className="text-gray-500">加载中…</p>}
+      {listQ.isLoading && <p className="text-slate-500">加载中…</p>}
       {listQ.error && <p className="text-red-600">{(listQ.error as Error).message}</p>}
 
       {listQ.data && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <Table>
             <TableHeader>
               <TableRow>
@@ -271,7 +276,7 @@ const CloudHosts: React.FC = () => {
             <TableBody>
               {listQ.data.hosts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-gray-500">
+                  <TableCell colSpan={11} className="text-center text-slate-500">
                     暂无主机，点击「添加主机」登记信息（无需完成 vCenter 初始化）。
                   </TableCell>
                 </TableRow>
@@ -397,7 +402,7 @@ const CloudHosts: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
           {portsQ.isLoading && (
-            <div className="flex items-center gap-2 py-6 text-sm text-gray-600">
+            <div className="flex items-center gap-2 py-6 text-sm text-slate-600">
               <Loader2 className="h-4 w-4 animate-spin" />
               正在通过 SSH 拉取 ss/netstat…
             </div>
@@ -407,7 +412,7 @@ const CloudHosts: React.FC = () => {
           )}
           {portsQ.data && (
             <div className="space-y-3 text-sm">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {portsQ.data.sshAddr ? (
                   <>
                     SSH <span className="font-mono">{portsQ.data.sshAddr}</span>
@@ -418,7 +423,7 @@ const CloudHosts: React.FC = () => {
               {portsQ.data.stderr ? (
                 <p className="text-xs text-amber-800">{portsQ.data.stderr}</p>
               ) : null}
-              <div className="overflow-x-auto rounded-lg border border-gray-100">
+              <div className="overflow-x-auto rounded-lg border border-slate-100">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -441,7 +446,7 @@ const CloudHosts: React.FC = () => {
                 </Table>
               </div>
               {(portsQ.data.ports ?? []).length === 0 && !portsQ.isFetching && (
-                <p className="text-xs text-gray-500">未解析到监听项。</p>
+                <p className="text-xs text-slate-500">未解析到监听项。</p>
               )}
             </div>
           )}
@@ -511,6 +516,21 @@ const CloudHosts: React.FC = () => {
                 </p>
               )}
             </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ch-host-key">SSH 主机密钥指纹</Label>
+              <Input
+                id="ch-host-key"
+                className="font-mono text-xs"
+                value={form.sshHostKeyFingerprint}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sshHostKeyFingerprint: e.target.value }))
+                }
+                placeholder="SHA256:..."
+              />
+              <p className="text-xs text-slate-500">
+                新增主机时必填；请先在可信网络核对 ssh-keyscan / ssh-keygen 输出。
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="ch-pw">SSH 密码（可选，与私钥二选一）</Label>

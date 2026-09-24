@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import "@xterm/xterm/css/xterm.css";
 import { Maximize2, Minimize2, Terminal as TerminalIcon } from "lucide-react";
-import { useKubeBtXtermOptions } from "@/hooks/use-kube-bt-xterm-options";
+import { useLabPlaneXtermOptions } from "@/hooks/use-labplane-xterm-options";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { usePodExecTerminal } from "./usePodExecTerminal";
 import { Loader2 } from "lucide-react";
@@ -29,7 +29,7 @@ const ClusterPodTerminalPage: React.FC = () => {
   const container = (search.get("container") ?? "").trim();
   const shell = (search.get("shell") ?? "/bin/sh").trim() || "/bin/sh";
 
-  const xtermOpts = useKubeBtXtermOptions();
+  const xtermOpts = useLabPlaneXtermOptions();
   const shellHostRef = useRef<HTMLDivElement>(null);
   const [fs, setFs] = React.useState(false);
 

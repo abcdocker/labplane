@@ -7,10 +7,12 @@ import DnsRecords from "./DnsRecords";
 import DnsFailover from "./DnsFailover";
 import DnsScheduled from "./DnsScheduled";
 import DnsCerts from "./DnsCerts";
+import DnsSubNav from "./DnsSubNav";
 
 const DnsLayout: React.FC = () => {
   return (
-    <div className="mx-auto w-full max-w-[min(100%,80rem)] space-y-4 px-3 pb-10 pt-3 sm:px-4 sm:pt-4 lg:px-8">
+    <div className="w-full space-y-4">
+      <DnsSubNav />
       <Routes>
         <Route index element={<DnsDashboard />} />
         <Route path="accounts" element={<DnsAccounts />} />

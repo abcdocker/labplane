@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"net"
 	"net/http"
@@ -10,6 +12,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func requestIDForAudit(c *gin.Context) string {
+	id := strings.TrimSpace(c.GetHeader("X-Request-ID"))
+	if len(id) > 0 && len(id) <= 128 {
+		valid := true
+		for _, r := range id {
+			if !(r == '-' || r == '_' || r == '.' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z') {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			return id
+		}
+	}
+	var raw [12]byte
+	if _, err := rand.Read(raw[:]); err == nil {
+		return hex.EncodeToString(raw[:])
+	}
+	return hex.EncodeToString([]byte(time.Now().UTC().Format("150405.000000")))
+}
 
 // trustedNetsCache 与 Gin SetTrustedProxies 使用同一套 CIDR 字符串，供审计时判断「是否来自可信代理」。
 type trustedNetsCache struct {
@@ -174,13 +197,20 @@ func shouldPersistAPIAudit(c *gin.Context) bool {
 func auditAccessLogMiddleware(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cfg := app.Cfg()
+		requestID := requestIDForAudit(c)
+		c.Set("requestID", requestID)
+		c.Header("X-Request-ID", requestID)
 		start := time.Now()
 		c.Next()
 		path := c.Request.URL.Path
 		ip := AuditClientIP(c, cfg)
 		ms := time.Since(start).Milliseconds()
 		user := "-"
-		if cfg.DashboardAuthEnabled() {
+		if value, ok := c.Get("dashboardUser"); ok {
+			if current, ok := value.(string); ok && strings.TrimSpace(current) != "" {
+				user = current
+			}
+		} else if cfg.DashboardAuthEnabled() {
 			if u, ok := sessionUserFromCookie(c, cfg, app); ok && strings.TrimSpace(u) != "" {
 				user = u
 			}
@@ -194,8 +224,8 @@ func auditAccessLogMiddleware(app *ServerApp) gin.HandlerFunc {
 		}
 		auditSecurityProbeIfNeeded(c, app)
 		if cfg.DashboardAccessLog {
-			log.Printf("access ip=%s user=%s %s %s => %d %dms",
-				ip, user, c.Request.Method, route, c.Writer.Status(), ms)
+			log.Printf("access request_id=%s ip=%s user=%s method=%s route=%s status=%d duration_ms=%d",
+				requestID, ip, user, c.Request.Method, route, c.Writer.Status(), ms)
 		}
 		if shouldPersistAPIAudit(c) {
 			detail := ""
@@ -214,7 +244,7 @@ func auditAccessLogMiddleware(app *ServerApp) gin.HandlerFunc {
 				DurationMs: ms,
 				Detail:     detail,
 			}
-			go AppendAuditRecord(app, rec)
+			EnqueueAuditRecord(app, rec)
 		}
 	}
 }
@@ -237,7 +267,7 @@ func auditSecurityProbeIfNeeded(c *gin.Context, app *ServerApp) {
 	}
 	for _, p := range patterns {
 		if strings.Contains(lower, p) {
-			go AppendAuditRecord(app, AuditRecord{
+			EnqueueAuditRecord(app, AuditRecord{
 				Action: "security_probe",
 				IP:     ip,
 				Method: c.Request.Method,

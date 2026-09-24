@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,7 +11,6 @@ import {
   User,
   Users,
   ChevronDown,
-  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/auth-context";
@@ -25,41 +24,99 @@ import {
 } from "@/components/ui/dropdown-menu";
 import PlatformVersionBanner from "./PlatformVersionBanner";
 import RedisStatusBanner from "./RedisStatusBanner";
+import PwaInstallHint from "./PwaInstallHint";
+import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
+import { menuItemVisible, moduleVisible } from "@/lib/platform-permissions";
+import HeaderNotificationsSheet from "@/components/HeaderNotificationsSheet";
+import AiAssistantPopup from "@/components/AiAssistantPopup";
+import { mobileNavText } from "@/i18n/mobile";
+import { workspaceFromPathname } from "@/lib/workspace";
 
 // ── Bottom Navigation Bar ──────────────────────────────────────────────────
 
 const BOTTOM_TABS = [
-  { icon: LayoutDashboard, label: "工作台", to: "/", exact: true },
-  { icon: Hexagon, label: "K8s", to: "/cluster", exact: false },
-  { icon: Monitor, label: "vCenter", to: "/cluster/vcenter", exact: false },
-  { icon: AppWindow, label: "应用", to: "/cluster/apps", exact: false },
-  { icon: Settings, label: "设置", to: "/settings", exact: false },
+  { id: "home", icon: LayoutDashboard, label: mobileNavText.workbench, to: "/" },
+  { id: "k8s", icon: Hexagon, label: mobileNavText.kubernetes, to: "/cluster" },
+  {
+    id: "vcenter",
+    icon: Monitor,
+    label: mobileNavText.vcenter,
+    to: "/cluster/vcenter/dashboard",
+  },
+  {
+    id: "apps",
+    icon: AppWindow,
+    label: mobileNavText.apps,
+    to: "/cluster/apps/dashboard",
+  },
+  {
+    id: "settings",
+    icon: Settings,
+    label: mobileNavText.settings,
+    to: "/settings",
+  },
 ] as const;
 
 function MobileBottomNav() {
   const { pathname } = useLocation();
+  const { status } = useAuth();
+  const runtimeQ = useRuntimeStatusQuery();
+  const permissions = runtimeQ.data?.config?.permissions;
+  const visibleTabs = BOTTOM_TABS.filter(({ id }) => {
+    if (id === "k8s") {
+      return menuItemVisible(permissions, "kubernetes", status?.role, moduleVisible(permissions, "k8s"));
+    }
+    if (id === "vcenter") {
+      return menuItemVisible(permissions, "vcenter", status?.role, moduleVisible(permissions, "vcenter"));
+    }
+    if (id === "apps") {
+      return menuItemVisible(permissions, "appcenter", status?.role, moduleVisible(permissions, "appcenter"));
+    }
+    return true;
+  });
+
+  // 与桌面端共用工作区判定，避免 /cluster 同时命中 vCenter / 应用中心。
+  const workspace = workspaceFromPathname(pathname);
+  const activeTab = pathname === "/settings" || pathname.startsWith("/account/")
+    ? "settings"
+    : workspace === "hub"
+      ? "home"
+      : workspace === "kubernetes"
+        ? "k8s"
+        : workspace === "vcenter"
+          ? "vcenter"
+          : workspace === "appcenter"
+            ? "apps"
+            : undefined;
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      aria-label={mobileNavText.ariaLabel}
+      className="relative z-50 shrink-0 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
+      style={{ paddingBottom: "var(--labplane-safe-bottom)" }}
     >
-      <div className="grid grid-cols-5">
-        {BOTTOM_TABS.map(({ icon: Icon, label, to, exact }) => {
-          const active = exact ? pathname === to : pathname === to || pathname.startsWith(to + "/") || pathname.startsWith(to + "?");
+      <div
+        className="app-safe-x grid"
+        style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
+      >
+        {visibleTabs.map(({ id, icon: Icon, label, to }) => {
+          const active = activeTab === id;
           return (
             <Link
-              key={to}
+              key={id}
               to={to}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors active:opacity-70",
-                active ? "text-blue-600" : "text-slate-400"
+                "flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium transition-colors active:opacity-70",
+                active
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 dark:text-slate-500"
               )}
             >
               <Icon
                 size={20}
                 strokeWidth={active ? 2.5 : 1.8}
-                className={active ? "text-blue-600" : "text-slate-400"}
+                className={active ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}
               />
               {label}
             </Link>
@@ -76,6 +133,8 @@ function MobileHeader() {
   const { status } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const runtimeQ = useRuntimeStatusQuery();
+  const platformName = runtimeQ.data?.config?.platformDisplayName?.trim() || "LabPlane";
 
   const logoutMut = useMutation({
     mutationFn: () => apiPostJson("/api/auth/logout", {}),
@@ -86,25 +145,26 @@ function MobileHeader() {
   });
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4">
+    <header className="app-safe-x app-safe-top flex min-h-[calc(3rem+var(--labplane-safe-top))] shrink-0 items-center justify-between border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950">
       {/* Brand */}
       <Link to="/" className="flex items-center gap-2">
         <img
           src="/brand-logo.svg"
-          alt="Kube-BT-Sync"
+          alt={platformName}
           className="h-6 w-auto object-contain"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
         />
-        <span className="text-sm font-semibold text-slate-800">Kube-BT-Sync</span>
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{platformName}</span>
       </Link>
 
       {/* Right actions */}
       <div className="flex items-center gap-1">
+        <HeaderNotificationsSheet />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-slate-600 transition active:bg-slate-100">
+            <button className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-1 text-sm text-slate-600 transition active:bg-slate-100 dark:text-slate-300 dark:active:bg-slate-800">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
                 {(status?.username ?? "?").slice(0, 1).toUpperCase()}
               </div>
@@ -171,26 +231,28 @@ const AppLayoutMobile: React.FC = () => {
 
   if (hideAppChrome) {
     return (
-      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#0c0f14]">
+      <div className="app-mobile-shell flex min-h-0 flex-col overflow-hidden bg-[#0c0f14]">
         <Outlet />
       </div>
     );
   }
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-white">
+    <div className="app-mobile-shell flex min-h-0 min-w-0 flex-col overflow-hidden bg-white dark:bg-slate-950">
       <MobileHeader />
       <PlatformVersionBanner />
       <RedisStatusBanner />
 
-      {/* Scrollable content, padded for bottom nav */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 pb-20">
-        <div className="mx-auto w-full max-w-full">
+      {/* 底部导航参与 flex 布局，主内容不再重复预留安全区高度。 */}
+      <main className="app-safe-x min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-3">
+        <div className="mx-auto w-full min-w-0 max-w-full">
           <Outlet />
         </div>
       </main>
 
       <MobileBottomNav />
+      <PwaInstallHint />
+      <AiAssistantPopup />
     </div>
   );
 };

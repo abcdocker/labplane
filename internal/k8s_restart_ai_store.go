@@ -15,8 +15,8 @@ const (
 	restartAIKindRollupStat         = "rollup_stat"
 	restartAIKindWorkloadAdvisoryAI = "workload_advisory_ai"
 
-	redisKeyRestartCorrelationLatest = "kubebt:k8s:restart_corr:latest"
-	redisKeyRestartAIRollupLatest    = "kubebt:k8s:restart_ai:rollup:latest"
+	redisKeyRestartCorrelationLatest = "labplane:k8s:restart_corr:latest"
+	redisKeyRestartAIRollupLatest    = "labplane:k8s:restart_ai:rollup:latest"
 )
 
 // RestartAIReportRow MySQL 行（列表 API 用）。
@@ -50,7 +50,7 @@ func MysqlInsertRestartAIReport(ctx context.Context, db *sql.DB, kind, subject, 
 		return 0, fmt.Errorf("kind 为空")
 	}
 	res, err := db.ExecContext(ctx, `
-INSERT INTO kubebt_k8s_restart_ai_reports (kind, subject, title, body, chunks_json, meta_json, created_by)
+INSERT INTO labplane_k8s_restart_ai_reports (kind, subject, title, body, chunks_json, meta_json, created_by)
 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		kind, strings.TrimSpace(subject), strings.TrimSpace(title), body, restartAINullIfEmpty(chunksJSON), restartAINullIfEmpty(metaJSON), strings.TrimSpace(createdBy))
 	if err != nil {
@@ -76,7 +76,7 @@ func MysqlListRestartAIReports(ctx context.Context, db *sql.DB, limit int) ([]Re
 	}
 	rows, err := db.QueryContext(ctx, `
 SELECT id, kind, subject, title, body, IFNULL(chunks_json,''), IFNULL(meta_json,''), IFNULL(created_by,''), created_at
-FROM kubebt_k8s_restart_ai_reports
+FROM labplane_k8s_restart_ai_reports
 ORDER BY id DESC
 LIMIT ?`, limit)
 	if err != nil {
@@ -115,7 +115,7 @@ func MysqlCountRestartAIReportsFiltered(ctx context.Context, db *sql.DB, kindFil
 		return 0, fmt.Errorf("MySQL 未配置")
 	}
 	suf, a := restartAIReportsWhere(kindFilter)
-	q := "SELECT COUNT(*) FROM kubebt_k8s_restart_ai_reports " + suf
+	q := "SELECT COUNT(*) FROM labplane_k8s_restart_ai_reports " + suf
 	row := db.QueryRowContext(ctx, q, a...)
 	var n int64
 	if err := row.Scan(&n); err != nil {
@@ -137,7 +137,7 @@ func MysqlListRestartAIReportsPaged(ctx context.Context, db *sql.DB, kindFilter 
 	}
 	suf, a := restartAIReportsWhere(kindFilter)
 	q := `SELECT id, kind, subject, title, body, IFNULL(chunks_json,''), IFNULL(meta_json,''), IFNULL(created_by,''), created_at
-FROM kubebt_k8s_restart_ai_reports ` + suf + ` ORDER BY id DESC LIMIT ? OFFSET ?`
+FROM labplane_k8s_restart_ai_reports ` + suf + ` ORDER BY id DESC LIMIT ? OFFSET ?`
 	args := append(append([]any{}, a...), limit, offset)
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -162,7 +162,7 @@ func MysqlDeleteRestartAIReport(ctx context.Context, db *sql.DB, id int64) (int6
 	if db == nil {
 		return 0, fmt.Errorf("MySQL 未配置")
 	}
-	res, err := db.ExecContext(ctx, `DELETE FROM kubebt_k8s_restart_ai_reports WHERE id = ?`, id)
+	res, err := db.ExecContext(ctx, `DELETE FROM labplane_k8s_restart_ai_reports WHERE id = ?`, id)
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +174,7 @@ func MysqlPurgeRestartAIReportsOlderThan(ctx context.Context, db *sql.DB, cutoff
 	if db == nil {
 		return 0, nil
 	}
-	res, err := db.ExecContext(ctx, `DELETE FROM kubebt_k8s_restart_ai_reports WHERE created_at < ?`, cutoff)
+	res, err := db.ExecContext(ctx, `DELETE FROM labplane_k8s_restart_ai_reports WHERE created_at < ?`, cutoff)
 	if err != nil {
 		return 0, err
 	}
@@ -191,7 +191,7 @@ func MysqlSelectLatestRestartCorrelation(ctx context.Context, db *sql.DB) (Resta
 	var createdAt any
 	err := db.QueryRowContext(ctx, `
 SELECT id, kind, subject, title, body, IFNULL(chunks_json,''), IFNULL(meta_json,''), IFNULL(created_by,''), created_at
-FROM kubebt_k8s_restart_ai_reports
+FROM labplane_k8s_restart_ai_reports
 WHERE kind = ?
 ORDER BY id DESC LIMIT 1`, restartAIKindHourlyCorrelation).Scan(
 		&r.ID, &r.Kind, &r.Subject, &r.Title, &r.Body, &r.ChunksJSON, &r.MetaJSON, &r.CreatedBy, &createdAt)
@@ -268,7 +268,7 @@ func BuildRollupMarkdownFromRecentPodReports(ctx context.Context, db *sql.DB, ma
 	}
 	rows, err := db.QueryContext(ctx, `
 SELECT subject, title, LEFT(body, 1200) AS excerpt, created_at
-FROM kubebt_k8s_restart_ai_reports
+FROM labplane_k8s_restart_ai_reports
 WHERE kind = ?
 ORDER BY id DESC
 LIMIT ?`, restartAIKindPodAnalysis, maxReports)

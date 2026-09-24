@@ -12,9 +12,9 @@ import (
 
 // AppOpenSearchTemplateConfig 应用中心 OpenSearch 模版：内网 Harbor 镜像与可选调优片段。
 type AppOpenSearchTemplateConfig struct {
-	OpenSearchImage   string `json:"opensearchImage"`
-	DashboardsImage   string `json:"dashboardsImage"`
-	ImagePullSecret   string `json:"imagePullSecret,omitempty"`
+	OpenSearchImage       string `json:"opensearchImage"`
+	DashboardsImage       string `json:"dashboardsImage"`
+	ImagePullSecret       string `json:"imagePullSecret,omitempty"`
 	RegistryPrefixForTags string `json:"registryPrefixForTags,omitempty"`
 	// DefaultJavaOptsMaster / Data 部署向导可覆盖
 	DefaultJavaOptsMaster string `json:"defaultJavaOptsMaster,omitempty"`
@@ -67,7 +67,7 @@ func appOpenSearchTemplateListFromMySQL(ctx context.Context, db *sql.DB) ([]appO
 		return nil, nil
 	}
 	rows, err := db.QueryContext(ctx,
-		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM kubebt_app_opensearch_templates ORDER BY id DESC`)
+		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM labplane_app_opensearch_templates ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func appOpenSearchTemplateGetByID(ctx context.Context, db *sql.DB, id int64) (*a
 	var desc sql.NullString
 	var created, updated sql.NullTime
 	err := db.QueryRowContext(ctx,
-		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM kubebt_app_opensearch_templates WHERE id=?`,
+		`SELECT id, name, description, config_json, created_at, updated_at, created_by FROM labplane_app_opensearch_templates WHERE id=?`,
 		id,
 	).Scan(&r.ID, &r.Name, &desc, &r.ConfigJSON, &created, &updated, &r.CreatedBy)
 	if err != nil {
@@ -118,13 +118,13 @@ func appOpenSearchTemplateGetByID(ctx context.Context, db *sql.DB, id int64) (*a
 }
 
 func appOpenSearchTemplateDelete(ctx context.Context, db *sql.DB, id int64) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM kubebt_app_opensearch_templates WHERE id=?`, id)
+	_, err := db.ExecContext(ctx, `DELETE FROM labplane_app_opensearch_templates WHERE id=?`, id)
 	return err
 }
 
 func appOpenSearchTemplateInsert(ctx context.Context, db *sql.DB, name, description, configJSON, createdBy string) (int64, error) {
 	res, err := db.ExecContext(ctx,
-		`INSERT INTO kubebt_app_opensearch_templates (name, description, config_json, created_by) VALUES (?,?,?,?)`,
+		`INSERT INTO labplane_app_opensearch_templates (name, description, config_json, created_by) VALUES (?,?,?,?)`,
 		name, nullIfEmpty(description), configJSON, createdBy)
 	if err != nil {
 		return 0, err
@@ -134,7 +134,7 @@ func appOpenSearchTemplateInsert(ctx context.Context, db *sql.DB, name, descript
 
 func appOpenSearchTemplateUpdate(ctx context.Context, db *sql.DB, id int64, name, description, configJSON string) error {
 	_, err := db.ExecContext(ctx,
-		`UPDATE kubebt_app_opensearch_templates SET name=?, description=?, config_json=? WHERE id=?`,
+		`UPDATE labplane_app_opensearch_templates SET name=?, description=?, config_json=? WHERE id=?`,
 		name, nullIfEmpty(description), configJSON, id)
 	return err
 }

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	k8sEtcdDefragJobLabelKey   = "kube-bt-sync.io/etcd-defrag"
+	k8sEtcdDefragJobLabelKey   = "labplane.io/etcd-defrag"
 	k8sEtcdDefragJobLabelValue = "true"
 	etcdWalFsyncAlertSeconds   = 0.01 // 10ms，与 etcd 官方磁盘建议及控制台 WAL P99 警戒线一致
 )

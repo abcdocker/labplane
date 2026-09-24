@@ -109,7 +109,7 @@ const VCenterConnectWizard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-8 text-sm text-gray-500">
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         加载配置…
       </div>
@@ -129,8 +129,8 @@ const VCenterConnectWizard: React.FC = () => {
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">连接 vCenter</h2>
-      <p className="mt-2 text-sm text-gray-600">
+      <h2 className="text-lg font-semibold text-slate-900">连接 vCenter</h2>
+      <p className="mt-2 text-sm text-slate-600">
         填写 vSphere/vCenter 地址与凭据，保存后写入运行时配置并热重载。也可在「系统设置 → 运行时配置」中修改。
       </p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -161,7 +161,7 @@ const VCenterConnectWizard: React.FC = () => {
           />
         </div>
         <div className="flex items-center justify-between rounded-lg border border-amber-100 bg-white/80 px-3 py-2 sm:col-span-2">
-          <span className="text-sm text-gray-700">跳过 TLS 校验（自签证书）</span>
+          <span className="text-sm text-slate-700">跳过 TLS 校验（自签证书）</span>
           <Switch checked={vcInsecure} onCheckedChange={setVcInsecure} />
         </div>
         <div className="space-y-2">

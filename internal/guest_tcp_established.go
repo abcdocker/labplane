@@ -222,16 +222,16 @@ func handleVCenterVMTcpEstablished(c *gin.Context, app *ServerApp) {
 	rows, _ = establishedTCPTopRowsByPeerCount(rows, establishedTCPResponseMaxRows)
 	uniq := uniqueSortedIPs(rows)
 	c.JSON(http.StatusOK, gin.H{
-		"guestIp":             guestIP,
-		"rows":                rows,
+		"guestIp":           guestIP,
+		"rows":              rows,
 		"connectionCount":   total,
-		"truncated":           total > len(rows),
-		"uniquePeerIpCount":   len(uniq),
-		"uniquePeerIps":       uniq,
-		"stderr":              stderrHint,
-		"scannedAt":           time.Now().UTC().Format(time.RFC3339),
-		"source":              "ssh",
-		"commandHint":         "ss -Htan state established 或 netstat -tan | ESTABLISHED",
-		"scanFromPodHint":     "由 Dashboard Pod 经 SSH 在来宾内执行；仅统计 ESTABLISHED 的 TCP。",
+		"truncated":         total > len(rows),
+		"uniquePeerIpCount": len(uniq),
+		"uniquePeerIps":     uniq,
+		"stderr":            stderrHint,
+		"scannedAt":         time.Now().UTC().Format(time.RFC3339),
+		"source":            "ssh",
+		"commandHint":       "ss -Htan state established 或 netstat -tan | ESTABLISHED",
+		"scanFromPodHint":   "由 Dashboard Pod 经 SSH 在来宾内执行；仅统计 ESTABLISHED 的 TCP。",
 	})
 }

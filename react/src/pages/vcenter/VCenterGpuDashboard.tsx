@@ -278,8 +278,8 @@ const VCenterGpuDashboard: React.FC = () => {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">GPU 监控</h1>
-          <p className="mt-1 text-sm text-gray-500">需配置 vCenter 用 Prometheus（与 ESXi 看板相同数据源）。</p>
+          <h1 className="text-2xl font-bold text-slate-900">GPU 监控</h1>
+          <p className="mt-1 text-sm text-slate-500">需配置 vCenter 用 Prometheus（与 ESXi 看板相同数据源）。</p>
         </div>
         <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 px-5 py-4 text-sm text-amber-950">
           <p className="font-medium">未配置 Prometheus</p>
@@ -301,8 +301,8 @@ const VCenterGpuDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">GPU 监控</h1>
-        <p className="mt-1 max-w-3xl text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-slate-900">GPU 监控</h1>
+        <p className="mt-1 max-w-3xl text-sm text-slate-500">
           展示各张显卡的利用率、温度与功耗时序（中文图例：显卡 1、显卡 2…）。指标来自与「vCenter 巡检」ESXi
           看板相同的 Prometheus；请在该实例上抓取{" "}
           <span className="font-mono text-xs">DCGM_FI_*</span>（DCGM）或{" "}

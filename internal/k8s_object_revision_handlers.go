@@ -93,10 +93,10 @@ func handleK8sObjectRevisionDiff(c *gin.Context, app *ServerApp) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"left":        leftMeta,
-		"right":       rightMeta,
-		"leftYaml":    leftYAML,
-		"rightYaml":   rightYAML,
+		"left":      leftMeta,
+		"right":     rightMeta,
+		"leftYaml":  leftYAML,
+		"rightYaml": rightYAML,
 	})
 }
 

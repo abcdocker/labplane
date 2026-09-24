@@ -15,8 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/fields"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	sigyaml "sigs.k8s.io/yaml"
@@ -238,7 +238,7 @@ func handleK8sPods(c *gin.Context, k8s *kubernetes.Clientset) {
 		list, err = k8s.CoreV1().Pods("").List(ctx, opts)
 	}
 	if err != nil {
-		RespondAPIError500(c, "列出 Pod 失败: " + err.Error())
+		RespondAPIError500(c, "列出 Pod 失败: "+err.Error())
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list.Items))
@@ -265,15 +265,15 @@ func handleK8sPods(c *gin.Context, k8s *kubernetes.Clientset) {
 		}
 		cpuReqMilli, memReqBytes, _, _, _ := PodWorkloadResourcesTotals(&p)
 		out = append(out, map[string]interface{}{
-			"namespace":        p.Namespace,
-			"name":             p.Name,
-			"phase":            string(p.Status.Phase),
-			"node":             node,
-			"restarts":         restarts,
-			"age":              p.CreationTimestamp.Time.Format(time.RFC3339),
-			"firstContainer":   firstContainer,
-			"cpuRequestMilli":  cpuReqMilli,
-			"memRequestBytes":  memReqBytes,
+			"namespace":       p.Namespace,
+			"name":            p.Name,
+			"phase":           string(p.Status.Phase),
+			"node":            node,
+			"restarts":        restarts,
+			"age":             p.CreationTimestamp.Time.Format(time.RFC3339),
+			"firstContainer":  firstContainer,
+			"cpuRequestMilli": cpuReqMilli,
+			"memRequestBytes": memReqBytes,
 		})
 	}
 	c.JSON(http.StatusOK, out)
@@ -292,7 +292,7 @@ func handleK8sPodGet(c *gin.Context, k8s *kubernetes.Clientset) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Pod 不存在"})
 			return
 		}
-		RespondAPIError500(c, "获取 Pod 失败: " + err.Error())
+		RespondAPIError500(c, "获取 Pod 失败: "+err.Error())
 		return
 	}
 	pod.ObjectMeta.ManagedFields = nil
@@ -350,7 +350,7 @@ func handleK8sPodGet(c *gin.Context, k8s *kubernetes.Clientset) {
 
 	yamlBytes, err := sigyaml.Marshal(pod)
 	if err != nil {
-		RespondAPIError500(c, "序列化 YAML 失败: " + err.Error())
+		RespondAPIError500(c, "序列化 YAML 失败: "+err.Error())
 		return
 	}
 
@@ -391,19 +391,19 @@ func handleK8sPodGet(c *gin.Context, k8s *kubernetes.Clientset) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"namespace":         pod.Namespace,
-		"name":              pod.Name,
-		"phase":             string(pod.Status.Phase),
-		"node":              node,
-		"restarts":          restarts,
-		"age":               pod.CreationTimestamp.Time.Format(time.RFC3339),
-		"containers":        containers,
-		"cpuRequestMilli":   cpuRequestMilli,
-		"memRequestBytes":   memRequestBytes,
-		"cpuLimitMilli":     cpuLimitMilli,
-		"memLimitBytes":     memLimitBytes,
-		"yaml":              string(yamlBytes),
-		"events":            eventsOut,
+		"namespace":       pod.Namespace,
+		"name":            pod.Name,
+		"phase":           string(pod.Status.Phase),
+		"node":            node,
+		"restarts":        restarts,
+		"age":             pod.CreationTimestamp.Time.Format(time.RFC3339),
+		"containers":      containers,
+		"cpuRequestMilli": cpuRequestMilli,
+		"memRequestBytes": memRequestBytes,
+		"cpuLimitMilli":   cpuLimitMilli,
+		"memLimitBytes":   memLimitBytes,
+		"yaml":            string(yamlBytes),
+		"events":          eventsOut,
 	})
 }
 
@@ -427,7 +427,7 @@ func handleK8sPodLogs(c *gin.Context, k8s *kubernetes.Clientset) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Pod 不存在"})
 				return
 			}
-			RespondAPIError500(c, "读取 Pod 失败: " + err.Error())
+			RespondAPIError500(c, "读取 Pod 失败: "+err.Error())
 			return
 		}
 		if len(pod.Spec.Containers) > 0 {
@@ -461,13 +461,13 @@ func handleK8sPodLogs(c *gin.Context, k8s *kubernetes.Clientset) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Pod 不存在或无法读取日志"})
 			return
 		}
-		RespondAPIError500(c, "获取日志失败: " + err.Error())
+		RespondAPIError500(c, "获取日志失败: "+err.Error())
 		return
 	}
 	defer stream.Close()
 	buf, err := io.ReadAll(stream)
 	if err != nil {
-		RespondAPIError500(c, "读取日志流失败: " + err.Error())
+		RespondAPIError500(c, "读取日志流失败: "+err.Error())
 		return
 	}
 	c.Data(http.StatusOK, "text/plain; charset=utf-8", buf)
@@ -475,19 +475,19 @@ func handleK8sPodLogs(c *gin.Context, k8s *kubernetes.Clientset) {
 
 // podRestartListRow GET /api/k8s/pod-restarts 返回项；includeEventHints=1 时填充 Events 粗分类（与 /pod-restart-insights 同源逻辑）。
 type podRestartListRow struct {
-	Namespace         string   `json:"namespace"`
-	Name              string   `json:"name"`
-	Phase             string   `json:"phase"`
-	Restarts          int32    `json:"restarts"`
-	PrimaryContainer  string   `json:"primaryContainer,omitempty"`
-	OomKilledSuspect  bool     `json:"oomKilledSuspect,omitempty"`
-	EvictedSuspect    bool     `json:"evictedSuspect,omitempty"`
-	BackOffSuspect    bool     `json:"backOffSuspect,omitempty"`
-	RecentReasons     []string `json:"recentReasons,omitempty"`
-	TopOwnerKind      string   `json:"topOwnerKind,omitempty"`
-	TopOwnerName      string   `json:"topOwnerName,omitempty"`
-	HelmRelease       string   `json:"helmRelease,omitempty"`
-	Hints             []string `json:"hints,omitempty"`
+	Namespace        string   `json:"namespace"`
+	Name             string   `json:"name"`
+	Phase            string   `json:"phase"`
+	Restarts         int32    `json:"restarts"`
+	PrimaryContainer string   `json:"primaryContainer,omitempty"`
+	OomKilledSuspect bool     `json:"oomKilledSuspect,omitempty"`
+	EvictedSuspect   bool     `json:"evictedSuspect,omitempty"`
+	BackOffSuspect   bool     `json:"backOffSuspect,omitempty"`
+	RecentReasons    []string `json:"recentReasons,omitempty"`
+	TopOwnerKind     string   `json:"topOwnerKind,omitempty"`
+	TopOwnerName     string   `json:"topOwnerName,omitempty"`
+	HelmRelease      string   `json:"helmRelease,omitempty"`
+	Hints            []string `json:"hints,omitempty"`
 }
 
 func podRestartListRowFromCand(p *corev1.Pod, rst int32, ir restartInsightRow) podRestartListRow {
@@ -496,19 +496,19 @@ func podRestartListRowFromCand(p *corev1.Pod, rst int32, ir restartInsightRow) p
 		pc = p.Spec.Containers[0].Name
 	}
 	return podRestartListRow{
-		Namespace:         p.Namespace,
-		Name:              p.Name,
-		Phase:             string(p.Status.Phase),
-		Restarts:          rst,
-		PrimaryContainer:  pc,
-		OomKilledSuspect:  ir.OomKilledSuspect,
-		EvictedSuspect:    ir.EvictedSuspect,
-		BackOffSuspect:    ir.BackOffSuspect,
-		RecentReasons:     ir.RecentReasons,
-		TopOwnerKind:      ir.TopOwnerKind,
-		TopOwnerName:      ir.TopOwnerName,
-		HelmRelease:       ir.HelmRelease,
-		Hints:             ir.Hints,
+		Namespace:        p.Namespace,
+		Name:             p.Name,
+		Phase:            string(p.Status.Phase),
+		Restarts:         rst,
+		PrimaryContainer: pc,
+		OomKilledSuspect: ir.OomKilledSuspect,
+		EvictedSuspect:   ir.EvictedSuspect,
+		BackOffSuspect:   ir.BackOffSuspect,
+		RecentReasons:    ir.RecentReasons,
+		TopOwnerKind:     ir.TopOwnerKind,
+		TopOwnerName:     ir.TopOwnerName,
+		HelmRelease:      ir.HelmRelease,
+		Hints:            ir.Hints,
 	}
 }
 
@@ -607,7 +607,7 @@ func handleK8sPodDelete(c *gin.Context, k8s *kubernetes.Clientset) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Pod 不存在"})
 			return
 		}
-		RespondAPIError500(c, "删除 Pod 失败: " + err.Error())
+		RespondAPIError500(c, "删除 Pod 失败: "+err.Error())
 		return
 	}
 	SetAuditDetail(c, "删除 Pod "+ns+"/"+name)
@@ -695,7 +695,7 @@ func handleK8sServices(c *gin.Context, k8s *kubernetes.Clientset) {
 		list, err = k8s.CoreV1().Services("").List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
-		RespondAPIError500(c, "列出 Service 失败: " + err.Error())
+		RespondAPIError500(c, "列出 Service 失败: "+err.Error())
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list.Items))
@@ -707,14 +707,14 @@ func handleK8sServices(c *gin.Context, k8s *kubernetes.Clientset) {
 			portEntries = append(portEntries, buildK8sServicePortEntry(p))
 		}
 		out = append(out, map[string]interface{}{
-			"namespace":    s.Namespace,
-			"name":         s.Name,
-			"labels":       k8sLabelsString(s.Labels),
-			"type":         string(s.Spec.Type),
-			"clusterIP":    s.Spec.ClusterIP,
-			"ports":        ports,
-			"portEntries":  portEntries,
-			"age":          s.CreationTimestamp.Time.Format(time.RFC3339),
+			"namespace":   s.Namespace,
+			"name":        s.Name,
+			"labels":      k8sLabelsString(s.Labels),
+			"type":        string(s.Spec.Type),
+			"clusterIP":   s.Spec.ClusterIP,
+			"ports":       ports,
+			"portEntries": portEntries,
+			"age":         s.CreationTimestamp.Time.Format(time.RFC3339),
 		})
 	}
 	c.JSON(http.StatusOK, out)
@@ -915,7 +915,7 @@ func handleK8sNodes(c *gin.Context, app *ServerApp) {
 	cfg := app.Cfg()
 	list, err := k8s.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		RespondAPIError500(c, "列出 Node 失败: " + err.Error())
+		RespondAPIError500(c, "列出 Node 失败: "+err.Error())
 		return
 	}
 
@@ -1058,7 +1058,7 @@ func handleK8sNodes(c *gin.Context, app *ServerApp) {
 
 	podWg.Wait()
 	if podListErr != nil {
-		RespondAPIError500(c, "列出 Pod 失败（节点 Pod 计数）: " + podListErr.Error())
+		RespondAPIError500(c, "列出 Pod 失败（节点 Pod 计数）: "+podListErr.Error())
 		return
 	}
 	podCountByNode := make(map[string]int, len(list.Items))

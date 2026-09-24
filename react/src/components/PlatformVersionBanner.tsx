@@ -39,8 +39,8 @@ const PlatformVersionBanner: React.FC = () => {
 
     const apiBv = (rq.data.buildVersion ?? "").trim();
     const uiBv =
-      typeof __KUBEBT_UI_BUILD_VERSION__ !== "undefined"
-        ? String(__KUBEBT_UI_BUILD_VERSION__).trim()
+      typeof __LABPLANE_UI_BUILD_VERSION__ !== "undefined"
+        ? String(__LABPLANE_UI_BUILD_VERSION__).trim()
         : "dev";
     if (
       apiBv !== "" &&

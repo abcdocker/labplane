@@ -11,10 +11,10 @@ import (
 )
 
 type Config struct {
-	BaotaURL           string
-	BaotaAPIKey        string
+	BaotaURL    string
+	BaotaAPIKey string
 	// BaotaTargets 多实例（runtime baotaTargets）；nil 表示仅使用 BaotaURL/BaotaAPIKey。
-	BaotaTargets []BaotaTargetEntry `json:"-"`
+	BaotaTargets       []BaotaTargetEntry `json:"-"`
 	BaotaSkipTLSVerify bool
 	// 默认 true：公网面板下复用连接易陈旧，易导致「awaiting headers」挂满直至 Client.Timeout；设为 false 可省握手。
 	BaotaDisableHTTPKeepAlive bool
@@ -70,31 +70,38 @@ type Config struct {
 	IdracUser     string
 	IdracPassword string
 	IdracInsecure bool
+	// iDRAC VNC 控制台（需先在 iDRAC 设置中启用 VNC Server）
+	IdracVncPort     int
+	IdracVncPassword string
 	// vCenter / vSphere（可选）：虚拟机与 WebMKS 控制台
 	VCenterURL      string // 如 https://vcenter.example.com 或 https://vcenter/sdk
 	VCenterUser     string
 	VCenterPassword string
 	VCenterInsecure bool // 跳过 TLS 校验（自签证书）
-	// 可选：浏览器内嵌 WebMKS 时加载 VMware HTML Console SDK（需可访问的 URL）
+	// 旧版兼容字段：当前原生控制台已改用内置 noVNC + 后端 WebMKS WebSocket。
 	VCenterWmksScriptURL string
 	VCenterWmksCssURL    string
-	// 浏览器访问 vSphere UI 的对外根地址（Nginx 反代 / SSO 时用公网域名，可与 VCENTER_URL 不同）
+	// vSphere UI 外部链接配置；不参与内嵌控制台连接。
 	VCenterUIBaseURL string
-	// webconsole.html 的 host 参数；空则使用 VCenterUIBaseURL 的 Hostname
+	// WebMKS 后端拨号地址覆盖；当票据返回的 ESXi 主机名无法被 Pod DNS 解析时填写管理 IP 或 host:port。
 	VCenterConsoleHost string
-	// 可选：覆盖从 VCENTER_UI_BASE_URL 探测到的 SHA1 指纹（Nginx 与 vCenter 证书不一致时）
+	// VCenterConsoleProxyURL 已废弃，仅保留旧配置兼容。vCenter /ui/webmks
+	// 依赖 vSphere Client SSO，不能作为平台服务端的 WebMKS 代理。
+	VCenterConsoleProxyURL string
+	// 旧版兼容字段；不参与内嵌控制台连接。
 	VCenterUIThumbprint string
 	// 虚拟机 SSH（页面内终端）：浏览器仅连 Dashboard；SSH 由本进程向 Guest IP 拨号转发，凭据在服务端。运维需将本进程部署在能访问该 IP:端口的网络中。
-	VCenterVMSshUser            string
-	VCenterVMSshPrivateKeyPath  string
-	VCenterVMSshPassword        string
-	VCenterVMSshKeyPassphrase   string // 加密私钥口令
-	VCenterVMSshPort            int
-	VCenterVMSshInsecureHostKey bool // true 时跳过 known_hosts 校验（内网常用）
-	// SSH 凭据持久化（可选）：redis / mysql；与 KUBEBT_ENCRYPTION_KEY 配合加密密码与私钥
+	VCenterVMSshUser               string
+	VCenterVMSshPrivateKeyPath     string
+	VCenterVMSshPassword           string
+	VCenterVMSshKeyPassphrase      string // 加密私钥口令
+	VCenterVMSshPort               int
+	VCenterVMSshInsecureHostKey    bool   // true 时跳过 known_hosts 校验（内网常用）
+	VCenterVMSshHostKeyFingerprint string // SHA256:...，安全模式下固定 Guest SSH 主机公钥
+	// SSH 凭据持久化（可选）：redis / mysql；与 LABPLANE_ENCRYPTION_KEY 配合加密密码与私钥
 	SSHSettingsBackend SSHSettingsBackend
-	EncryptionKey      string // KUBEBT_ENCRYPTION_KEY
-	// TotpIssuer 显示在 Authenticator 中的发行方名称（otpauth issuer）；默认 Kube-BT-Sync。环境变量 KUBEBT_TOTP_ISSUER。
+	EncryptionKey      string // LABPLANE_ENCRYPTION_KEY
+	// TotpIssuer 显示在 Authenticator 中的发行方名称（otpauth issuer）；默认 LabPlane。环境变量 LABPLANE_TOTP_ISSUER。
 	TotpIssuer     string
 	RedisAddr      string
 	RedisPassword  string
@@ -135,7 +142,7 @@ type Config struct {
 	PlatformDisplayName string
 	PlatformLogoURL     string
 	PlatformFaviconURL  string
-	// Web SSH / xterm 字体（runtime-config 或 KUBEBT_SSH_TERMINAL_* 可覆盖）
+	// Web SSH / xterm 字体（runtime-config 或 LABPLANE_SSH_TERMINAL_* 可覆盖）
 	SshTerminalFontFamily string
 	SshTerminalFontSize   int // 0 表示前端默认 13
 	// Ingress→宝塔同步：在后台开启后才轮询同步；未开启时不访问 K8s Ingress / 宝塔 API
@@ -160,7 +167,7 @@ type Config struct {
 	CloudHostAutoInstallNodeExporter bool
 	// NODE_EXPORTER_VERSION：自动安装时使用的发布版本号（不含 v 前缀）。
 	NodeExporterVersion string
-	// KUBEBT_RUNTIME_DUAL_WRITE_REDIS：为 true 且能连接 Redis 时，将 runtime-config 与 platform_kv 全量镜像到 Redis（无过期时间），便于在 Redis/运维侧可见与灾备恢复。
+	// LABPLANE_RUNTIME_DUAL_WRITE_REDIS：为 true 且能连接 Redis 时，将 runtime-config 与 platform_kv 全量镜像到 Redis（无过期时间），便于在 Redis/运维侧可见与灾备恢复。
 	RuntimeDualWriteRedis bool
 	// OIDC（如 Authentik）：与 DASHBOARD_PASSWORD 可并存；四项均配置则启用授权码登录
 	OIDCIssuerURL    string
@@ -174,11 +181,11 @@ type Config struct {
 	OIDCSupportedSigningAlgs string // 逗号分隔，如 RS256,ES256；空则由发现文档/库默认
 	// OIDCClockSkewSec：本机时钟「快于」IdP 时 id_token 易被判过期；校验时将「当前时间」减去该秒数（0 表示不调整）
 	OIDCClockSkewSec int
-	// PerformanceMode：KUBEBT_PERFORMANCE_MODE=true 时 gin 使用 release 模式，且 /api/namespaces 可对 Redis 短缓存（需 Redis 可用）。
+	// PerformanceMode：LABPLANE_PERFORMANCE_MODE=true 时 gin 使用 release 模式，且 /api/namespaces 可对 Redis 短缓存（需 Redis 可用）。
 	PerformanceMode bool
 	// NamespacesCacheTTLSec：性能模式下命名空间列表缓存秒数；0 表示使用默认 30。
 	NamespacesCacheTTLSec int
-	// EnableBackgroundJobs：KUBEBT_ENABLE_BACKGROUND_JOBS=false 时关闭定时同步/告警巡检等后台协程，仅保留 HTTP 与连接维护；多副本部署时应仅 1 个 Pod 为 true，其余为 false，避免宝塔同步、告警评估、出站通知等重复执行。
+	// EnableBackgroundJobs：LABPLANE_ENABLE_BACKGROUND_JOBS=false 时关闭定时同步/告警巡检等后台协程，仅保留 HTTP 与连接维护；多副本部署时应仅 1 个 Pod 为 true，其余为 false，避免宝塔同步、告警评估、出站通知等重复执行。
 	EnableBackgroundJobs bool
 	// Harbor 镜像仓库（可选）：控制台对接 Harbor API v2.0
 	HarborBaseURL  string
@@ -190,7 +197,7 @@ type Config struct {
 	CosSecretKey  string
 	CosBucket     string // 含 APPID，如 mybucket-1250000000
 	CosRegion     string // 如 ap-guangzhou
-	CosPrefix     string // 对象键前缀，如 kubebt-docs
+	CosPrefix     string // 对象键前缀，如 labplane-docs
 	CosPublicBase string // 可选 CDN 根，如 https://cdn.example.com（无尾斜杠）；空则用默认桶域名
 }
 
@@ -303,7 +310,7 @@ func LoadConfig() Config {
 		BaotaHTTPTimeout:                  time.Duration(timeoutSec) * time.Second,
 		BaotaTCPProbeTimeout:              time.Duration(tcpProbeSec) * time.Second,
 		BaotaCheckMinInterval:             time.Duration(checkMinSec) * time.Second,
-		DDNSHost:                          getEnv("DDNS_HOST", "home.i4t.com"),
+		DDNSHost:                          getEnv("DDNS_HOST", "home.example.com"),
 		DefaultPort:                       getEnv("DEFAULT_PORT", "38333"),
 		BaotaUpstreamHost:                 strings.TrimSpace(getEnv("BAOTA_UPSTREAM_HOST", "")),
 		BaotaUpstreamPort:                 strings.TrimSpace(getEnv("BAOTA_UPSTREAM_PORT", "")),
@@ -328,8 +335,8 @@ func LoadConfig() Config {
 		VMSelectURLVCenter:                strings.TrimSpace(getEnv("VM_SELECT_URL_VCENTER", "")),
 		VMSelectURLCloud:                  strings.TrimSpace(getEnv("VM_SELECT_URL_CLOUD", "")),
 		VictoriaLogsURL:                   strings.TrimSpace(getEnv("VICTORIA_LOGS_URL", "")),
-		GeoLite2CountryMMDB:               strings.TrimSpace(getEnv("KUBEBT_GEOLITE2_COUNTRY_MMDB", "")),
-		VMLogVectorDownloadBaseURL:        strings.TrimRight(strings.TrimSpace(getEnv("KUBEBT_VMLOG_VECTOR_DOWNLOAD_BASE_URL", "")), "/"),
+		GeoLite2CountryMMDB:               strings.TrimSpace(getEnv("LABPLANE_GEOLITE2_COUNTRY_MMDB", "")),
+		VMLogVectorDownloadBaseURL:        strings.TrimRight(strings.TrimSpace(getEnv("LABPLANE_VMLOG_VECTOR_DOWNLOAD_BASE_URL", "")), "/"),
 		VictoriaLogsSkipTLS:               getEnvBool("VICTORIA_LOGS_SKIP_TLS_VERIFY", false),
 		HarborBaseURL:                     strings.TrimSpace(getEnv("HARBOR_BASE_URL", "")),
 		HarborUsername:                    strings.TrimSpace(getEnv("HARBOR_USERNAME", "")),
@@ -341,21 +348,23 @@ func LoadConfig() Config {
 		VCenterURL:                        strings.TrimSpace(getEnv("VCENTER_URL", "")),
 		VCenterUser:                       strings.TrimSpace(getEnv("VCENTER_USER", "")),
 		VCenterPassword:                   os.Getenv("VCENTER_PASSWORD"),
-		VCenterInsecure:                   getEnvBool("VCENTER_INSECURE", true),
+		VCenterInsecure:                   getEnvBool("VCENTER_INSECURE", false),
 		VCenterWmksScriptURL:              strings.TrimSpace(getEnv("VCENTER_WMKS_SCRIPT_URL", "")),
 		VCenterWmksCssURL:                 strings.TrimSpace(getEnv("VCENTER_WMKS_CSS_URL", "")),
 		VCenterUIBaseURL:                  strings.TrimSpace(getEnv("VCENTER_UI_BASE_URL", "")),
 		VCenterConsoleHost:                strings.TrimSpace(getEnv("VCENTER_CONSOLE_HOST", "")),
+		VCenterConsoleProxyURL:            strings.TrimSpace(getEnv("VCENTER_CONSOLE_PROXY_URL", "")),
 		VCenterUIThumbprint:               strings.TrimSpace(getEnv("VCENTER_UI_THUMBPRINT", "")),
 		VCenterVMSshUser:                  strings.TrimSpace(getEnv("VCENTER_VM_SSH_USER", "")),
 		VCenterVMSshPrivateKeyPath:        strings.TrimSpace(getEnv("VCENTER_VM_SSH_PRIVATE_KEY_PATH", "")),
 		VCenterVMSshPassword:              os.Getenv("VCENTER_VM_SSH_PASSWORD"),
 		VCenterVMSshKeyPassphrase:         os.Getenv("VCENTER_VM_SSH_KEY_PASSPHRASE"),
 		VCenterVMSshPort:                  sshPort,
-		VCenterVMSshInsecureHostKey:       getEnvBool("VCENTER_VM_SSH_INSECURE_HOST_KEY", true),
+		VCenterVMSshInsecureHostKey:       getEnvBool("VCENTER_VM_SSH_INSECURE_HOST_KEY", false),
+		VCenterVMSshHostKeyFingerprint:    strings.TrimSpace(getEnv("VCENTER_VM_SSH_HOST_KEY_FINGERPRINT", "")),
 		SSHSettingsBackend:                SSHSettingsBackend(strings.ToLower(strings.TrimSpace(getEnv("SSH_SETTINGS_BACKEND", "")))),
-		EncryptionKey:                     strings.TrimSpace(os.Getenv("KUBEBT_ENCRYPTION_KEY")),
-		TotpIssuer:                        strings.TrimSpace(os.Getenv("KUBEBT_TOTP_ISSUER")),
+		EncryptionKey:                     strings.TrimSpace(os.Getenv("LABPLANE_ENCRYPTION_KEY")),
+		TotpIssuer:                        strings.TrimSpace(os.Getenv("LABPLANE_TOTP_ISSUER")),
 		RedisAddr:                         strings.TrimSpace(getEnv("REDIS_ADDR", "")),
 		RedisPassword:                     os.Getenv("REDIS_PASSWORD"),
 		RedisDB:                           getEnvAsInt("REDIS_DB", 0),
@@ -380,25 +389,25 @@ func LoadConfig() Config {
 		MySQLPassword:                     os.Getenv("MYSQL_PASSWORD"),
 		SSHSettingsDir:                    strings.TrimSpace(getEnv("SSH_SETTINGS_DIR", "")),
 		PlatformPublicURL:                 strings.TrimSpace(getEnv("PLATFORM_PUBLIC_URL", "")),
-		AssetsCDNBaseURL:                  strings.TrimRight(strings.TrimSpace(getEnv("KUBEBT_ASSETS_CDN_BASE", "")), "/"),
+		AssetsCDNBaseURL:                  strings.TrimRight(strings.TrimSpace(getEnv("LABPLANE_ASSETS_CDN_BASE", "")), "/"),
 		PlatformDisplayName:               strings.TrimSpace(getEnv("PLATFORM_DISPLAY_NAME", "")),
 		PlatformLogoURL:                   strings.TrimSpace(getEnv("PLATFORM_LOGO_URL", "")),
 		PlatformFaviconURL:                strings.TrimSpace(getEnv("PLATFORM_FAVICON_URL", "")),
-		SshTerminalFontFamily:             strings.TrimSpace(getEnv("KUBEBT_SSH_TERMINAL_FONT_FAMILY", "")),
-		SshTerminalFontSize:               getEnvAsInt("KUBEBT_SSH_TERMINAL_FONT_SIZE", 0),
+		SshTerminalFontFamily:             strings.TrimSpace(getEnv("LABPLANE_SSH_TERMINAL_FONT_FAMILY", "")),
+		SshTerminalFontSize:               getEnvAsInt("LABPLANE_SSH_TERMINAL_FONT_SIZE", 0),
 		IngressBaotaSyncEnabled:           getEnvBool("INGRESS_BAOTA_SYNC_ENABLED", false),
 		IngressNginxManifestURL:           strings.TrimSpace(getEnv("INGRESS_NGINX_MANIFEST_URL", "")),
 		IngressNginxHostHTTPPort:          int32(ingHostHTTP),
 		IngressNginxHostHTTPSPort:         int32(ingHostHTTPS),
 		IngressNginxControllerNodeName:    strings.TrimSpace(getEnv("INGRESS_NGINX_CONTROLLER_NODE", "")),
-		K8sAddonsManifestMirror:           strings.TrimSpace(getEnv("KUBEBT_K8S_ADDONS_MANIFEST_MIRROR", "auto")),
+		K8sAddonsManifestMirror:           strings.TrimSpace(getEnv("LABPLANE_K8S_ADDONS_MANIFEST_MIRROR", "auto")),
 		IngressNginxSkipK8sRegistryMirror: getEnvBool("INGRESS_NGINX_SKIP_K8S_REGISTRY_MIRROR", false),
 		IngressNginxK8sImageMirrorPrefix:  strings.TrimSpace(getEnv("INGRESS_NGINX_K8S_IMAGE_MIRROR_PREFIX", "")),
 		VCenterCacheTTLSec:                getEnvAsInt("VCENTER_CACHE_TTL_SEC", 120),
 		VCenterBastionVMListCacheTTLSec:   getEnvAsInt("VCENTER_BASTION_VM_LIST_CACHE_TTL_SEC", 3600),
 		CloudHostAutoInstallNodeExporter:  getEnvBool("CLOUD_HOST_AUTO_INSTALL_NODE_EXPORTER", false),
 		NodeExporterVersion:               strings.TrimSpace(getEnv("NODE_EXPORTER_VERSION", "1.8.2")),
-		RuntimeDualWriteRedis:             getEnvBool("KUBEBT_RUNTIME_DUAL_WRITE_REDIS", true),
+		RuntimeDualWriteRedis:             getEnvBool("LABPLANE_RUNTIME_DUAL_WRITE_REDIS", false),
 		OIDCIssuerURL:                     strings.TrimSpace(getEnv("OIDC_ISSUER_URL", "")),
 		OIDCClientID:                      strings.TrimSpace(getEnv("OIDC_CLIENT_ID", "")),
 		OIDCClientSecret:                  strings.TrimSpace(os.Getenv("OIDC_CLIENT_SECRET")),
@@ -408,15 +417,15 @@ func LoadConfig() Config {
 		OIDCSkipClientIDCheck:             getEnvBool("OIDC_SKIP_CLIENT_ID_CHECK", false),
 		OIDCSupportedSigningAlgs:          strings.TrimSpace(getEnv("OIDC_SUPPORTED_SIGNING_ALGS", "")),
 		OIDCClockSkewSec:                  clampOIDCClockSkewSec(getEnvAsInt("OIDC_CLOCK_SKEW_SEC", 0)),
-		PerformanceMode:                   getEnvBool("KUBEBT_PERFORMANCE_MODE", false),
-		NamespacesCacheTTLSec:             getEnvAsInt("KUBEBT_NAMESPACES_CACHE_TTL_SEC", 30),
-		EnableBackgroundJobs:              getEnvBool("KUBEBT_ENABLE_BACKGROUND_JOBS", true),
-		CosSecretID:                       strings.TrimSpace(getEnv("KUBEBT_COS_SECRET_ID", "")),
-		CosSecretKey:                      strings.TrimSpace(os.Getenv("KUBEBT_COS_SECRET_KEY")),
-		CosBucket:                         strings.TrimSpace(getEnv("KUBEBT_COS_BUCKET", "")),
-		CosRegion:                         strings.TrimSpace(getEnv("KUBEBT_COS_REGION", "")),
-		CosPrefix:                         strings.Trim(strings.TrimSpace(getEnv("KUBEBT_COS_PREFIX", "kubebt-docs")), "/"),
-		CosPublicBase:                     strings.TrimRight(strings.TrimSpace(getEnv("KUBEBT_COS_PUBLIC_BASE", "")), "/"),
+		PerformanceMode:                   getEnvBool("LABPLANE_PERFORMANCE_MODE", false),
+		NamespacesCacheTTLSec:             getEnvAsInt("LABPLANE_NAMESPACES_CACHE_TTL_SEC", 30),
+		EnableBackgroundJobs:              getEnvBool("LABPLANE_ENABLE_BACKGROUND_JOBS", true),
+		CosSecretID:                       strings.TrimSpace(getEnv("LABPLANE_COS_SECRET_ID", "")),
+		CosSecretKey:                      strings.TrimSpace(os.Getenv("LABPLANE_COS_SECRET_KEY")),
+		CosBucket:                         strings.TrimSpace(getEnv("LABPLANE_COS_BUCKET", "")),
+		CosRegion:                         strings.TrimSpace(getEnv("LABPLANE_COS_REGION", "")),
+		CosPrefix:                         strings.Trim(strings.TrimSpace(getEnv("LABPLANE_COS_PREFIX", "labplane-docs")), "/"),
+		CosPublicBase:                     strings.TrimRight(strings.TrimSpace(getEnv("LABPLANE_COS_PUBLIC_BASE", "")), "/"),
 	}
 	if cfg.PerformanceMode && cfg.NamespacesCacheTTLSec <= 0 {
 		cfg.NamespacesCacheTTLSec = 30
@@ -447,8 +456,8 @@ func normalizeDashboardListenAddr(addr string) string {
 	return addr
 }
 
-// loadBaotaSkipTLSVerify：若显式设置 BAOTA_SKIP_TLS_VERIFY 则按其值；否则对 https:// 宝塔地址默认跳过校验（自签/内网 SAN 常见）。
-// 若使用正规证书且需严格校验，请设置 BAOTA_SKIP_TLS_VERIFY=false。
+// loadBaotaSkipTLSVerify 仅在显式设置 BAOTA_SKIP_TLS_VERIFY=true 时跳过校验。
+// HTTPS 默认必须校验证书；自签环境应导入可信 CA，临时排障才使用不安全开关。
 // 未设置环境变量时默认禁用 keep-alive，减轻跨公网面板陈旧连接导致的超时。
 func loadBaotaDisableHTTPKeepAlive() bool {
 	_, ok := os.LookupEnv("BAOTA_DISABLE_HTTP_KEEPALIVE")
@@ -459,12 +468,8 @@ func loadBaotaDisableHTTPKeepAlive() bool {
 }
 
 func loadBaotaSkipTLSVerify(baotaURL string) bool {
-	raw, ok := os.LookupEnv("BAOTA_SKIP_TLS_VERIFY")
-	if ok && strings.TrimSpace(raw) != "" {
-		return getEnvBool("BAOTA_SKIP_TLS_VERIFY", false)
-	}
-	u := strings.TrimSpace(strings.ToLower(baotaURL))
-	return strings.HasPrefix(u, "https://")
+	_ = baotaURL
+	return getEnvBool("BAOTA_SKIP_TLS_VERIFY", false)
 }
 
 func validateBaotaSSLMaterialPaths(pemPath, keyPath string) error {
@@ -504,7 +509,7 @@ func (c Config) Validate() error {
 		return errors.New("SSH_SETTINGS_BACKEND 须为 file、redis、mysql 之一（或留空）")
 	}
 	if be != "" && strings.TrimSpace(c.EncryptionKey) == "" {
-		return errors.New("启用 SSH 存储（SSH_SETTINGS_BACKEND）时必须设置 KUBEBT_ENCRYPTION_KEY")
+		return errors.New("启用 SSH 存储（SSH_SETTINGS_BACKEND）时必须设置 LABPLANE_ENCRYPTION_KEY")
 	}
 	if be == "file" && strings.TrimSpace(c.SSHSettingsDir) == "" {
 		return errors.New("SSH_SETTINGS_BACKEND=file 时必须设置 SSH_SETTINGS_DIR（目录）")

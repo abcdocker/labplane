@@ -23,14 +23,14 @@ const (
 )
 
 var cloudVMAllowedCLIPkgs = map[string]string{
-	"vim":        "vim",
-	"wget":       "wget",
-	"curl":       "curl",
-	"iftop":      "iftop",
-	"iotop":      "iotop",
-	"htop":       "htop",
-	"git":        "git",
-	"unzip":      "unzip",
+	"vim":       "vim",
+	"wget":      "wget",
+	"curl":      "curl",
+	"iftop":     "iftop",
+	"iotop":     "iotop",
+	"htop":      "htop",
+	"git":       "git",
+	"unzip":     "unzip",
 	"net-tools": "net-tools",
 }
 
@@ -130,19 +130,19 @@ func buildCloudVMSoftwareBash(sw CloudVMSoftwareOpts, hysteriaAmd64Primary, hyst
 	pkgs := normalizeCloudVMCliPackages(sw.CliPackages)
 	var b strings.Builder
 	b.WriteString("#!/bin/bash\n")
-	b.WriteString("# kube-bt-sync: 预选软件（apt 包与列表缓存在 PVC /data，Docker/Nginx 已装则跳过重复下载）\n")
+	b.WriteString("# labplane: 预选软件（apt 包与列表缓存在 PVC /data，Docker/Nginx 已装则跳过重复下载）\n")
 	b.WriteString("export DEBIAN_FRONTEND=noninteractive\n")
 	b.WriteString("set -e\n")
-	b.WriteString("mkdir -p /data/.kubebt/stamps /data/.kubebt/apt-archive /data/.kubebt/apt-lists/partial\n")
-	b.WriteString(`test -f /etc/apt/apt.conf.d/99-kubebt-persist || cat > /etc/apt/apt.conf.d/99-kubebt-persist <<'APTEOF'
-Dir::Cache::archives "/data/.kubebt/apt-archive";
-Dir::State::lists "/data/.kubebt/apt-lists";
+	b.WriteString("mkdir -p /data/.labplane/stamps /data/.labplane/apt-archive /data/.labplane/apt-lists/partial\n")
+	b.WriteString(`test -f /etc/apt/apt.conf.d/99-labplane-persist || cat > /etc/apt/apt.conf.d/99-labplane-persist <<'APTEOF'
+Dir::Cache::archives "/data/.labplane/apt-archive";
+Dir::State::lists "/data/.labplane/apt-lists";
 APTEOF
 `)
 	b.WriteString(`if [ -f /etc/os-release ]; then . /etc/os-release; fi
 if grep -qi ubuntu /etc/os-release 2>/dev/null && [ -f /etc/apt/sources.list ]; then
-  if [ ! -f /etc/apt/sources.list.bak.kubebt ]; then
-    cp -a /etc/apt/sources.list /etc/apt/sources.list.bak.kubebt 2>/dev/null || true
+  if [ ! -f /etc/apt/sources.list.bak.labplane ]; then
+    cp -a /etc/apt/sources.list /etc/apt/sources.list.bak.labplane 2>/dev/null || true
   fi
   sed -i \
     -e 's@http://archive.ubuntu.com/ubuntu@http://mirrors.aliyun.com/ubuntu@g' \
@@ -165,24 +165,24 @@ mkdir -p /data/docker /etc/docker
 if [ ! -s /etc/docker/daemon.json ]; then
   printf '%s\n' '{"data-root":"/data/docker","registry-mirrors":["https://docker.m.daocloud.io"]}' > /etc/docker/daemon.json
 fi
-if command -v docker >/dev/null 2>&1 && [ -f /data/.kubebt/stamps/docker-io-ok ]; then
+if command -v docker >/dev/null 2>&1 && [ -f /data/.labplane/stamps/docker-io-ok ]; then
   :
 else
   apt-get install -y -qq docker.io
-  touch /data/.kubebt/stamps/docker-io-ok
+  touch /data/.labplane/stamps/docker-io-ok
 fi
 # 云主机 Pod 内无 systemd，docker.io 包不会自动拉起 dockerd；每次启动均确保 daemon 可用
 mkdir -p /var/run
 if docker info >/dev/null 2>&1; then
   :
 else
-  mkdir -p /data/.kubebt
-  nohup dockerd --iptables=false >> /data/.kubebt/dockerd.log 2>&1 &
+  mkdir -p /data/.labplane
+  nohup dockerd --iptables=false >> /data/.labplane/dockerd.log 2>&1 &
   for i in $(seq 1 90); do
     docker info >/dev/null 2>&1 && break
     sleep 1
   done
-  docker info >/dev/null 2>&1 || { echo "dockerd 启动失败，见 /data/.kubebt/dockerd.log（需为云主机开启容器特权以运行 Docker）" >&2; tail -n 60 /data/.kubebt/dockerd.log >&2 || true; exit 1; }
+  docker info >/dev/null 2>&1 || { echo "dockerd 启动失败，见 /data/.labplane/dockerd.log（需为云主机开启容器特权以运行 Docker）" >&2; tail -n 60 /data/.labplane/dockerd.log >&2 || true; exit 1; }
 fi
 `)
 	}
@@ -192,11 +192,11 @@ mkdir -p /data/nginx/html /data/nginx/logs /data/nginx/ssl /var/log/nginx /var/c
 if [ ! -s /data/nginx/html/index.html ]; then
   printf '%s\n' '<!DOCTYPE html><html><head><meta charset="utf-8"><title>welcome</title></head><body>ok</body></html>' > /data/nginx/html/index.html
 fi
-if command -v nginx >/dev/null 2>&1 && [ -f /data/.kubebt/stamps/nginx-ok ]; then
+if command -v nginx >/dev/null 2>&1 && [ -f /data/.labplane/stamps/nginx-ok ]; then
   :
 else
   apt-get install -y -qq nginx
-  touch /data/.kubebt/stamps/nginx-ok
+  touch /data/.labplane/stamps/nginx-ok
 fi
 for f in /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default; do
   if [ -f "$f" ]; then
@@ -205,8 +205,8 @@ for f in /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default; do
   fi
 done
 # 供平台采集连接数（仅本机访问）
-if [ ! -f /etc/nginx/conf.d/00-kubebt-stub.conf ]; then
-  printf '%s\n' 'server { listen 127.0.0.1:8899; location /kubebt_stub_status { stub_status on; access_log off; allow 127.0.0.1; deny all; } }' > /etc/nginx/conf.d/00-kubebt-stub.conf
+if [ ! -f /etc/nginx/conf.d/00-labplane-stub.conf ]; then
+  printf '%s\n' 'server { listen 127.0.0.1:8899; location /labplane_stub_status { stub_status on; access_log off; allow 127.0.0.1; deny all; } }' > /etc/nginx/conf.d/00-labplane-stub.conf
 fi
 # 无 systemd 时不会自动起 nginx；每次启动校验配置并拉起 / 重载
 nginx -t
@@ -233,7 +233,7 @@ curl -sf --max-time 2 http://127.0.0.1/ >/dev/null 2>&1 || { echo "nginx 未在 
 		}
 		var hb strings.Builder
 		hb.WriteString(`
-mkdir -p /data/hysteria2 /data/.kubebt/deps
+mkdir -p /data/hysteria2 /data/.labplane/deps
 HY_BIN=/data/hysteria2/hysteria
 HY_CFG=/run/cloud-vm-secrets/hysteria2.yaml
 ARCH_RAW=$(uname -m)
@@ -249,8 +249,8 @@ esac
   echo "Hysteria2: 缺少挂载的配置文件 $HY_CFG（Secret key hysteria2.yaml）" >&2
   exit 1
 fi
-if [ -x /data/.kubebt/deps/hysteria ]; then
-  cp -a /data/.kubebt/deps/hysteria "$HY_BIN" && chmod +x "$HY_BIN" || true
+if [ -x /data/.labplane/deps/hysteria ]; then
+  cp -a /data/.labplane/deps/hysteria "$HY_BIN" && chmod +x "$HY_BIN" || true
 fi
 if [ "${HY_HAS_ARCH:-0}" = 1 ] && [ ! -x "$HY_BIN" ]; then
   case "$ARCH_RAW" in
@@ -280,14 +280,14 @@ fi
 		b.WriteString(`
 mkdir -p /data/www /data/bt-panel
 if [ ! -e /www ] || [ -L /www ]; then ln -sfn /data/www /www; fi
-if [ ! -f /data/bt-panel/.kubebt-baota-ok ]; then
+if [ ! -f /data/bt-panel/.labplane-baota-ok ]; then
   wget -qO /data/bt-panel/install_6.0.sh http://download.bt.cn/install/install_6.0.sh || \
     wget -qO /data/bt-panel/install_6.0.sh https://download.bt.cn/install/install_6.0.sh
   test -s /data/bt-panel/install_6.0.sh
   chmod +x /data/bt-panel/install_6.0.sh
   echo y | bash /data/bt-panel/install_6.0.sh ed8484bec >>/data/bt-panel/install.log 2>&1
   command -v bt >/dev/null 2>&1 || { echo "宝塔安装未完成：未找到 bt 命令，见 /data/bt-panel/install.log" >&2; exit 1; }
-  touch /data/bt-panel/.kubebt-baota-ok
+  touch /data/bt-panel/.labplane-baota-ok
 fi
 # 无 systemd 时需每次启动尝试拉起面板；是否成功以端口为准（start 在已运行时可能非 0）
 command -v bt >/dev/null 2>&1 || { echo "宝塔：未找到 bt 命令" >&2; exit 1; }

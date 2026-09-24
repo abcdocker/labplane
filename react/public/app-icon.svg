@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LabPlane">
+  <rect width="512" height="512" rx="116" fill="#0F172A"/>
+  <path d="M256 76 432 174 256 272 80 174 256 76Z" fill="#7C3AED"/>
+  <path d="m80 244 176 98 176-98v68L256 410 80 312v-68Z" fill="#5B21B6"/>
+  <path d="M136 267v75m240-75v75M256 337v60" fill="none" stroke="#22D3EE" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="136" cy="365" r="34" fill="#22D3EE"/>
+  <circle cx="256" cy="420" r="34" fill="#22D3EE"/>
+  <circle cx="376" cy="365" r="34" fill="#22D3EE"/>
+</svg>

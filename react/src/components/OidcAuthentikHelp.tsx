@@ -13,7 +13,7 @@ const OidcAuthentikHelp: React.FC = () => {
       variant="indigo"
       titleClassName="text-indigo-900"
     >
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-slate-600">
         在 Authentik 中先创建 <strong>Application</strong> 并绑定 <strong>Provider</strong>（类型选 OAuth2/OpenID
         Provider）。下表左侧为本平台运行时配置项，中间为在 Authentik 控制台中的对应位置，右侧为需要从 Authentik
         <strong>复制到本平台</strong>或<strong>在本平台填写后抄回 Authentik</strong> 的值。
@@ -22,12 +22,12 @@ const OidcAuthentikHelp: React.FC = () => {
         <table className="w-full min-w-[520px] border-collapse text-left text-xs">
           <thead>
             <tr className="border-b border-indigo-200/80">
-              <th className="py-2 pr-3 font-semibold text-gray-900">本平台字段</th>
-              <th className="py-2 pr-3 font-semibold text-gray-900">Authentik 中位置（示意）</th>
-              <th className="py-2 font-semibold text-gray-900">如何填写</th>
+              <th className="py-2 pr-3 font-semibold text-slate-900">本平台字段</th>
+              <th className="py-2 pr-3 font-semibold text-slate-900">Authentik 中位置（示意）</th>
+              <th className="py-2 font-semibold text-slate-900">如何填写</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700">
+          <tbody className="text-slate-700">
             <tr className="border-b border-indigo-100/80">
               <td className="py-2 pr-2 font-mono text-[11px]">oidcIssuerUrl</td>
               <td className="py-2 pr-2">Provider 详情 → <strong>Issuer</strong> / OpenID Configuration URL</td>
@@ -85,19 +85,19 @@ const OidcAuthentikHelp: React.FC = () => {
         </table>
       </div>
 
-      <div className="mt-4 rounded-lg border border-amber-200/90 bg-amber-50/60 p-3 text-xs text-gray-800">
+      <div className="mt-4 rounded-lg border border-amber-200/90 bg-amber-50/60 p-3 text-xs text-slate-800">
         <p className="font-semibold text-amber-950">ID Token 签名算法（RS256 / HS256）</p>
-        <p className="mt-2 text-gray-700">
+        <p className="mt-2 text-slate-700">
           控制台使用标准 OIDC 校验：用 IdP 的 <strong>JWKS</strong> 公钥验证 ID Token 签名。因此要求 IdP 使用<strong>非对称</strong>算法（常见为{" "}
           <strong>RS256</strong>），与 Authentik 文档中「为 OAuth2 Provider 选择 <strong>RSA 证书</strong> 作为签名密钥」一致。
         </p>
-        <p className="mt-2 text-gray-700">
+        <p className="mt-2 text-slate-700">
           若登录报错中出现 <code className="rounded bg-white px-1">unexpected signature algorithm &quot;HS256&quot;</code>，或提示仅接受{" "}
           <code className="rounded bg-white px-1">RS256</code>，说明当前 IdP 用<strong>对称</strong> HS256 签发 ID Token，多为{" "}
           <strong>未指定 RSA 签名密钥</strong>（界面看似已选证书但实际为空、Terraform 未设置{" "}
           <code className="rounded bg-white px-1">signing_key</code> 等）。
         </p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-gray-700">
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-700">
           <li>
             打开 Authentik：<strong>Applications → Providers</strong> → 你的 OAuth2/OpenID Provider → <strong>协议设置</strong>。
           </li>
@@ -111,7 +111,7 @@ const OidcAuthentikHelp: React.FC = () => {
             <code className="rounded bg-white px-1">alg</code> 应为 <code className="rounded bg-white px-1">RS256</code>。
           </li>
         </ol>
-        <p className="mt-2 text-[11px] text-gray-600">
+        <p className="mt-2 text-[11px] text-slate-600">
           官方说明见{" "}
           <a
             href="https://docs.goauthentik.io/add-secure-apps/providers/oauth2/"
@@ -123,7 +123,7 @@ const OidcAuthentikHelp: React.FC = () => {
           </a>
           （含 Redirect URI、Client 类型等）。GitHub 上亦有「未设置 signing_key 时仍为 HS256」的讨论，可搜 authentik RS256 signing key。
         </p>
-        <p className="mt-2 text-[11px] text-gray-600">
+        <p className="mt-2 text-[11px] text-slate-600">
           环境变量 <code className="rounded bg-white px-1">OIDC_SUPPORTED_SIGNING_ALGS</code>（或运行时{" "}
           <code className="rounded bg-white px-1">oidcSupportedSigningAlgs</code>）用于 IdP 使用 <strong>ES256</strong> 等仍走 JWKS
           的算法时收窄/显式声明；<strong>不能</strong>单靠此项把 HS256 对称签名变成可验证状态，请在 Authentik 改为 RSA 签名。

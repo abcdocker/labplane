@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: "1.25.6"
+          cache: true
+      - name: Go test and vet
+        run: go test -race ./...
+      - name: Static analysis
+        uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.13.1
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: react/package-lock.json
+      - name: Install
+        working-directory: react
+        run: npm ci
+      - name: Audit dependencies
+        working-directory: react
+        run: npm audit --audit-level=high
+      - name: Lint
+        working-directory: react
+        run: npm run lint
+      - name: Typecheck
+        working-directory: react
+        run: npm run typecheck
+      - name: Test
+        working-directory: react
+        run: npm test
+      - name: Build
+        working-directory: react
+        run: npm run build
+      - name: First-paint bundle budget
+        run: bash scripts/check-bundle-size.sh react/dist
+
+  deploy-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: azure/setup-helm@v5.0.1
+      - name: Validate local Compose environment
+        run: |
+          bash -n scripts/init-compose-env.sh
+          bash -n run.sh scripts/run-sh-test.sh
+          bash scripts/run-sh-test.sh
+          docker compose --env-file .env.example config --quiet
+      - name: Validate Helm chart
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo add metallb https://metallb.github.io/metallb
+          helm dependency build charts/labplane
+          helm lint charts/labplane
+          helm template labplane charts/labplane --namespace labplane >/tmp/chart.yaml
+      - name: Scan repository
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "1"

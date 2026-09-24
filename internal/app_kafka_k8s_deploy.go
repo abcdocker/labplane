@@ -35,10 +35,10 @@ type KafkaK8sDeployOpts struct {
 	TemplateName     string
 }
 
-func kafkaZkSTSName(base string) string { return strings.TrimSpace(base) + "-zk" }
-func kafkaZkHLName(base string) string { return strings.TrimSpace(base) + "-zk-hl" }
+func kafkaZkSTSName(base string) string    { return strings.TrimSpace(base) + "-zk" }
+func kafkaZkHLName(base string) string     { return strings.TrimSpace(base) + "-zk-hl" }
 func kafkaKafkaSTSName(base string) string { return strings.TrimSpace(base) + "-kafka" }
-func kafkaKafkaHLName(base string) string { return strings.TrimSpace(base) + "-kafka-hl" }
+func kafkaKafkaHLName(base string) string  { return strings.TrimSpace(base) + "-kafka-hl" }
 
 func kafkaZkConnectCSV(ns, base string, zkRep int32) string {
 	sts := kafkaZkSTSName(base)
@@ -146,10 +146,10 @@ func kafkaImagePullSecrets(name string) []corev1.LocalObjectReference {
 
 func kafkaLabels(base, component string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":      strings.TrimSpace(base),
-		"app.kubernetes.io/component": component,
-		"app.kubernetes.io/managed-by": "kube-bt-sync",
-		"kube-bt-sync.io/kafka":       "true",
+		"app.kubernetes.io/name":       strings.TrimSpace(base),
+		"app.kubernetes.io/component":  component,
+		"app.kubernetes.io/managed-by": "labplane",
+		"labplane.io/kafka":        "true",
 	}
 }
 
@@ -243,8 +243,8 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 	zkStateful := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: zkSTS, Namespace: ns, Labels: zkLabels},
 		Spec: appsv1.StatefulSetSpec{
-			ServiceName:         zkHL,
-			Replicas:            int32Ptr(zr),
+			ServiceName: zkHL,
+			Replicas:    int32Ptr(zr),
 			// Parallel：ZK ensemble 需要多数节点（quorum）同时在线才能选出 Leader 并开放客户端端口 2181。
 			// 若用 OrderedReady，ZK-0 因找不到 ZK-1/ZK-2 无法完成选主 → readiness probe (TCP 2181) 永远失败
 			// → ZK-1/ZK-2 永不启动 → 死锁。Parallel 让所有 ZK Pod 同时启动，互相发现后完成选主再变 Ready。
@@ -256,9 +256,9 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 				Spec: corev1.PodSpec{
 					ImagePullSecrets: kafkaImagePullSecrets(opts.ImagePullSecret),
 					InitContainers: []corev1.Container{{
-						Name:    "init-myid",
-						Image:   busybox,
-						Command: []string{"sh", "-c", "ORD=$(echo \"$HOSTNAME\" | awk -F- '{print $NF}'); mkdir -p /data/datalog; echo $((ORD + 1)) > /data/myid"},
+						Name:         "init-myid",
+						Image:        busybox,
+						Command:      []string{"sh", "-c", "ORD=$(echo \"$HOSTNAME\" | awk -F- '{print $NF}'); mkdir -p /data/datalog; echo $((ORD + 1)) > /data/myid"},
 						VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: "/data"}},
 					}},
 					Containers: []corev1.Container{{
@@ -311,7 +311,7 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 					Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: zkQ}},
-					VolumeMode:    volumeModePtrFilesystem(),
+					VolumeMode:  volumeModePtrFilesystem(),
 					StorageClassName: func() *string {
 						if sc == "" {
 							return nil
@@ -420,9 +420,9 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 			{Name: "internal", ContainerPort: 9093},
 			{Name: "external-sasl", ContainerPort: kafkaExternalListenerPort},
 		},
-		Env: kafkaEnv,
-		Command: []string{"/bin/bash", "-ec"},
-		Args:    []string{KafkaContainerAdvertisedBootstrapScript()},
+		Env:          kafkaEnv,
+		Command:      []string{"/bin/bash", "-ec"},
+		Args:         []string{KafkaContainerAdvertisedBootstrapScript()},
 		VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: "/bitnami/kafka"}},
 		// 就绪探针：TCP 探测 9092，OrderedReady 确保 broker-0 真正监听后才启动 broker-1。
 		// Bitnami 镜像启动慢（写 SCRAM 到 ZK + Kafka 自身初始化），initialDelaySeconds 需留足裕量。
@@ -448,8 +448,8 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 	kafkaStateful := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: kafkaSTS, Namespace: ns, Labels: kafkaLabels},
 		Spec: appsv1.StatefulSetSpec{
-			ServiceName:         kafkaHL,
-			Replicas:            int32Ptr(kr),
+			ServiceName: kafkaHL,
+			Replicas:    int32Ptr(kr),
 			// OrderedReady：与 Bitnami Chart 一致，先起 broker-0 再逐个加入，避免并行连 ZK/写 SCRAM 时互相干扰。
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			Selector:            &metav1.LabelSelector{MatchLabels: kafkaLabels},
@@ -471,7 +471,7 @@ func ApplyKafkaK8sDeploy(ctx context.Context, k8s *kubernetes.Clientset, opts Ka
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 					Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: kQ}},
-					VolumeMode:    volumeModePtrFilesystem(),
+					VolumeMode:  volumeModePtrFilesystem(),
 					StorageClassName: func() *string {
 						if sc == "" {
 							return nil

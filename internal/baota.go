@@ -60,9 +60,9 @@ func newBaotaHTTPClient(cfg Config, timeout time.Duration) *http.Client {
 }
 
 var (
-	baotaHTTPMu      sync.Mutex
-	baotaHTTPClient  *http.Client
-	baotaHTTPSig     string // SkipTLSVerify|DisableKeepAlive|timeoutMs — 变更时重建以复用连接池
+	baotaHTTPMu     sync.Mutex
+	baotaHTTPClient *http.Client
+	baotaHTTPSig    string // SkipTLSVerify|DisableKeepAlive|timeoutMs — 变更时重建以复用连接池
 )
 
 func baotaHTTPClientCached(cfg Config, timeout time.Duration) *http.Client {

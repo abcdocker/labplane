@@ -22,15 +22,10 @@ import (
 )
 
 const (
-	vectorShipperVersion        = "0.36.1"
-	vmShipperSystemdUnitName    = "kubebt-vector-vmlog.service"
-	vmShipperVectorConfigPath   = "/etc/vector/kube-bt-vmlog.toml"
-	vmShipperVectorInstallPath  = "/usr/local/bin/vector"
-	vmShipperPresetBaotaNginx   = "baota-nginx"
-	vmShipperPresetBaotaMysql   = "baota-mysql"
-	vmShipperPresetBaotaRedis   = "baota-redis"
-	vmShipperPresetSystem       = "system-common"
-	vmShipperPresetCustom       = "custom"
+	vectorShipperVersion       = "0.36.1"
+	vmShipperSystemdUnitName   = "labplane-vector-vmlog.service"
+	vmShipperVectorConfigPath  = "/etc/vector/labplane-vmlog.toml"
+	vmShipperVectorInstallPath = "/usr/local/bin/vector"
 )
 
 var vmShipperPathSafe = regexp.MustCompile(`^[a-zA-Z0-9_./\*\-]+$`)
@@ -76,20 +71,20 @@ type vmShipperInspectPathCheck struct {
 }
 
 type vmShipperInspectState struct {
-	SSHConnected    bool                       `json:"sshConnected"`
-	CurrentUser     string                     `json:"currentUser,omitempty"`
-	CurrentUID      int                        `json:"currentUid,omitempty"`
-	SudoReady       bool                       `json:"sudoReady"`
-	Installed       bool                       `json:"installed"`
-	VectorVersion   string                     `json:"vectorVersion,omitempty"`
-	ConfigExists    bool                       `json:"configExists"`
-	ServiceActive   bool                       `json:"serviceActive"`
-	ServiceEnabled  bool                       `json:"serviceEnabled"`
-	ServiceStateRaw string                     `json:"serviceStateRaw,omitempty"`
-	EnableStateRaw  string                     `json:"enableStateRaw,omitempty"`
-	InstallPath     string                     `json:"installPath,omitempty"`
-	ConfigPath      string                     `json:"configPath,omitempty"`
-	Summary         string                     `json:"summary,omitempty"`
+	SSHConnected    bool                        `json:"sshConnected"`
+	CurrentUser     string                      `json:"currentUser,omitempty"`
+	CurrentUID      int                         `json:"currentUid,omitempty"`
+	SudoReady       bool                        `json:"sudoReady"`
+	Installed       bool                        `json:"installed"`
+	VectorVersion   string                      `json:"vectorVersion,omitempty"`
+	ConfigExists    bool                        `json:"configExists"`
+	ServiceActive   bool                        `json:"serviceActive"`
+	ServiceEnabled  bool                        `json:"serviceEnabled"`
+	ServiceStateRaw string                      `json:"serviceStateRaw,omitempty"`
+	EnableStateRaw  string                      `json:"enableStateRaw,omitempty"`
+	InstallPath     string                      `json:"installPath,omitempty"`
+	ConfigPath      string                      `json:"configPath,omitempty"`
+	Summary         string                      `json:"summary,omitempty"`
 	PathChecks      []vmShipperInspectPathCheck `json:"pathChecks,omitempty"`
 }
 
@@ -115,11 +110,11 @@ type vmShipperCacheProbeState struct {
 }
 
 type vmShipperResolvedTarget struct {
-	Client     *ssh.Client
-	TargetType string
-	TargetID   string
-	TargetName string
-	VMLabel    string
+	Client      *ssh.Client
+	TargetType  string
+	TargetID    string
+	TargetName  string
+	VMLabel     string
 	AuditTarget string
 }
 
@@ -316,33 +311,6 @@ func vmShipperSanitizePaths(paths []string) ([]string, error) {
 	return out, nil
 }
 
-func vmShipperPresetPaths(preset string) []string {
-	switch strings.TrimSpace(preset) {
-	case vmShipperPresetBaotaNginx:
-		return []string{"/www/wwwlogs/*.log"}
-	case vmShipperPresetBaotaMysql:
-		return []string{"/www/server/data/*.err", "/var/log/mysqld.log", "/var/log/mysql/error.log"}
-	case vmShipperPresetBaotaRedis:
-		return []string{"/www/server/redis/*.log", "/var/log/redis/redis-server.log"}
-	case vmShipperPresetSystem:
-		return vmShipperDefaultSystemPaths()
-	default:
-		return nil
-	}
-}
-
-func vmShipperDefaultSystemPaths() []string {
-	return []string{
-		"/var/log/messages",              // CentOS / RHEL
-		"/var/log/secure",                // CentOS / RHEL auth
-		"/var/log/syslog",                // Ubuntu / Debian
-		"/var/log/auth.log",              // Ubuntu / Debian auth
-		"/var/log/kern.log",              // Ubuntu kernel
-		"/var/log/cloud-init.log",        // cloud-init
-		"/var/log/cloud-init-output.log", // cloud-init output
-	}
-}
-
 // vmShipperNormalizeVectorDownloadBaseURL 若用户粘贴了完整包地址 …/vector-版本-架构.tar.gz，则去掉文件名，
 // 保留目录；安装脚本与预览 URL 会在其后拼接 /vector-${VER}-${ARCH}.tar.gz。
 func vmShipperNormalizeVectorDownloadBaseURL(raw string) string {
@@ -495,13 +463,13 @@ batch.timeout_secs = 1
 	}
 	prefix := strings.TrimSpace(os.IndexPrefix)
 	if prefix == "" {
-		prefix = "kubebt-vmlog"
+		prefix = "labplane-vmlog"
 	}
 	ep := strings.TrimRight(strings.TrimSpace(os.Endpoint), "/")
 	var b strings.Builder
 	b.WriteString(base)
 	b.WriteString(fmt.Sprintf(`
-[sinks.kubebt_opensearch]
+[sinks.labplane_opensearch]
 type = "elasticsearch"
 distribution = "opensearch"
 inputs = ["vl_prep"]
@@ -512,7 +480,7 @@ bulk.index = "%s-%%Y-%%m-%%d"
 	pw := strings.TrimSpace(os.Password)
 	if u != "" {
 		b.WriteString(fmt.Sprintf(`
-[sinks.kubebt_opensearch.auth]
+[sinks.labplane_opensearch.auth]
 strategy = "basic"
 user = %q
 password = %q
@@ -527,7 +495,7 @@ func vmShipperBuildBashScript(vlBase, vectorBaseURL, vmLabel, logSource string, 
 	tomlB64 := base64.StdEncoding.EncodeToString([]byte(toml))
 
 	unit := `[Unit]
-Description=kube-bt-sync Vector -> VictoriaLogs (VM / 宝塔日志)
+Description=labplane Vector -> VictoriaLogs (VM / 宝塔日志)
 After=network-online.target
 Wants=network-online.target
 
@@ -543,7 +511,7 @@ WantedBy=multi-user.target
 	unitB64 := base64.StdEncoding.EncodeToString([]byte(unit))
 
 	return fmt.Sprintf(`#!/bin/bash
-# 由 kube-bt-sync 生成：在 Linux 虚拟机安装 Vector，将文本日志推送到 VictoriaLogs。
+# 由 labplane 生成：在 Linux 虚拟机安装 Vector，将文本日志推送到 VictoriaLogs。
 # 要求：当前 SSH 登录用户为 root，或已配置 NOPASSWD sudo（非交互）。
 set -euo pipefail
 
@@ -663,12 +631,12 @@ SZ=$(rk stat -c %%s "$TMP" 2>/dev/null || true)
 if [ -z "$SZ" ]; then
   SZ="?"
 fi
-echo "[kube-bt-sync] 已确认 Vector 安装包存在于本机: $TMP 大小=${SZ} 字节，继续解压与安装"
+echo "[labplane] 已确认 Vector 安装包存在于本机: $TMP 大小=${SZ} 字节，继续解压与安装"
 progress 45 verify "安装包校验通过（${SZ} 字节）"
 
 progress 58 install "解压安装包"
-EXTRACT_DIR=/tmp/kubebt-vector-${VECTOR_VER}-${VARCH}
-TAR_ERR=/tmp/kubebt-vector-${VECTOR_VER}-${VARCH}.tar.err
+EXTRACT_DIR=/tmp/labplane-vector-${VECTOR_VER}-${VARCH}
+TAR_ERR=/tmp/labplane-vector-${VECTOR_VER}-${VARCH}.tar.err
 rk rm -rf "$EXTRACT_DIR" "$TAR_ERR"
 rk mkdir -p "$EXTRACT_DIR"
 if ! rk tar -xzf "$TMP" -C "$EXTRACT_DIR" 2>"$TAR_ERR"; then
@@ -777,9 +745,9 @@ func writeBashVectorBaseURLArray(base string) string {
 
 type opsVmLogVmShipperBody struct {
 	CloudHostID       string   `json:"cloudHostId"`
-	VCenterVMMoref    string   `json:"vcenterVmMoref"` // 与 cloudHostId 二选一：vCenter 虚拟机 moRef（如 vm-123）
+	VCenterVMMoref    string   `json:"vcenterVmMoref"`  // 与 cloudHostId 二选一：vCenter 虚拟机 moRef（如 vm-123）
 	VictoriaLogsURL   string   `json:"victoriaLogsUrl"` // 虚拟机侧可访问的 VL 根地址；空则用运行时配置
-	Preset            string   `json:"preset"`          // baota-nginx | baota-mysql | baota-redis | custom
+	Preset            string   `json:"preset"`          // 由 /ops/vmlog/sources 返回的 collectorProfiles.id
 	LogPaths          []string `json:"logPaths"`
 	VMNameLabel       string   `json:"vmNameLabel"` // 写入 vm_host 流字段，便于 LogsQL 筛选
 	LogSourceOverride string   `json:"logSourceOverride"`
@@ -853,7 +821,11 @@ func vmShipperResolveRequest(app *ServerApp, body opsVmLogVmShipperBody) (vlBase
 
 	logSrc = strings.TrimSpace(body.LogSourceOverride)
 	if logSrc == "" {
-		logSrc = strings.TrimSpace(body.Preset)
+		if profile, ok := vmLogCollectorProfileByID(body.Preset); ok {
+			logSrc = profile.LogSource
+		} else {
+			logSrc = strings.TrimSpace(body.Preset)
+		}
 		if logSrc == "" {
 			logSrc = vmShipperPresetCustom
 		}
@@ -886,7 +858,7 @@ func vmShipperResolveTarget(ctx context.Context, app *ServerApp, body opsVmLogVm
 				return nil, kerr
 			}
 			if store == nil {
-				return nil, fmt.Errorf("未配置 SSH 存储：请在虚拟机详情保存 SSH 凭据（需 KUBEBT_ENCRYPTION_KEY），或配置全局 VCENTER_VM_SSH_USER 与密码/私钥路径")
+				return nil, fmt.Errorf("未配置 SSH 存储：请在虚拟机详情保存 SSH 凭据（需 LABPLANE_ENCRYPTION_KEY），或配置全局 VCENTER_VM_SSH_USER 与密码/私钥路径")
 			}
 		}
 		if !sshEffectiveReady(reqCtx, cfg, store, moref, key) {
@@ -925,7 +897,7 @@ func vmShipperResolveTarget(ctx context.Context, app *ServerApp, body opsVmLogVm
 	}
 	store := app.SSHStore()
 	if store == nil {
-		return nil, fmt.Errorf("未配置 SSH 存储（KUBEBT_ENCRYPTION_KEY + SSH 设置）")
+		return nil, fmt.Errorf("未配置 SSH 存储（LABPLANE_ENCRYPTION_KEY + SSH 设置）")
 	}
 	cloudKey := cloudHostSSHStorageKey(cloudID)
 	if !cloudSSHReady(reqCtx, cfg, store, cloudKey, key, host) {
@@ -1314,19 +1286,19 @@ func handleOpsVmLogVmShipperScript(app *ServerApp) gin.HandlerFunc {
 		script := vmShipperBuildBashScript(vlBase, vectorBaseURL, vmLabel, logSrc, paths, osOpts)
 
 		c.JSON(http.StatusOK, gin.H{
-			"victoriaLogsBase":   vlBase,
-			"victoriaInsertHint": insert,
-			"vectorToml":         toml,
-			"bashScript":         script,
-			"pathsUsed":          paths,
-			"vmHostField":        vmLabel,
-			"logSourceField":     logSrc,
-			"vectorVersion":      vectorShipperVersion,
+			"victoriaLogsBase":      vlBase,
+			"victoriaInsertHint":    insert,
+			"vectorToml":            toml,
+			"bashScript":            script,
+			"pathsUsed":             paths,
+			"vmHostField":           vmLabel,
+			"logSourceField":        logSrc,
+			"vectorVersion":         vectorShipperVersion,
 			"vectorDownloadBaseUrl": vectorBaseURL,
 			"vectorPrimaryUrlAmd64": vectorURLAMD64,
 			"vectorPrimaryUrlArm64": vectorURLARM64,
-			"vectorCacheProbe":     vectorCacheProbe,
-			"warning":            warn,
+			"vectorCacheProbe":      vectorCacheProbe,
+			"warning":               warn,
 			"notes": []string{
 				"远程安装（管理员）可选目标：① 应用中心「云主机」登记的主机（cloudHostId）；② vCenter 纳管的虚拟机（vcenterVmMoref，与 SSH 终端相同凭据：Guest IP + 全局 VCENTER_VM_SSH_* 或虚拟机详情中已保存密码/密钥）。",
 				func() string {

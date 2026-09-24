@@ -109,14 +109,14 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
   const errLine = prog?.lastError || st.lastError;
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/40 p-3 text-xs text-gray-700">
+    <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/40 p-3 text-xs text-slate-700">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <span className="font-medium text-gray-900">Redis 镜像索引</span>
-          <span className="ml-2 text-gray-500">
+          <span className="font-medium text-slate-900">Redis 镜像索引</span>
+          <span className="ml-2 text-slate-500">
             后台每 {st.intervalSec ?? 60}s 自动全量同步
             {!st.backgroundJobsEnabled ? (
-              <span className="text-amber-700">（KUBEBT_ENABLE_BACKGROUND_JOBS=false，定时任务未启用）</span>
+              <span className="text-amber-700">（LABPLANE_ENABLE_BACKGROUND_JOBS=false，定时任务未启用）</span>
             ) : null}
           </span>
         </div>
@@ -137,13 +137,13 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
             立即全量同步
           </Button>
         ) : (
-          <span className="text-gray-400">仅管理员可手动触发同步</span>
+          <span className="text-slate-400">仅管理员可手动触发同步</span>
         )}
       </div>
 
       {running ? (
         <div className="space-y-1.5">
-          <div className="flex justify-between text-[11px] text-gray-500">
+          <div className="flex justify-between text-[11px] text-slate-500">
             <span>
               {prog?.phase === "listing_projects"
                 ? "枚举项目"
@@ -156,7 +156,7 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
             <span>{pct}%</span>
           </div>
           <Progress value={pct} className="h-1.5" />
-          <p className="text-[11px] text-gray-600">
+          <p className="text-[11px] text-slate-600">
             项目 {prog?.projectsDone ?? 0}/{prog?.projectsTotal ?? 0} · 仓库 {prog?.reposScanned ?? 0} · 索引行{" "}
             {prog?.tagsIndexed ?? 0}
             {prog?.currentProject ? (
@@ -171,12 +171,12 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
               </>
             ) : null}
           </p>
-          {prog?.message ? <p className="text-[11px] text-gray-500">{prog.message}</p> : null}
+          {prog?.message ? <p className="text-[11px] text-slate-500">{prog.message}</p> : null}
         </div>
       ) : (
         <div className="grid gap-1 text-[11px] sm:grid-cols-2">
           <div>
-            已索引 <span className="font-semibold text-gray-900">{st.entryCount ?? 0}</span> 条（tag/digest 行）
+            已索引 <span className="font-semibold text-slate-900">{st.entryCount ?? 0}</span> 条（tag/digest 行）
           </div>
           <div>最近更新 {formatTs(st.updatedAt)}</div>
           <div>耗时 {st.lastDurationMs != null && st.lastDurationMs > 0 ? `${st.lastDurationMs} ms` : "—"}</div>
@@ -190,15 +190,15 @@ const HarborRedisIndexSettingsPanel: React.FC = () => {
         <p className="rounded border border-red-100 bg-red-50/80 px-2 py-1.5 text-[11px] text-red-800">{errLine}</p>
       ) : null}
 
-      <details className="text-[11px] text-gray-500">
-        <summary className="cursor-pointer select-none text-gray-600">进程参数（环境变量）</summary>
+      <details className="text-[11px] text-slate-500">
+        <summary className="cursor-pointer select-none text-slate-600">进程参数（环境变量）</summary>
         <ul className="mt-2 list-inside list-disc space-y-0.5 font-mono text-[10px] leading-relaxed">
-          <li>KUBEBT_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭定时）</li>
-          <li>KUBEBT_HARBOR_INDEX_CRAWL_TIMEOUT_SEC = {st.crawlTimeoutSec ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_PROJECT_CONCURRENCY = {st.projectConcurrency ?? "—"}（按项目并发）</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_PROJECT_PAGES = {st.maxProjectPages ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_REPO_PAGES = {st.maxRepoPages ?? "—"}</li>
-          <li>KUBEBT_HARBOR_INDEX_MAX_ARTIFACT_PAGES = {st.maxArtifactPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_INTERVAL_SEC（默认 60，0 关闭定时）</li>
+          <li>LABPLANE_HARBOR_INDEX_CRAWL_TIMEOUT_SEC = {st.crawlTimeoutSec ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_PROJECT_CONCURRENCY = {st.projectConcurrency ?? "—"}（按项目并发）</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_PROJECT_PAGES = {st.maxProjectPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_REPO_PAGES = {st.maxRepoPages ?? "—"}</li>
+          <li>LABPLANE_HARBOR_INDEX_MAX_ARTIFACT_PAGES = {st.maxArtifactPages ?? "—"}</li>
         </ul>
       </details>
     </div>

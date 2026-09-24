@@ -12,12 +12,12 @@ const prometheusCacheTTL = 60 * time.Second
 
 func prometheusCacheKeyInstant(scope, q string) string {
 	sum := sha256.Sum256([]byte("i1|" + scope + "\x00" + q))
-	return "kubebt:prom:v1:" + hex.EncodeToString(sum[:])
+	return "labplane:prom:v1:" + hex.EncodeToString(sum[:])
 }
 
 func prometheusCacheKeyRange(scope, q, start, end, step string) string {
 	sum := sha256.Sum256([]byte("r1|" + scope + "\x00" + q + "\x00" + start + "\x00" + end + "\x00" + step))
-	return "kubebt:prom:v1:" + hex.EncodeToString(sum[:])
+	return "labplane:prom:v1:" + hex.EncodeToString(sum[:])
 }
 
 func prometheusCacheGet(ctx context.Context, r *RedisLight, key string) ([]byte, bool) {

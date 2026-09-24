@@ -215,15 +215,15 @@ func computeVCenterPrometheusMetrics(ctx context.Context, cfg Config, job string
 	}
 
 	return gin.H{
-		"job":           job,
-		"discovery":     discovery,
-		"seriesCount":   len(series),
-		"metricCount":   len(names),
-		"okCount":       okN,
-		"metrics":       out,
-		"hint":          "值为对该指标在当前 Prometheus 中的 sum 聚合快照；Histogram/Summary 类指标可能需 histogram_quantile 才有意义。",
-		"generatedAt":   time.Now().UTC().Format(time.RFC3339),
-		"cacheSource":   "live",
+		"job":         job,
+		"discovery":   discovery,
+		"seriesCount": len(series),
+		"metricCount": len(names),
+		"okCount":     okN,
+		"metrics":     out,
+		"hint":        "值为对该指标在当前 Prometheus 中的 sum 聚合快照；Histogram/Summary 类指标可能需 histogram_quantile 才有意义。",
+		"generatedAt": time.Now().UTC().Format(time.RFC3339),
+		"cacheSource": "live",
 	}, nil
 }
 
@@ -264,7 +264,7 @@ func handleVCenterPrometheusMetrics(c *gin.Context, app *ServerApp) {
 	}
 	b, err := json.Marshal(h)
 	if err != nil {
-		RespondAPIError500(c, "序列化失败: " + err.Error())
+		RespondAPIError500(c, "序列化失败: "+err.Error())
 		return
 	}
 	if rdb := app.Redis(); rdb != nil {

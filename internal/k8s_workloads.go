@@ -168,7 +168,7 @@ func handleK8sPVCs(c *gin.Context, k8s *kubernetes.Clientset) {
 		list, err = k8s.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
-		RespondAPIError500(c, "列出 PVC 失败: " + err.Error())
+		RespondAPIError500(c, "列出 PVC 失败: "+err.Error())
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list.Items))
@@ -188,14 +188,14 @@ func handleK8sPVCs(c *gin.Context, k8s *kubernetes.Clientset) {
 			sc = *p.Spec.StorageClassName
 		}
 		out = append(out, map[string]interface{}{
-			"namespace":   p.Namespace,
-			"name":        p.Name,
-			"labels":      k8sLabelsString(p.Labels),
-			"status":      string(p.Status.Phase),
-			"capacity":    capacity,
-			"accessModes": modes,
+			"namespace":    p.Namespace,
+			"name":         p.Name,
+			"labels":       k8sLabelsString(p.Labels),
+			"status":       string(p.Status.Phase),
+			"capacity":     capacity,
+			"accessModes":  modes,
 			"storageClass": sc,
-			"age":         p.CreationTimestamp.Time.Format(time.RFC3339),
+			"age":          p.CreationTimestamp.Time.Format(time.RFC3339),
 		})
 	}
 	c.JSON(http.StatusOK, out)
@@ -341,7 +341,7 @@ func handleK8sIngresses(c *gin.Context, k8s *kubernetes.Clientset) {
 		list, err = k8s.NetworkingV1().Ingresses("").List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
-		RespondAPIError500(c, "列出 Ingress 失败: " + err.Error())
+		RespondAPIError500(c, "列出 Ingress 失败: "+err.Error())
 		return
 	}
 	out := make([]map[string]interface{}, 0, len(list.Items))
@@ -387,13 +387,14 @@ func handleK8sIngresses(c *gin.Context, k8s *kubernetes.Clientset) {
 			class = ing.Annotations["kubernetes.io/ingress.class"]
 		}
 		out = append(out, map[string]interface{}{
-			"namespace": ing.Namespace,
-			"name":      ing.Name,
-			"labels":    k8sLabelsString(ing.Labels),
-			"hosts":     hosts,
-			"backends":  backends,
-			"class":     class,
-			"age":       ing.CreationTimestamp.Time.Format(time.RFC3339),
+			"namespace":       ing.Namespace,
+			"name":            ing.Name,
+			"labels":          k8sLabelsString(ing.Labels),
+			"annotationCount": len(ing.Annotations),
+			"hosts":           hosts,
+			"backends":        backends,
+			"class":           class,
+			"age":             ing.CreationTimestamp.Time.Format(time.RFC3339),
 		})
 	}
 	c.JSON(http.StatusOK, out)
@@ -408,7 +409,7 @@ func handleK8sStorageClasses(c *gin.Context, k8s *kubernetes.Clientset) {
 	defer cancel()
 	list, err := k8s.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		RespondAPIError500(c, "列出 StorageClass 失败: " + err.Error())
+		RespondAPIError500(c, "列出 StorageClass 失败: "+err.Error())
 		return
 	}
 	out := make([]gin.H, 0, len(list.Items))

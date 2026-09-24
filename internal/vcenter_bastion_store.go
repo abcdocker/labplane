@@ -11,14 +11,15 @@ const platformKVKeyVCenterBastionPolicy = "vcenter:bastion:policy"
 
 // BastionExtraHost 非 vCenter 纳管主机（固定地址 SSH/RDP/SFTP），ACL 中目标 id 为 extra:<id>。
 type BastionExtraHost struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Address  string `json:"address"`
-	Kind     string `json:"kind"` // linux | windows
-	SSHPort  int    `json:"sshPort"`
-	RDPPort  int    `json:"rdpPort"`
-	SSHUser  string `json:"sshUser,omitempty"` // 非空时覆盖全局 VCENTER_VM_SSH_USER
-	RDPUser  string `json:"rdpUser,omitempty"` // 堡垒机 RDP 用户名提示
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Address               string `json:"address"`
+	Kind                  string `json:"kind"` // linux | windows
+	SSHPort               int    `json:"sshPort"`
+	RDPPort               int    `json:"rdpPort"`
+	SSHUser               string `json:"sshUser,omitempty"` // 非空时覆盖全局 VCENTER_VM_SSH_USER
+	SSHHostKeyFingerprint string `json:"sshHostKeyFingerprint,omitempty"`
+	RDPUser               string `json:"rdpUser,omitempty"` // 堡垒机 RDP 用户名提示
 	// RDPWebURL 非空时堡垒机「网页远程」内嵌该 HTTPS 地址（如 JumpServer 发布的 Windows RDP Web Client 链接）
 	RDPWebURL string `json:"rdpWebUrl,omitempty"`
 }
@@ -37,10 +38,10 @@ type BastionManualVmGroup struct {
 
 // VCenterBastionPolicy 堡垒机 ACL：关闭 enableAcl 时与历史行为一致（凡能访问 vCenter 模块者均可连 SSH/控制台）。
 type VCenterBastionPolicy struct {
-	EnableACL       bool                 `json:"enableAcl"`
-	UserVMs         map[string][]string  `json:"userVms"` // 登录名（小写）-> moRef 或 extra:id；列表中含 "*" 表示全部
-	ExtraHosts      []BastionExtraHost   `json:"extraHosts"`
-	ManualVmGroups  []BastionManualVmGroup `json:"manualVmGroups"`
+	EnableACL      bool                   `json:"enableAcl"`
+	UserVMs        map[string][]string    `json:"userVms"` // 登录名（小写）-> moRef 或 extra:id；列表中含 "*" 表示全部
+	ExtraHosts     []BastionExtraHost     `json:"extraHosts"`
+	ManualVmGroups []BastionManualVmGroup `json:"manualVmGroups"`
 	// HiddenVmMorefs 中的虚拟机不在堡垒机侧栏展示（全体用户）；不影响 ACL 其它逻辑。
 	HiddenVmMorefs []string `json:"hiddenVmMorefs"`
 	// VmRdpWebEmbeds：按 moRef 为 Windows 虚拟机指定 JumpServer RDP Web Client 等 HTTPS 内嵌地址。

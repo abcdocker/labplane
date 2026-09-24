@@ -18,6 +18,8 @@ import { apiGetJson, apiPostJson } from "@/lib/api";
 import { parseAge } from "./parseAge";
 import { K8sObjectRevisionTriggerButton } from "@/components/K8sObjectRevisionDialog";
 import { K8sRelationsCard } from "./K8sRelationsCard";
+import IngressAnnotations from "@/components/IngressAnnotations";
+import { ingressText } from "@/i18n/ingress";
 
 const TAB_QUERY = "tab";
 
@@ -25,6 +27,7 @@ type IngressRow = {
   namespace: string;
   name: string;
   labels?: string;
+  annotationCount?: number;
   hosts?: string[];
   backends?: string[];
   class?: string;
@@ -208,7 +211,7 @@ const ClusterIngressDetail: React.FC = () => {
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <Card className="border-slate-200/90 shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-slate-600">Hosts</CardTitle>
@@ -226,6 +229,19 @@ const ClusterIngressDetail: React.FC = () => {
                 <CardContent>
                   <p className="text-sm text-slate-900">{row.class || "—"}</p>
                   <p className="mt-1 text-xs text-slate-500">创建约 {parseAge(row.age)}</p>
+                </CardContent>
+              </Card>
+              <Card className="min-w-0 border-slate-200/90 shadow-sm sm:col-span-2 xl:col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">{ingressText.annotations}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <IngressAnnotations
+                    annotationCount={row.annotationCount}
+                    namespace={namespace}
+                    name={ingressName}
+                    resourceName={`${namespace}/${ingressName}`}
+                  />
                 </CardContent>
               </Card>
             </div>

@@ -1,0 +1,10 @@
+version: "2"
+
+# 先以 go vet 作为可持续通过的基线；修复历史问题后再逐步启用更多 linter。
+linters:
+  default: none
+  enable:
+    - govet
+  exclusions:
+    paths:
+      - ^react/node_modules/

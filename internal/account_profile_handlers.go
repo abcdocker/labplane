@@ -51,7 +51,7 @@ func handleGetAccountProfile(c *gin.Context, app *ServerApp) {
 		`SELECT COALESCE(email,''), COALESCE(password_hash,''),
 			(CASE WHEN TRIM(COALESCE(oidc_sub,''))<>'' AND TRIM(COALESCE(oidc_issuer,''))<>'' THEN 1 ELSE 0 END),
 			COALESCE(avatar_url,'')
-		 FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`,
+		 FROM labplane_dashboard_users WHERE username = ? LIMIT 1`,
 		user,
 	).Scan(&email, &hash, &oidcN, &avatar)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -123,7 +123,7 @@ func handlePutAccountProfile(c *gin.Context, app *ServerApp) {
 	defer cancel()
 	var curEmail, hash, curAvatar string
 	err := db.QueryRowContext(ctx,
-		`SELECT COALESCE(email,''), COALESCE(password_hash,''), COALESCE(avatar_url,'') FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`,
+		`SELECT COALESCE(email,''), COALESCE(password_hash,''), COALESCE(avatar_url,'') FROM labplane_dashboard_users WHERE username = ? LIMIT 1`,
 		user,
 	).Scan(&curEmail, &hash, &curAvatar)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -181,7 +181,7 @@ func handlePutAccountProfile(c *gin.Context, app *ServerApp) {
 	}
 
 	_, err = db.ExecContext(ctx,
-		`UPDATE kubebt_dashboard_users SET email = ?, password_hash = ?, avatar_url = ? WHERE username = ?`,
+		`UPDATE labplane_dashboard_users SET email = ?, password_hash = ?, avatar_url = ? WHERE username = ?`,
 		outEmail, hash, outAvatar, user,
 	)
 	if err != nil {
@@ -224,7 +224,7 @@ func handlePostAccountProfileOIDCUnbind(c *gin.Context, app *ServerApp) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 	var hash string
-	err := db.QueryRowContext(ctx, `SELECT COALESCE(password_hash,'') FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`, user).Scan(&hash)
+	err := db.QueryRowContext(ctx, `SELECT COALESCE(password_hash,'') FROM labplane_dashboard_users WHERE username = ? LIMIT 1`, user).Scan(&hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "当前会话用户不在平台用户表中"})
 		return
@@ -250,7 +250,7 @@ func handlePostAccountProfileOIDCUnbind(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "密码不正确"})
 		return
 	}
-	_, err = db.ExecContext(ctx, `UPDATE kubebt_dashboard_users SET oidc_issuer = NULL, oidc_sub = NULL WHERE username = ?`, user)
+	_, err = db.ExecContext(ctx, `UPDATE labplane_dashboard_users SET oidc_issuer = NULL, oidc_sub = NULL WHERE username = ?`, user)
 	if err != nil {
 		RespondAPIError500(c, err.Error())
 		return

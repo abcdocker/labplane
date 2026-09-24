@@ -2,14 +2,17 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -57,6 +60,13 @@ func handleK8sGetObjectJSON(c *gin.Context, k8s *kubernetes.Clientset) {
 	case "Service":
 		var o *corev1.Service
 		o, err = k8s.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
+		if err == nil {
+			o.ManagedFields = nil
+			obj = o
+		}
+	case "Ingress":
+		var o *networkingv1.Ingress
+		o, err = k8s.NetworkingV1().Ingresses(ns).Get(ctx, name, metav1.GetOptions{})
 		if err == nil {
 			o.ManagedFields = nil
 			obj = o
@@ -299,4 +309,58 @@ func auditNsName(raw json.RawMessage) string {
 	}
 	_ = json.Unmarshal(raw, &meta)
 	return meta.Metadata.Namespace + "/" + meta.Metadata.Name
+}
+
+// SecretDataItem represents one key/value entry in a Secret.
+type SecretDataItem struct {
+	Key     string  `json:"key"`
+	Encoded *string `json:"encoded"` // Base64-encoded value from data; null for stringData keys
+	Decoded string  `json:"decoded"` // plaintext
+	Source  string  `json:"source"`  // "data" or "stringData"
+}
+
+// GET /api/k8s/secret-data?namespace=&name=
+func handleK8sGetSecretData(c *gin.Context, k8s *kubernetes.Clientset) {
+	if !GuardK8s(c, k8s) {
+		return
+	}
+	ns := strings.TrimSpace(c.Query("namespace"))
+	name := strings.TrimSpace(c.Query("name"))
+	if ns == "" || name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "需要 query: namespace, name"})
+		return
+	}
+	ctx := context.TODO()
+	o, err := k8s.CoreV1().Secrets(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "资源不存在"})
+			return
+		}
+		RespondAPIError500(c, err.Error())
+		return
+	}
+	items := make([]SecretDataItem, 0, len(o.Data)+len(o.StringData))
+	for k, v := range o.Data {
+		enc := base64.StdEncoding.EncodeToString(v)
+		items = append(items, SecretDataItem{
+			Key:     k,
+			Encoded: &enc,
+			Decoded: string(v),
+			Source:  "data",
+		})
+	}
+	for k, v := range o.StringData {
+		items = append(items, SecretDataItem{
+			Key:     k,
+			Encoded: nil,
+			Decoded: v,
+			Source:  "stringData",
+		})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Key < items[j].Key })
+	c.JSON(http.StatusOK, gin.H{
+		"type":  string(o.Type),
+		"items": items,
+	})
 }

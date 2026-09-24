@@ -276,7 +276,7 @@ const ClusterK8sKubePrometheusStackSection: React.FC = () => {
           一键安装 <strong className="text-slate-800">Prometheus Operator + Prometheus + kube-state-metrics + node-exporter</strong>
           及默认 ServiceMonitor（抓取 kubelet/cAdvisor、核心组件等）。使用镜像内 <code className="rounded bg-white px-0.5 text-[11px]">helm template</code>{" "}
           渲染官方 chart，容器镜像前缀改写为 DaoCloud 加速（与 ingress 共用「关闭 K8s 镜像改写」则不改写）。命名空间{" "}
-          <code className="rounded bg-white px-0.5 text-[11px]">kube-bt-sync-monitoring</code>，避免覆盖你已有的{" "}
+          <code className="rounded bg-white px-0.5 text-[11px]">labplane-monitoring</code>，避免覆盖你已有的{" "}
           <code className="rounded bg-white px-0.5 text-[11px]">monitoring</code>。
           <span className="mt-2 block text-[13px] text-slate-700">
             默认<strong className="text-slate-800">自动将运行时 prometheusUrlK8s</strong>指向新 Prometheus Service（并可选清空{" "}
@@ -304,7 +304,7 @@ const ClusterK8sKubePrometheusStackSection: React.FC = () => {
           {st && !stLoading && (
             <div className="mt-3 space-y-2 rounded-md border border-white/80 bg-white/70 px-2 py-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-[11px] text-slate-600">{kp?.namespace ?? "kube-bt-sync-monitoring"}</span>
+                <span className="font-mono text-[11px] text-slate-600">{kp?.namespace ?? "labplane-monitoring"}</span>
                 {kp?.installed ? (
                   <Badge className="bg-amber-600 hover:bg-amber-600">已就绪</Badge>
                 ) : kp?.namespaceExists ? (
@@ -629,7 +629,7 @@ const ClusterK8sKubePrometheusStackSection: React.FC = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>确认安装 kube-prometheus-stack？</AlertDialogTitle>
               <AlertDialogDescription className="space-y-2 text-slate-600">
-                将向集群应用大量 CRD 与监控组件，命名空间 <span className="font-mono">kube-bt-sync-monitoring</span>。
+                将向集群应用大量 CRD 与监控组件，命名空间 <span className="font-mono">labplane-monitoring</span>。
                 {kubeEtcdEnabled ? (
                   <span className="block rounded border border-sky-200 bg-sky-50 px-2 py-1.5 text-xs text-sky-950">
                     已勾选 <strong>kubeEtcd</strong>：将把填写的 Master IP 写入 Helm values，与手动改 values 后{" "}

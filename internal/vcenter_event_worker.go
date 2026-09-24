@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	kvKeyVCenterVMEvents = "kubebt_vcenter_vm_events_v1"
-	vcenterEventMaxStore = 500
+	kvKeyVCenterVMEvents     = "labplane_vcenter_vm_events_v1"
+	vcenterEventMaxStore     = 500
 	vcenterEventPollInterval = 2 * time.Minute
 )
 

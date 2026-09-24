@@ -132,7 +132,7 @@ func promFirstSeriesNumericPointsFromJSON(raw []byte) []map[string]float64 {
 func k8sKubeSphereChartsRedisKey(prefix string, days int) string {
 	p := strings.TrimSpace(prefix)
 	if p == "" {
-		p = "kubebt"
+		p = "labplane"
 	}
 	return fmt.Sprintf("%s:k8s:prom:clusterCharts:v1:days=%d", p, days)
 }

@@ -16,18 +16,105 @@ import (
 
 func handleSetupStatus(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"initialized": app.Initialized(),
+		initialized := app.Initialized()
+		payload := gin.H{
+			"initialized": initialized,
 			"dataDir":     app.DataDir(),
 			"version":     1,
-		})
+		}
+		if !initialized {
+			payload["defaults"] = newSetupEnvironmentDefaults(app.Cfg())
+		}
+		c.JSON(http.StatusOK, payload)
 	}
 }
 
 // setupSubmitBody 与 RuntimeSettings 同字段，另附明文密码仅用于首次哈希。
 type setupSubmitBody struct {
 	RuntimeSettings
-	DashboardPasswordPlain string `json:"dashboardPasswordPlain"`
+	DashboardPasswordPlain      string `json:"dashboardPasswordPlain"`
+	UseEnvironmentConnections   bool   `json:"useEnvironmentConnections"`
+	UseEnvironmentEncryptionKey bool   `json:"useEnvironmentEncryptionKey"`
+}
+
+// setupEnvironmentDefaults 仅返回可安全展示的环境配置与敏感字段存在状态。
+// 密码、DSN 和加密密钥绝不通过未登录的 setup status 接口返回。
+type setupEnvironmentDefaults struct {
+	ConnectionsConfigured   bool   `json:"connectionsConfigured"`
+	PlatformPublicURL       string `json:"platformPublicUrl,omitempty"`
+	MySQLDSNConfigured      bool   `json:"mysqlDsnConfigured"`
+	MySQLHost               string `json:"mysqlHost,omitempty"`
+	MySQLPort               int    `json:"mysqlPort,omitempty"`
+	MySQLDatabase           string `json:"mysqlDatabase,omitempty"`
+	MySQLUser               string `json:"mysqlUser,omitempty"`
+	MySQLPasswordConfigured bool   `json:"mysqlPasswordConfigured"`
+	RedisAddr               string `json:"redisAddr,omitempty"`
+	RedisHost               string `json:"redisHost,omitempty"`
+	RedisPort               int    `json:"redisPort,omitempty"`
+	RedisMode               string `json:"redisMode,omitempty"`
+	RedisSentinelMaster     string `json:"redisSentinelMaster,omitempty"`
+	RedisPasswordConfigured bool   `json:"redisPasswordConfigured"`
+	EncryptionKeyConfigured bool   `json:"encryptionKeyConfigured"`
+	DashboardUser           string `json:"dashboardUser,omitempty"`
+}
+
+func newSetupEnvironmentDefaults(cfg Config) setupEnvironmentDefaults {
+	effective := cfg
+	FinalizeConnectionStrings(&effective)
+	return setupEnvironmentDefaults{
+		ConnectionsConfigured:   strings.TrimSpace(effective.MySQLDSN) != "" && strings.TrimSpace(effective.RedisAddr) != "",
+		PlatformPublicURL:       strings.TrimSpace(cfg.PlatformPublicURL),
+		MySQLDSNConfigured:      strings.TrimSpace(cfg.MySQLDSN) != "",
+		MySQLHost:               strings.TrimSpace(cfg.MySQLHost),
+		MySQLPort:               cfg.MySQLPort,
+		MySQLDatabase:           strings.TrimSpace(cfg.MySQLDatabase),
+		MySQLUser:               strings.TrimSpace(cfg.MySQLUser),
+		MySQLPasswordConfigured: cfg.MySQLPassword != "",
+		RedisAddr:               strings.TrimSpace(effective.RedisAddr),
+		RedisHost:               strings.TrimSpace(cfg.RedisHost),
+		RedisPort:               cfg.RedisPort,
+		RedisMode:               strings.TrimSpace(cfg.RedisMode),
+		RedisSentinelMaster:     strings.TrimSpace(cfg.RedisSentinelMaster),
+		RedisPasswordConfigured: cfg.RedisPassword != "",
+		EncryptionKeyConfigured: len(strings.TrimSpace(cfg.EncryptionKey)) >= 16,
+		DashboardUser:           strings.TrimSpace(cfg.DashboardUser),
+	}
+}
+
+func applySetupEnvironmentDefaults(body *setupSubmitBody, env Config) error {
+	if body == nil {
+		return errors.New("配置为空")
+	}
+	rs := &body.RuntimeSettings
+	if body.UseEnvironmentConnections {
+		effective := env
+		FinalizeConnectionStrings(&effective)
+		if strings.TrimSpace(effective.MySQLDSN) == "" || strings.TrimSpace(effective.RedisAddr) == "" {
+			return errors.New("运行环境未完整配置 MySQL 与 Redis，无法自动采用")
+		}
+		rs.MySQLDSN = strings.TrimSpace(env.MySQLDSN)
+		rs.MySQLHost = strings.TrimSpace(env.MySQLHost)
+		rs.MySQLPort = env.MySQLPort
+		rs.MySQLDatabase = strings.TrimSpace(env.MySQLDatabase)
+		rs.MySQLUser = strings.TrimSpace(env.MySQLUser)
+		rs.MySQLPassword = env.MySQLPassword
+		rs.RedisAddr = strings.TrimSpace(effective.RedisAddr)
+		rs.RedisHost = strings.TrimSpace(env.RedisHost)
+		rs.RedisPort = env.RedisPort
+		rs.RedisMode = strings.TrimSpace(env.RedisMode)
+		rs.RedisSentinelMaster = strings.TrimSpace(env.RedisSentinelMaster)
+		rs.RedisPassword = env.RedisPassword
+		rs.RedisDB = env.RedisDB
+		rs.RedisKeyPrefix = env.RedisKeyPrefix
+	}
+	if body.UseEnvironmentEncryptionKey {
+		key := strings.TrimSpace(env.EncryptionKey)
+		if len(key) < 16 {
+			return errors.New("运行环境中的 LABPLANE_ENCRYPTION_KEY 长度不足 16 位")
+		}
+		rs.EncryptionKey = key
+	}
+	return nil
 }
 
 func handleSetupSave(app *ServerApp) gin.HandlerFunc {
@@ -39,6 +126,11 @@ func handleSetupSave(app *ServerApp) gin.HandlerFunc {
 		var body setupSubmitBody
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "JSON 无效: " + err.Error()})
+			return
+		}
+		env := LoadConfig()
+		if err := applySetupEnvironmentDefaults(&body, env); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		rs := &body.RuntimeSettings
@@ -72,7 +164,6 @@ func handleSetupSave(app *ServerApp) gin.HandlerFunc {
 		}
 
 		path := filepath.Join(app.DataDir(), runtimeConfigFileName)
-		env := LoadConfig()
 		tmpCfg := MergeRuntimeConfig(env, rs, app.DataDir())
 		tmpCfg = PrepareDashboardAuth(tmpCfg)
 		if err := tmpCfg.Validate(); err != nil {
@@ -92,14 +183,21 @@ func handleSetupSave(app *ServerApp) gin.HandlerFunc {
 				mysqlWrite = d
 			}
 		}
-		if _, err := dialRedisLight(tmpCfg); err != nil {
+		// setup 时若 redisAddr 包含多地址（集群/哨兵），仅测试第一个节点的连通性
+		testCfg := tmpCfg
+		testAddr := strings.TrimSpace(tmpCfg.RedisAddr)
+		if idx := strings.Index(testAddr, ","); idx > 0 {
+			testAddr = strings.TrimSpace(testAddr[:idx])
+		}
+		testCfg.RedisAddr = testAddr
+		if _, err := dialRedisLight(testCfg); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Redis 连接失败，请检查地址、密码与网络: " + err.Error()})
 			return
 		}
 		rs.BaotaSSLPemContent = ""
 		rs.BaotaSSLKeyContent = ""
 		if err := SaveRuntimeSettingsUnified(path, mysqlWrite, rs); err != nil {
-			RespondAPIError500(c, "写入配置失败: " + err.Error())
+			RespondAPIError500(c, "写入配置失败: "+err.Error())
 			return
 		}
 		if incomingBaotaSSLPemContent != "" || incomingBaotaSSLKeyContent != "" {
@@ -109,7 +207,7 @@ func handleSetupSave(app *ServerApp) gin.HandlerFunc {
 			}
 		}
 		if err := app.Reload(); err != nil {
-			RespondAPIError500(c, "重载配置失败: " + err.Error())
+			RespondAPIError500(c, "重载配置失败: "+err.Error())
 			return
 		}
 		InvalidateRuntimeStatusCache(context.Background(), app)
@@ -143,10 +241,10 @@ func validateSetupPayload(rs *RuntimeSettings, plainPwd string) error {
 	}
 	FinalizeConnectionStrings(&tmp)
 	if strings.TrimSpace(tmp.MySQLDSN) == "" {
-		return errors.New("MySQL 未配置：请填写 mysqlDsn，或 mysqlHost、端口、mysqlDatabase、mysqlUser")
+		return errors.New("MySQL 未配置：请填写库名、用户、密码，或展开高级选项填写 host 与端口")
 	}
 	if strings.TrimSpace(tmp.RedisAddr) == "" {
-		return errors.New("Redis 未配置：请填写 redisAddr，或 redisHost 与端口")
+		return errors.New("Redis 未配置：请填写地址与端口")
 	}
 	if len(strings.TrimSpace(rs.EncryptionKey)) < 16 {
 		return errors.New("encryptionKey 长度至少 16（用于加密敏感数据）")

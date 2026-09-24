@@ -122,7 +122,7 @@ func handleAdminUserTotpProvision(c *gin.Context, app *ServerApp) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Second)
 		defer cancel()
 		_, err = db.ExecContext(ctx,
-			`UPDATE kubebt_dashboard_users SET totp_secret_enc=?, totp_enabled=1 WHERE id=?`,
+			`UPDATE labplane_dashboard_users SET totp_secret_enc=?, totp_enabled=1 WHERE id=?`,
 			enc, id,
 		)
 		if err != nil {
@@ -166,7 +166,7 @@ func resolveTotpTarget(c *gin.Context, app *ServerApp, cfg Config, body adminTot
 			return 0, "", false, errors.New("未配置 MySQL")
 		}
 		var u string
-		e := db.QueryRowContext(ctx, `SELECT id, username FROM kubebt_dashboard_users WHERE id=?`, body.UserID).Scan(&id, &u)
+		e := db.QueryRowContext(ctx, `SELECT id, username FROM labplane_dashboard_users WHERE id=?`, body.UserID).Scan(&id, &u)
 		if errors.Is(e, sql.ErrNoRows) {
 			return 0, "", false, errors.New("用户不存在")
 		}
@@ -184,7 +184,7 @@ func resolveTotpTarget(c *gin.Context, app *ServerApp, cfg Config, body adminTot
 	if db != nil {
 		var rowID int64
 		var rowUser string
-		e := db.QueryRowContext(ctx, `SELECT id, username FROM kubebt_dashboard_users WHERE username=?`, u).Scan(&rowID, &rowUser)
+		e := db.QueryRowContext(ctx, `SELECT id, username FROM labplane_dashboard_users WHERE username=?`, u).Scan(&rowID, &rowUser)
 		if e == nil {
 			return rowID, strings.TrimSpace(rowUser), false, nil
 		}
@@ -228,7 +228,7 @@ func handleAdminUserTotpDisable(c *gin.Context, app *ServerApp) {
 		db := app.MySQLDB()
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Second)
 		defer cancel()
-		_, err = db.ExecContext(ctx, `UPDATE kubebt_dashboard_users SET totp_secret_enc=NULL, totp_enabled=0 WHERE id=?`, id)
+		_, err = db.ExecContext(ctx, `UPDATE labplane_dashboard_users SET totp_secret_enc=NULL, totp_enabled=0 WHERE id=?`, id)
 		cancel()
 		if err != nil {
 			RespondAPIError500(c, err.Error())

@@ -29,7 +29,10 @@ func FinalizeConnectionStrings(c *Config) {
 		strings.TrimSpace(c.MySQLDatabase) != "" && strings.TrimSpace(c.MySQLUser) != "" {
 		c.MySQLDSN = ComposeMySQLDSN(c.MySQLHost, c.MySQLPort, c.MySQLUser, c.MySQLPassword, c.MySQLDatabase)
 	}
-	if strings.TrimSpace(c.RedisHost) != "" && c.RedisPort > 0 {
-		c.RedisAddr = net.JoinHostPort(strings.TrimSpace(c.RedisHost), strconv.Itoa(c.RedisPort))
+	// Redis: 优先使用已提供的 redisAddr（支持集群/哨兵多地址），否则从 host+port 拼接
+	if strings.TrimSpace(c.RedisAddr) == "" {
+		if strings.TrimSpace(c.RedisHost) != "" && c.RedisPort > 0 {
+			c.RedisAddr = net.JoinHostPort(strings.TrimSpace(c.RedisHost), strconv.Itoa(c.RedisPort))
+		}
 	}
 }

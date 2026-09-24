@@ -31,13 +31,13 @@ type HostEgressState struct {
 var hostEgressMu sync.Mutex
 
 func hostEgressDisabled() bool {
-	v := strings.TrimSpace(os.Getenv("KUBEBT_EGRESS_CHECK_DISABLED"))
+	v := strings.TrimSpace(os.Getenv("LABPLANE_EGRESS_CHECK_DISABLED"))
 	return v == "1" || strings.EqualFold(v, "true")
 }
 
 func hostEgressCheckInterval() time.Duration {
 	sec := 300
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_EGRESS_CHECK_INTERVAL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_EGRESS_CHECK_INTERVAL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 60 {
 			sec = n
 		}
@@ -46,11 +46,11 @@ func hostEgressCheckInterval() time.Duration {
 }
 
 func hostEgressIPURL() string {
-	u := strings.TrimSpace(os.Getenv("KUBEBT_EGRESS_IP_URL"))
+	u := strings.TrimSpace(os.Getenv("LABPLANE_EGRESS_IP_URL"))
 	if u != "" {
 		return u
 	}
-	// 默认使用 ip.sb IPv4 纯文本接口（国内/多运营商环境较易成功；仍可用 KUBEBT_EGRESS_IP_URL 覆盖）
+	// 默认使用 ip.sb IPv4 纯文本接口（国内/多运营商环境较易成功；仍可用 LABPLANE_EGRESS_IP_URL 覆盖）
 	return "https://api-ipv4.ip.sb/ip"
 }
 
@@ -86,7 +86,7 @@ func fetchPublicIPv4(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "kube-bt-sync/host-egress")
+	req.Header.Set("User-Agent", "labplane/host-egress")
 	req.Header.Set("Accept", "text/plain, application/json;q=0.9, */*;q=0.8")
 	client := &http.Client{Timeout: 12 * time.Second}
 	res, err := client.Do(req)
@@ -157,7 +157,7 @@ func RunHostEgressCheckOnce(app *ServerApp) {
 // StartHostEgressWatcher 后台定期探测宿主机出口 IP。
 func StartHostEgressWatcher(app *ServerApp) {
 	if hostEgressDisabled() {
-		log.Println("host egress: 已禁用（KUBEBT_EGRESS_CHECK_DISABLED）")
+		log.Println("host egress: 已禁用（LABPLANE_EGRESS_CHECK_DISABLED）")
 		return
 	}
 	d := hostEgressCheckInterval()
@@ -170,7 +170,7 @@ func StartHostEgressWatcher(app *ServerApp) {
 			RunHostEgressCheckOnce(app)
 		}
 	}()
-	log.Printf("host egress: 已启动，间隔 %v，探测 URL 可用 KUBEBT_EGRESS_IP_URL 覆盖", d)
+	log.Printf("host egress: 已启动，间隔 %v，探测 URL 可用 LABPLANE_EGRESS_IP_URL 覆盖", d)
 }
 
 func handleHostEgressNotification(app *ServerApp) gin.HandlerFunc {
@@ -186,15 +186,15 @@ func handleHostEgressNotification(app *ServerApp) gin.HandlerFunc {
 		remote, _ := loadRemoteLoginAlertUnified(app)
 		adminBan, _ := loadAdminIpBanAlertUnified(app)
 		c.JSON(http.StatusOK, gin.H{
-			"checkEnabled":  !hostEgressDisabled(),
-			"currentIp":     st.CurrentIP,
-			"previousIp":    st.PreviousIP,
-			"lastChangeAt":  st.LastChangeAt,
-			"lastCheckedAt": st.LastCheckedAt,
-			"unreadChange":  st.UnreadChange,
-			"securityLoginUnread": sec.Unread,
-			"securityLoginMessage": sec.Message,
-			"securityLoginLastAt":  sec.LastAt,
+			"checkEnabled":          !hostEgressDisabled(),
+			"currentIp":             st.CurrentIP,
+			"previousIp":            st.PreviousIP,
+			"lastChangeAt":          st.LastChangeAt,
+			"lastCheckedAt":         st.LastCheckedAt,
+			"unreadChange":          st.UnreadChange,
+			"securityLoginUnread":   sec.Unread,
+			"securityLoginMessage":  sec.Message,
+			"securityLoginLastAt":   sec.LastAt,
 			"remoteLoginUnread":     remote.Unread,
 			"remoteLoginMessage":    remote.Message,
 			"remoteLoginLastAt":     remote.LastAt,

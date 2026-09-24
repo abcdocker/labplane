@@ -71,8 +71,8 @@ type KafkaPerfConsumerResult struct {
 
 // KafkaPerfTestReport 压测报告（含 Job 实时状态）。
 type KafkaPerfTestReport struct {
-	JobName         string                   `json:"jobName"`
-	Namespace       string                   `json:"namespace"`
+	JobName   string `json:"jobName"`
+	Namespace string `json:"namespace"`
 	// Status: pending | running | completed | failed
 	Status          string                   `json:"status"`
 	Topic           string                   `json:"topic"`
@@ -98,8 +98,8 @@ type KafkaPerfTestReport struct {
 
 // ── 内部辅助 ──────────────────────────────────────────────────────────────────
 
-const kafkaPerfLabel = "kube-bt-sync.io/perf"
-const kafkaPerfReqAnno = "kube-bt-sync.io/perf-request"
+const kafkaPerfLabel = "labplane.io/perf"
+const kafkaPerfReqAnno = "labplane.io/perf-request"
 
 // kafkaPerfJobMeta 写入 Job 注解，供查询报告时还原参数（不含密码）。
 type kafkaPerfJobMeta struct {

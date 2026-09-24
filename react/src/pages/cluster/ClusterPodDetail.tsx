@@ -27,7 +27,6 @@ import PodTerminalSheet from "./PodTerminalSheet";
 import { clusterPodTerminalHref } from "./ClusterPodTerminalPage";
 import { YamlCodeBlock } from "@/components/YamlCodeBlock";
 import PodLogsSheet from "./PodLogsSheet";
-import PodRestartAiPanel from "./PodRestartAiPanel";
 import { cn } from "@/lib/utils";
 
 type PodEventRow = {
@@ -443,13 +442,13 @@ const ClusterPodDetail: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" className="-ml-2 gap-1 text-gray-600" asChild>
+        <Button variant="ghost" size="sm" className="-ml-2 gap-1 text-slate-600" asChild>
           <Link to="/cluster/pods">
             <ArrowLeft className="h-4 w-4" />
             返回列表
           </Link>
         </Button>
-        <span className="text-gray-300 dark:text-slate-600">|</span>
+        <span className="text-slate-300 dark:text-slate-600">|</span>
         <span className="font-mono text-base font-medium text-slate-500 dark:text-slate-400">
           {namespace}
         </span>
@@ -457,7 +456,7 @@ const ClusterPodDetail: React.FC = () => {
         <h2 className="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">{name}</h2>
       </div>
 
-      {detailQ.isLoading && <p className="text-sm text-gray-500">加载中…</p>}
+      {detailQ.isLoading && <p className="text-sm text-slate-500">加载中…</p>}
       {detailQ.error && (
         <p className="text-sm text-red-600">{(detailQ.error as Error).message}</p>
       )}
@@ -501,15 +500,6 @@ const ClusterPodDetail: React.FC = () => {
               </CardHeader>
             </Card>
           </div>
-
-          {primaryWorkloadContainer ? (
-            <PodRestartAiPanel
-              namespace={namespace}
-              podName={name}
-              restarts={detailQ.data.restarts}
-              primaryContainer={primaryWorkloadContainer}
-            />
-          ) : null}
 
           {(() => {
             const d = detailQ.data;

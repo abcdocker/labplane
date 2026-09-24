@@ -106,7 +106,7 @@ const K8sConnectWizard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-8 text-sm text-gray-500">
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         加载配置…
       </div>
@@ -123,8 +123,8 @@ const K8sConnectWizard: React.FC = () => {
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">连接 Kubernetes 集群</h2>
-      <p className="mt-2 text-sm text-gray-600">
+      <h2 className="text-lg font-semibold text-slate-900">连接 Kubernetes 集群</h2>
+      <p className="mt-2 text-sm text-slate-600">
         当前进程尚未连上集群。若本机已配置 <code className="text-xs">KUBECONFIG</code> 且初始化时未填写
         K8s，保存「不额外配置」后服务端会尝试与 kubectl 相同的环境；否则请选择 in-cluster（Pod 内）或粘贴
         kubeconfig 全文。

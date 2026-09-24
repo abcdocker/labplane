@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
+  Loader2,
+  LogIn,
+  Plus,
   Server,
   Settings,
   Boxes,
+  CloudCog,
   Activity as NodeActivityIcon,
   Globe,
   Monitor,
@@ -35,8 +39,13 @@ import {
   Router,
   ClipboardList,
   Gauge,
+  Network,
+  Fingerprint,
+  Waypoints,
 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { apiGetJson } from "@/lib/api";
 import { useRuntimeStatusQuery } from "@/hooks/use-runtime-status";
 import { WORKSPACE_STORAGE_KEY, type WorkspaceId } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
@@ -52,10 +61,11 @@ function readWorkspace(): SidebarWorkspace {
       v === "hub" ||
       v === "vcenter" ||
       v === "kubernetes" ||
-      v === "baota" ||
       v === "appcenter" ||
       v === "bastion" ||
       v === "aiinspect" ||
+      v === "mesh" ||
+      v === "authentik" ||
       v === "docs"
     ) {
       return v;
@@ -74,14 +84,16 @@ function dashboardPath(ws: SidebarWorkspace): string {
       return "/cluster";
     case "vcenter":
       return "/cluster/vcenter/dashboard";
-    case "baota":
-      return "/cluster/baota";
     case "appcenter":
       return "/cluster/apps/dashboard";
     case "bastion":
       return "/cluster/bastion";
     case "aiinspect":
       return "/cluster/ai-inspect/dashboard";
+    case "mesh":
+      return "/cluster/mesh";
+    case "authentik":
+      return "/cluster/authentik";
     case "docs":
       return "/docs";
     default:
@@ -126,8 +138,9 @@ function isDashboardActive(pathname: string, ws: SidebarWorkspace): boolean {
       pathname === "/cluster/ai-inspect/"
     );
   }
-  if (ws === "baota") {
-    return pathname.startsWith("/cluster/baota");
+  if (ws === "mesh") {
+    // 异地组网的 Dashboard 槽位与组内首项指向同一路径。
+    return false;
   }
   return pathname === p || pathname === `${p}/`;
 }
@@ -165,12 +178,12 @@ function navLinkTint(
   }[tint];
   return cn(
     "flex items-center space-x-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-200",
-    isActive ? m.active : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+    isActive ? m.active : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
   );
 }
 
 function iconTint(isActive: boolean, tint: "blue" | "violet" | "amber" | "emerald" | "slate") {
-  if (!isActive) return "text-gray-400";
+  if (!isActive) return "text-slate-400";
   const m = {
     blue: "text-blue-600",
     violet: "text-violet-600",
@@ -205,6 +218,8 @@ type K8sNavItem = {
   customResourcesPage?: boolean;
   /** /cluster/etcd */
   etcdPage?: boolean;
+  /** /cluster/routes — Ingress + Gateway API 路由管理面板 */
+  routeManagerPage?: boolean;
 };
 
 const DEFAULT_K8S_SIDEBAR_MENU: K8sSidebarMenuItem[] = [
@@ -213,6 +228,7 @@ const DEFAULT_K8S_SIDEBAR_MENU: K8sSidebarMenuItem[] = [
   { key: "nodes", label: "Nodes", order: 30 },
   { key: "etcd", label: "etcd", order: 35 },
   { key: "rbac", label: "RBAC", order: 40 },
+  { key: "routeManager", label: "路由管理", order: 45 },
   { key: "harbor", label: "Harbor 仓库", order: 50 },
   { key: "customResources", label: "自定义资源", order: 60 },
 ];
@@ -235,6 +251,13 @@ const k8sNavItems: K8sNavItem[] = [
   { id: "nodes", to: "/cluster/nodes", label: "Nodes", icon: NodeActivityIcon },
   { id: "etcd", to: "/cluster/etcd", label: "etcd", icon: Database, etcdPage: true },
   { id: "rbac", to: "/cluster/rbac", label: "RBAC", icon: Shield, rbacPage: true },
+  {
+    id: "routeManager",
+    to: "/cluster/routes",
+    label: "路由管理",
+    icon: Waypoints,
+    routeManagerPage: true,
+  },
   { id: "harbor", to: "/cluster/harbor", label: "Harbor 仓库", icon: Ship, harborPage: true },
   {
     id: "customResources",
@@ -315,6 +338,9 @@ function k8sItemActive(
   if (item.etcdPage) {
     return pathname === "/cluster/etcd" || pathname.startsWith("/cluster/etcd/");
   }
+  if (item.routeManagerPage) {
+    return pathname === "/cluster/routes" || pathname.startsWith("/cluster/routes/");
+  }
   if (item.nsResource) {
     return isWorkspaceResourceActive(item.nsResource, pathname, search);
   }
@@ -354,6 +380,30 @@ function isCloudHostsNavActive(pathname: string): boolean {
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const instParam = searchParams.get("inst") ?? "";
+  const meshInstancesQ = useQuery({
+    queryKey: ["mesh-instances-sidebar"],
+    queryFn: () =>
+      apiGetJson<{ instances: { id: string; name: string; region?: string; enabled: boolean }[] }>(
+        "/api/ops/mesh/instances",
+      ),
+    enabled: location.pathname.startsWith("/cluster/mesh"),
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  const meshInstances = meshInstancesQ.data?.instances ?? [];
+  const authentikInstancesQ = useQuery({
+    queryKey: ["authentik-instances"],
+    queryFn: () =>
+      apiGetJson<{ instances: { id: string; name: string; enabled: boolean }[] }>(
+        "/api/ops/authentik/instances",
+      ),
+    enabled: location.pathname.startsWith("/cluster/authentik"),
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  const authentikInstances = authentikInstancesQ.data?.instances ?? [];
   const [workspace, setWorkspace] = useState<SidebarWorkspace>(() => readWorkspace());
 
   useEffect(() => {
@@ -372,8 +422,6 @@ const Sidebar: React.FC = () => {
       setWorkspace("hub");
     } else if (path.startsWith("/docs")) {
       setWorkspace("docs");
-    } else if (path.startsWith("/cluster/baota")) {
-      setWorkspace("baota");
     } else if (path.startsWith("/cluster/vcenter")) {
       setWorkspace("vcenter");
     } else if (path.startsWith("/cluster/apps")) {
@@ -382,6 +430,10 @@ const Sidebar: React.FC = () => {
       setWorkspace("bastion");
     } else if (path.startsWith("/cluster/ai-inspect")) {
       setWorkspace("aiinspect");
+    } else if (path.startsWith("/cluster/authentik")) {
+      setWorkspace("authentik");
+    } else if (path.startsWith("/cluster/mesh")) {
+      setWorkspace("mesh");
     } else if (path.startsWith("/cluster")) {
       setWorkspace("kubernetes");
     }
@@ -394,11 +446,22 @@ const Sidebar: React.FC = () => {
   const check = runtimeQ.data?.systemCheck;
   const cfg = runtimeQ.data?.config;
   const perm = cfg?.permissions;
-  const showK8sNav = menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
-  const showVcNav = menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
-  const showBaotaNav = menuItemVisible(perm, "baota", navRole, moduleVisible(perm, "baota"));
-  const showAppCenterNav = menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
-  const showAiInspectNav = menuItemVisible(perm, "aiInspect", navRole, true);
+
+  // 全局模块显隐：管理员可在平台控制哪些模块对所有人可见
+  const moduleVisQ = useQuery({
+    queryKey: ["module-visibility"],
+    queryFn: () => apiGetJson<{ modules: Record<string, boolean> }>("/api/settings/modules"),
+    staleTime: 30_000,
+  });
+  const moduleVis = moduleVisQ.data?.modules ?? {};
+  const globVisible = (mod: string) => moduleVis[mod] !== false;
+
+  const showK8sNav = globVisible("kubernetes") && menuItemVisible(perm, "kubernetes", navRole, moduleVisible(perm, "k8s"));
+  const showVcNav = globVisible("vcenter") && menuItemVisible(perm, "vcenter", navRole, moduleVisible(perm, "vcenter"));
+  const showAppCenterNav = globVisible("appcenter") && menuItemVisible(perm, "appcenter", navRole, moduleVisible(perm, "appcenter"));
+  const showAiInspectNav = globVisible("aiinspect") && menuItemVisible(perm, "aiInspect", navRole, true);
+  const showMeshNav = globVisible("mesh") && menuItemVisible(perm, "mesh", navRole, true);
+  const showAuthentikNav = globVisible("authentik") && menuItemVisible(perm, "authentik", navRole, true);
   const showBastionNav = menuItemVisible(
     perm,
     "vcenter_bastion",
@@ -412,7 +475,6 @@ const Sidebar: React.FC = () => {
     navRole === "admin" && menuItemVisible(perm, "k8s_settings", navRole, true);
   const showVcSettings =
     navRole === "admin" && menuItemVisible(perm, "vcenter_settings", navRole, true);
-  const ok = check?.baota.status === "success";
   const statusLoading = runtimeQ.isLoading;
   const isViewer = cfg?.dashboardRole === "viewer" || cfg?.viewer === true;
   const showPlatformAudit = !isViewer && navRole === "admin";
@@ -503,10 +565,11 @@ const Sidebar: React.FC = () => {
   const isDocs = workspace === "docs";
   const isK8s = workspace === "kubernetes";
   const isVcenter = workspace === "vcenter";
-  const isBaota = workspace === "baota";
   const isAppcenter = workspace === "appcenter";
   const isBastion = workspace === "bastion";
   const isAiinspect = workspace === "aiinspect";
+  const isMesh = workspace === "mesh";
+  const isAuthentik = workspace === "authentik";
 
   const dashActive = isDashboardActive(location.pathname, workspace);
   const dashTo = dashboardPath(workspace);
@@ -523,10 +586,6 @@ const Sidebar: React.FC = () => {
     location.pathname === "/cluster/apps/opensearch" ||
     location.pathname.startsWith("/cluster/apps/opensearch/");
 
-  const appCenterOpenClawActive =
-    location.pathname === "/cluster/apps/openclaw" ||
-    location.pathname.startsWith("/cluster/apps/openclaw/");
-
   const appCenterKafkaActive =
     location.pathname === "/cluster/apps/kafka" ||
     location.pathname.startsWith("/cluster/apps/kafka/");
@@ -534,6 +593,19 @@ const Sidebar: React.FC = () => {
   const appCenterDnsActive =
     location.pathname === "/cluster/apps/dns" ||
     location.pathname.startsWith("/cluster/apps/dns/");
+
+  const appCenterTencentCloudActive =
+    location.pathname === "/cluster/apps/tencent-cloud" ||
+    location.pathname.startsWith("/cluster/apps/tencent-cloud/");
+
+  const appCenterQiniuCloudActive =
+    location.pathname === "/cluster/apps/qiniu-cloud" ||
+    location.pathname.startsWith("/cluster/apps/qiniu-cloud/");
+
+  const appCenterUpyunCloudActive =
+    location.pathname === "/cluster/apps/upyun-cloud" ||
+    location.pathname.startsWith("/cluster/apps/upyun-cloud/");
+
 
   const aiInspectReportsActive =
     location.pathname === "/cluster/ai-inspect/reports" ||
@@ -545,6 +617,7 @@ const Sidebar: React.FC = () => {
   const aiInspectAlertsActive = location.pathname.startsWith("/cluster/ai-inspect/alerts");
   const aiInspectLogsActive = location.pathname.startsWith("/cluster/ai-inspect/logs");
   const aiInspectLogCollectionActive = location.pathname.startsWith("/cluster/ai-inspect/log-collection");
+  const aiInspectAssistantActive = location.pathname.startsWith("/cluster/ai-inspect/assistant");
 
   const docsMediaActive =
     location.pathname === "/docs/media" || location.pathname.startsWith("/docs/media/");
@@ -557,13 +630,15 @@ const Sidebar: React.FC = () => {
         ? "Kubernetes"
         : isVcenter
           ? "vCenter"
-          : isBaota
-            ? "宝塔"
-            : isBastion
-              ? "堡垒机"
-              : isAiinspect
-                ? "AI 巡检"
-                : "应用中心";
+          : isBastion
+            ? "堡垒机"
+            : isAiinspect
+              ? "AI 巡检"
+              : isMesh
+                ? "异地组网"
+                : isAuthentik
+                  ? "Authentik"
+                  : "应用中心";
 
   const brandClass = isDocs
     ? "text-violet-600/90"
@@ -573,13 +648,15 @@ const Sidebar: React.FC = () => {
         ? "text-blue-600/90"
         : isVcenter
           ? "text-violet-600/90"
-          : isBaota
-            ? "text-amber-600/90"
-            : isBastion
-              ? "text-teal-600/90"
-              : isAiinspect
-                ? "text-cyan-600/90"
-                : "text-emerald-600/90";
+          : isBastion
+            ? "text-teal-600/90"
+            : isAiinspect
+              ? "text-cyan-600/90"
+              : isMesh
+                ? "text-indigo-600/90"
+                : isAuthentik
+                  ? "text-fuchsia-600/90"
+                  : "text-emerald-600/90";
 
   const dashTint: "blue" | "violet" | "amber" | "emerald" | "slate" = isDocs
     ? "violet"
@@ -589,15 +666,17 @@ const Sidebar: React.FC = () => {
         ? "blue"
         : isVcenter
           ? "violet"
-          : isBaota
-            ? "amber"
-            : isBastion
-              ? "emerald"
-              : isAiinspect
-                ? "slate"
-                : isAppcenter
+          : isBastion
+            ? "emerald"
+            : isAiinspect
+              ? "slate"
+              : isAppcenter
                   ? "slate"
-                  : "emerald";
+                  : isMesh
+                    ? "slate"
+                    : isAuthentik
+                      ? "slate"
+                      : "emerald";
 
   const dashLabel = isDocs ? "文档库" : isBastion ? "控制台" : isAppcenter ? "概览" : "Dashboard";
 
@@ -621,11 +700,11 @@ const Sidebar: React.FC = () => {
           <div className="min-w-0 flex-1">
             <span
               className={cn(
-                "block truncate text-base font-bold leading-tight text-gray-900",
+                "block truncate text-base font-bold leading-tight text-slate-900",
                 cfg?.platformDisplayName?.trim() ? "platform-display-name-breathe" : undefined
               )}
             >
-              {cfg?.platformDisplayName?.trim() || "Kube-BT-Sync"}
+              {cfg?.platformDisplayName?.trim() || "LabPlane"}
             </span>
             <span
               className={cn(
@@ -635,7 +714,7 @@ const Sidebar: React.FC = () => {
             >
               {brandLabel}
             </span>
-            <span className="mt-1 block text-[10px] leading-tight text-gray-400">
+            <span className="mt-1 block text-[10px] leading-tight text-slate-400">
               工作区切换见顶部栏
             </span>
           </div>
@@ -660,7 +739,7 @@ const Sidebar: React.FC = () => {
         {isDocs && navRole === "admin" ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Markdown
               </p>
             </div>
@@ -674,50 +753,44 @@ const Sidebar: React.FC = () => {
         {isHub ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 模块入口
               </p>
             </div>
             {showK8sNav && (
               <Link to="/cluster" className={navLinkTint(false, "blue")}>
-                <Hexagon size={20} className="text-gray-400" />
+                <Hexagon size={20} className="text-slate-400" />
                 <span>Kubernetes</span>
               </Link>
             )}
             {showVcNav && (
               <Link to="/cluster/vcenter/dashboard" className={navLinkTint(false, "violet")}>
-                <Monitor size={20} className="text-gray-400" />
+                <Monitor size={20} className="text-slate-400" />
                 <span>vCenter</span>
-              </Link>
-            )}
-            {showBaotaNav && (
-              <Link to="/cluster/baota/sync" className={navLinkTint(false, "amber")}>
-                <Server size={20} className="text-gray-400" />
-                <span>宝塔</span>
               </Link>
             )}
             {showAppCenterNav && (
               <Link to="/cluster/apps/dashboard" className={navLinkTint(false, "emerald")}>
-                <AppWindow size={20} className="text-gray-400" />
+                <AppWindow size={20} className="text-slate-400" />
                 <span>应用中心</span>
               </Link>
             )}
             {showBastionNav && (
               <Link to="/cluster/bastion" className={navLinkTint(false, "emerald")}>
-                <SquareTerminal size={20} className="text-gray-400" />
+                <SquareTerminal size={20} className="text-slate-400" />
                 <span>堡垒机</span>
               </Link>
             )}
             {showAiInspectNav && (
               <Link to="/cluster/ai-inspect/dashboard" className={navLinkTint(false, "slate")}>
-                <Sparkles size={20} className="text-gray-400" />
+                <Sparkles size={20} className="text-slate-400" />
                 <span>AI 巡检</span>
               </Link>
             )}
             {showPlatformAudit && (
               <>
                 <div className="px-4 pb-1 pt-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     管理
                   </p>
                 </div>
@@ -752,7 +825,7 @@ const Sidebar: React.FC = () => {
         {isDocs ? null : isHub ? null : showK8sNav && isK8s ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">集群</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">集群</p>
             </div>
             {k8sNavComposed.map((item) => {
               if (item.harborPage && !showHarborNav) return null;
@@ -781,7 +854,7 @@ const Sidebar: React.FC = () => {
         ) : showVcNav && isVcenter ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 vCenter
               </p>
             </div>
@@ -864,35 +937,10 @@ const Sidebar: React.FC = () => {
               </Link>
             ) : null}
           </>
-        ) : showBaotaNav && isBaota ? (
-          <>
-            <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                宝塔
-              </p>
-            </div>
-            <Link
-              to="/cluster/baota/ingress"
-              className={navLinkTint(
-                location.pathname === "/cluster/baota/ingress",
-                "amber"
-              )}
-            >
-              <Globe size={20} className={iconTint(location.pathname === "/cluster/baota/ingress", "amber")} />
-              <span>Ingress Rules</span>
-            </Link>
-            <Link
-              to="/cluster/baota/sync"
-              className={navLinkTint(location.pathname === "/cluster/baota/sync", "amber")}
-            >
-              <Server size={20} className={iconTint(location.pathname === "/cluster/baota/sync", "amber")} />
-              <span>Ingress 同步</span>
-            </Link>
-          </>
         ) : showAppCenterNav && isAppcenter ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 应用中心
               </p>
             </div>
@@ -925,29 +973,21 @@ const Sidebar: React.FC = () => {
               to="/cluster/apps/cloud-vm"
               className={navLinkTint(appCenterCloudVmActive, "emerald")}
             >
-              <Cloud size={20} className={iconTint(appCenterCloudVmActive, "emerald")} />
+              <HardDrive size={20} className={iconTint(appCenterCloudVmActive, "emerald")} />
               <span>云主机</span>
             </Link>
-            {/* Openclaw */}
-            <Link
-              to="/cluster/apps/openclaw"
-              className={navLinkTint(appCenterOpenClawActive, "emerald")}
-            >
-              <Bot size={20} className={iconTint(appCenterOpenClawActive, "emerald")} />
-              <span>Openclaw</span>
-            </Link>
-            {/* DNS 管理 —— 父级：精确匹配 /cluster/apps/dns 才全亮，子页时显示淡绿色（无左 bar） */}
+            {/* DNSPod —— 父级：精确匹配 /cluster/apps/dns 才全亮，子页时显示淡绿色（无左 bar） */}
             {(() => {
               const dnsExact = location.pathname === "/cluster/apps/dns" || location.pathname === "/cluster/apps/dns/";
               const dnsParentCls = dnsExact
                 ? navLinkTint(true, "emerald")
                 : appCenterDnsActive
-                  ? "flex items-center space-x-3 rounded-xl px-4 py-3.5 text-sm font-medium text-emerald-700 hover:bg-gray-50"
-                  : "flex items-center space-x-3 rounded-xl px-4 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900";
+                  ? "flex items-center space-x-3 rounded-xl px-4 py-3.5 text-sm font-medium text-emerald-700 hover:bg-slate-50"
+                  : "flex items-center space-x-3 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900";
               return (
                 <Link to="/cluster/apps/dns" className={dnsParentCls}>
-                  <Globe size={20} className={dnsExact ? "text-emerald-600" : appCenterDnsActive ? "text-emerald-500" : "text-gray-400"} />
-                  <span>DNS 管理</span>
+                  <Globe size={20} className={dnsExact ? "text-emerald-600" : appCenterDnsActive ? "text-emerald-500" : "text-slate-400"} />
+                  <span>DNSPod</span>
                 </Link>
               );
             })()}
@@ -971,11 +1011,35 @@ const Sidebar: React.FC = () => {
                 })}
               </div>
             )}
+            {/* 腾讯云 */}
+            <Link
+              to="/cluster/apps/tencent-cloud"
+              className={navLinkTint(appCenterTencentCloudActive, "emerald")}
+            >
+              <Cloud size={20} className={iconTint(appCenterTencentCloudActive, "emerald")} />
+              <span>腾讯云</span>
+            </Link>
+            {/* 七牛云 */}
+            <Link
+              to="/cluster/apps/qiniu-cloud"
+              className={navLinkTint(appCenterQiniuCloudActive, "emerald")}
+            >
+              <CloudCog size={20} className={iconTint(appCenterQiniuCloudActive, "emerald")} />
+              <span>七牛云</span>
+            </Link>
+            {/* 又拍云 */}
+            <Link
+              to="/cluster/apps/upyun-cloud"
+              className={navLinkTint(appCenterUpyunCloudActive, "emerald")}
+            >
+              <Boxes size={20} className={iconTint(appCenterUpyunCloudActive, "emerald")} />
+              <span>又拍云</span>
+            </Link>
           </>
         ) : showAiInspectNav && isAiinspect ? (
           <>
             <div className="px-4 pb-1 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 AI 巡检
               </p>
             </div>
@@ -1015,12 +1079,176 @@ const Sidebar: React.FC = () => {
               <span>巡检报告</span>
             </Link>
             <Link
+              to="/cluster/ai-inspect/assistant"
+              className={navLinkTint(aiInspectAssistantActive, "slate")}
+            >
+              <Sparkles size={20} className={iconTint(aiInspectAssistantActive, "slate")} />
+              <span>AI 助手</span>
+            </Link>
+            <Link
               to="/cluster/ai-inspect/configure"
               className={navLinkTint(aiInspectConfigureActive, "slate")}
             >
               <Sparkles size={20} className={iconTint(aiInspectConfigureActive, "slate")} />
               <span>巡检配置</span>
             </Link>
+          </>
+        ) : showMeshNav && isMesh ? (
+          <>
+            <div className="px-4 pb-1 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                异地组网
+              </p>
+            </div>
+            <Link
+              to="/cluster/mesh/topology"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/topology"), "slate")}
+            >
+              <Network size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/topology"), "slate")} />
+              <span>拓扑总览</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/nodes"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/nodes"), "slate")}
+            >
+              <Server size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/nodes"), "slate")} />
+              <span>节点与路由</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/keys"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/keys"), "slate")}
+            >
+              <KeyRound size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/keys"), "slate")} />
+              <span>预授权密钥</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/traffic"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/traffic"), "slate")}
+            >
+              <NodeActivityIcon size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/traffic"), "slate")} />
+              <span>流量监控</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/service"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/service"), "slate")}
+            >
+              <Globe size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/service"), "slate")} />
+              <span>服务信息</span>
+            </Link>
+            <Link
+              to="/cluster/mesh/join"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/join"), "slate")}
+            >
+              <LogIn size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/join"), "slate")} />
+              <span>加入节点</span>
+            </Link>
+            <div className="mx-3 mt-1 border-t border-slate-200/70 pt-2">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">
+                headscale 实例
+              </p>
+              <div className="space-y-0.5">
+                {meshInstances.map((inst) => {
+                  const active = instParam === inst.id;
+                  return (
+                    <Link
+                      key={inst.id}
+                      to={{ pathname: location.pathname, search: `inst=${inst.id}` }}
+                      title={inst.region || inst.name}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] transition-colors",
+                        active ? "bg-slate-900/5 font-medium text-slate-900" : "text-slate-500 hover:bg-slate-900/5 hover:text-slate-800",
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", inst.enabled ? "bg-emerald-500" : "bg-slate-300")} />
+                      <span className="truncate">{inst.name}</span>
+                    </Link>
+                  );
+                })}
+                <Link
+                  to={{ pathname: "/cluster/mesh/topology", search: "new=1" }}
+                  className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
+                >
+                  <Plus size={14} />
+                  <span>添加实例</span>
+                </Link>
+              </div>
+            </div>
+          </>
+        ) : showAuthentikNav && isAuthentik ? (
+          <>
+            <div className="px-4 pb-1 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Authentik
+              </p>
+            </div>
+            <Link
+              to={{ pathname: "/cluster/authentik/users", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/users"), "slate")}
+            >
+              <Fingerprint size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/users"), "slate")} />
+              <span>用户管理</span>
+            </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/apps", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/apps"), "slate")}
+            >
+              <ShieldCheck size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/apps"), "slate")} />
+              <span>应用对接</span>
+            </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/providers", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/providers"), "slate")}
+            >
+              <KeyRound size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/providers"), "slate")} />
+              <span>提供程序</span>
+            </Link>
+            <Link
+              to={{ pathname: "/cluster/authentik/events", search: instParam ? `?inst=${encodeURIComponent(instParam)}` : "" }}
+              className={navLinkTint(location.pathname.startsWith("/cluster/authentik/events"), "slate")}
+            >
+              <RefreshCw size={20} className={iconTint(location.pathname.startsWith("/cluster/authentik/events"), "slate")} />
+              <span>事件</span>
+            </Link>
+            <div className="mx-3 mt-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/80">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300 dark:text-slate-500">
+                Authentik 实例
+              </p>
+              <div className="space-y-0.5">
+                {authentikInstances.map((inst) => {
+                  const active = instParam === inst.id;
+                  return (
+                    <Link
+                      key={inst.id}
+                      to={{ pathname: location.pathname, search: `?inst=${encodeURIComponent(inst.id)}` }}
+                      title={inst.name}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] transition-colors",
+                        active
+                          ? "bg-fuchsia-500/10 font-medium text-fuchsia-800 dark:bg-fuchsia-400/10 dark:text-fuchsia-200"
+                          : "text-slate-500 hover:bg-slate-900/5 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100",
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", inst.enabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")} />
+                      <span className="truncate">{inst.name}</span>
+                    </Link>
+                  );
+                })}
+                {authentikInstancesQ.isLoading ? (
+                  <span className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-slate-400 dark:text-slate-500">
+                    <Loader2 size={13} className="animate-spin" /> 加载实例…
+                  </span>
+                ) : null}
+                {navRole === "admin" ? (
+                  <Link
+                    to={{ pathname: "/cluster/authentik", search: "?new=1" }}
+                    className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] text-slate-400 transition-colors hover:bg-fuchsia-500/5 hover:text-fuchsia-700 dark:text-slate-500 dark:hover:bg-fuchsia-400/10 dark:hover:text-fuchsia-200"
+                  >
+                    <Plus size={14} />
+                    <span>添加实例</span>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
           </>
         ) : null}
 
@@ -1036,36 +1264,24 @@ const Sidebar: React.FC = () => {
             <span>vCenter Settings</span>
           </Link>
         ) : null}
-        {showBaotaNav && isBaota && (
-          <Link
-            to="/cluster/baota/settings"
-            className={navLinkTint(location.pathname === "/cluster/baota/settings", "amber")}
-          >
-            <Settings
-              size={20}
-              className={iconTint(location.pathname === "/cluster/baota/settings", "amber")}
-            />
-            <span>宝塔设置</span>
-          </Link>
-        )}
       </nav>
 
       <div className="border-t border-[#E2E8F0] p-6">
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-          <p className="mb-2 text-xs font-semibold text-gray-900">运行状态</p>
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <p className="mb-2 text-xs font-semibold text-slate-900">运行状态</p>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${k8sDotClass}`} />
-              <span className="text-xs text-gray-600">{k8sStatusLabel}</span>
+              <span className="text-xs text-slate-600">{k8sStatusLabel}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${vcDotClass}`} />
-              <span className="text-xs text-gray-600">{vcStatusLabel}</span>
+              <span className="text-xs text-slate-600">{vcStatusLabel}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${redisDotClass}`} />
               <span
-                className="text-xs text-gray-600"
+                className="text-xs text-slate-600"
                 title={
                   !isViewer && cfg?.redisError
                     ? cfg.redisError
@@ -1088,7 +1304,7 @@ const Sidebar: React.FC = () => {
                 }`}
               />
               <span
-                className="text-xs text-gray-600"
+                className="text-xs text-slate-600"
                 title={
                   (authStatus?.mysqlConnectError ?? cfg?.mysqlConnectError)?.trim() || undefined
                 }
@@ -1102,30 +1318,14 @@ const Sidebar: React.FC = () => {
                       : "MySQL 未连接"}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <div
-                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                  runtimeQ.isLoading ? "bg-slate-300" : ok ? "bg-emerald-500" : "bg-amber-500"
-                }`}
-              />
-              <span className="text-xs text-gray-600">
-                {runtimeQ.isLoading
-                  ? "宝塔 …"
-                  : ok
-                    ? "宝塔 可达"
-                    : check?.baota.status === "error"
-                      ? "宝塔 不可达"
-                      : "宝塔 待检查"}
-              </span>
-            </div>
           </div>
           {cfg && (
-            <p className="mt-2 truncate text-[11px] text-gray-500" title={cfg.ddnsHost}>
+            <p className="mt-2 truncate text-[11px] text-slate-500" title={cfg.ddnsHost}>
               DDNS: {cfg.ddnsHost}
             </p>
           )}
           {cfg && (
-            <p className="text-[11px] text-gray-500">同步间隔: {cfg.syncIntervalSec}s</p>
+            <p className="text-[11px] text-slate-500">同步间隔: {cfg.syncIntervalSec}s</p>
           )}
         </div>
       </div>

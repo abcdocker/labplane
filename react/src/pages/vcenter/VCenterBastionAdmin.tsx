@@ -23,6 +23,7 @@ type ExtraHostRow = {
   sshPort?: number;
   rdpPort?: number;
   sshUser?: string;
+  sshHostKeyFingerprint?: string;
   rdpUser?: string;
   rdpWebUrl?: string;
 };
@@ -35,6 +36,7 @@ type ExtraHostDraftRow = {
   kind: "linux" | "windows";
   sshPort: string;
   sshUser: string;
+  sshHostKeyFingerprint: string;
   rdpUser: string;
   rdpWebUrl: string;
   sshPassword: string;
@@ -50,6 +52,7 @@ function newExtraHostDraftRow(): ExtraHostDraftRow {
     kind: "linux",
     sshPort: "22",
     sshUser: "",
+    sshHostKeyFingerprint: "",
     rdpUser: "",
     rdpWebUrl: "",
     sshPassword: "",
@@ -67,6 +70,7 @@ function extraHostDraftFromApi(h: ExtraHostRow): ExtraHostDraftRow {
     kind,
     sshPort: h.sshPort != null && h.sshPort > 0 ? String(h.sshPort) : "22",
     sshUser: h.sshUser ?? "",
+    sshHostKeyFingerprint: h.sshHostKeyFingerprint ?? "",
     rdpUser: h.rdpUser ?? "",
     rdpWebUrl: h.rdpWebUrl ?? "",
     sshPassword: "",
@@ -89,6 +93,8 @@ function extraHostDraftToPolicyPayload(r: ExtraHostDraftRow): Record<string, unk
     o.rdpPort = 0;
     const su = r.sshUser.trim();
     if (su) o.sshUser = su;
+    const fingerprint = r.sshHostKeyFingerprint.trim();
+    if (fingerprint) o.sshHostKeyFingerprint = fingerprint;
     const pw = r.sshPassword.trim();
     if (pw) o.sshPassword = pw;
   } else {
@@ -432,7 +438,7 @@ const VCenterBastionAdmin: React.FC = () => {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0c0f14] text-slate-200">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        <div className="mx-auto max-w-[min(100%,1120px)] space-y-6 px-4 py-6 pb-28">
+        <div className="mx-auto max-w-[min(100%,1120px)] space-y-6 px-4 py-6 pb-[max(1.5rem,var(--labplane-safe-bottom))]">
           <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className="gap-1 text-slate-400" asChild>
             <Link to="/cluster/bastion">
@@ -464,7 +470,7 @@ const VCenterBastionAdmin: React.FC = () => {
               凭据。
             </p>
             <p className="text-[11px] text-amber-600/90">
-              多副本时仅在「后台任务」副本（<code className="font-mono">KUBEBT_ENABLE_BACKGROUND_JOBS=true</code>
+              多副本时仅在「后台任务」副本（<code className="font-mono">LABPLANE_ENABLE_BACKGROUND_JOBS=true</code>
               ）上绑定该端口。请将 Service / Ingress 或 <code className="font-mono">hostPort</code> 暴露到期望的公网或专线 IP，并在防火墙放行对应 TCP。
             </p>
             <div className="flex flex-wrap items-center gap-4">
@@ -871,6 +877,23 @@ const VCenterBastionAdmin: React.FC = () => {
                                 className="h-8 flex-1 border-slate-700 bg-[#080a0e] text-xs"
                               />
                             </div>
+                          </div>
+                          <div className="space-y-1 sm:col-span-2">
+                            <Label className="text-[10px] text-slate-500">SSH 主机密钥指纹（必填）</Label>
+                            <Input
+                              value={row.sshHostKeyFingerprint}
+                              onChange={(e) =>
+                                setExtraHostsDraft((prev) =>
+                                  prev.map((x) =>
+                                    x.clientId === row.clientId
+                                      ? { ...x, sshHostKeyFingerprint: e.target.value }
+                                      : x
+                                  )
+                                )
+                              }
+                              placeholder="SHA256:..."
+                              className="h-8 border-slate-700 bg-[#080a0e] font-mono text-xs"
+                            />
                           </div>
                           <div className="space-y-1 sm:col-span-2">
                             <Label className="text-[10px] text-slate-500">SSH 密码（可选，保存时校验）</Label>

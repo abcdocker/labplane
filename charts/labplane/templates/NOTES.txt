@@ -1,0 +1,23 @@
+1. Wait for the application:
+   kubectl rollout status deployment/{{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if eq .Values.app.service.type "NodePort" }}
+2. Open the setup page:
+   http://<node-ip>:{{ .Values.app.service.nodePort }}/setup
+{{- else }}
+2. Start a local port forward:
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Release.Name }}-svc 8080:{{ .Values.app.service.port }}
+   Then open http://127.0.0.1:8080/setup
+{{- end }}
+
+3. Configure MySQL, Redis, PLATFORM_PUBLIC_URL and the Kubernetes connection in the setup wizard.
+   MySQL and Redis are REQUIRED dependencies (the wizard validates both).
+   No instances yet? Use the bundled compose environment in the repo:
+     bash scripts/init-compose-env.sh && docker compose up -d
+
+4. If the PVC remains Pending, set persistence.storageClass to a StorageClass returned by:
+   kubectl get storageclass
+
+5. Offline/air-gapped clusters: the optional subcharts (ingress-nginx, metallb) are
+   declared in Chart.yaml. Run "helm dependency build" on a networked machine and copy
+   the whole charts/labplane directory (including charts/*.tgz) to the target.

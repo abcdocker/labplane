@@ -27,10 +27,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">外观与名称</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">外观与名称</h2>
+          <p className="mt-1 text-xs text-slate-500">
             浏览器标题、顶栏 Logo；支持 https 绝对地址或站内路径（需可公网访问或同源）
           </p>
         </div>
@@ -42,8 +42,8 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               value={String(form.platformDisplayName ?? "")}
               onChange={(e) => setField("platformDisplayName", e.target.value)}
             />
-            <p className="text-[11px] text-gray-500">
-              保存后将替换侧栏与顶栏默认的「Kube-BT-Sync」；名称启用时带有轻微呼吸动效（白底界面）。
+            <p className="text-[11px] text-slate-500">
+              保存后将替换侧栏与顶栏默认的「LabPlane」；名称启用时带有轻微呼吸动效（白底界面）。
             </p>
           </div>
           <div className="space-y-2">
@@ -53,9 +53,9 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               value={String(form.platformLogoUrl ?? "")}
               onChange={(e) => setField("platformLogoUrl", e.target.value)}
             />
-            <p className="text-[11px] text-gray-500">
-              推荐：<strong className="font-medium text-gray-700">约 40×40～48×48 px</strong>（或同比例矢量），
-              侧栏/顶栏以约 32–36px 高度展示；文件宜 <strong className="font-medium text-gray-700">小于约 100KB</strong>（优先 SVG 或压缩
+            <p className="text-[11px] text-slate-500">
+              推荐：<strong className="font-medium text-slate-700">约 40×40～48×48 px</strong>（或同比例矢量），
+              侧栏/顶栏以约 32–36px 高度展示；文件宜 <strong className="font-medium text-slate-700">小于约 100KB</strong>（优先 SVG 或压缩
               PNG），避免首屏闪烁。
             </p>
           </div>
@@ -67,7 +67,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               onChange={(e) => setField("platformFaviconUrl", e.target.value)}
             />
           </div>
-          <div className="space-y-2 border-t border-gray-100 pt-4">
+          <div className="space-y-2 border-t border-slate-100 pt-4">
             <Label>静态资源 CDN 根（assetsCdnBaseUrl）</Label>
             <Input
               className="font-mono text-xs"
@@ -75,20 +75,20 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               value={String(form.assetsCdnBaseUrl ?? "")}
               onChange={(e) => setField("assetsCdnBaseUrl", e.target.value)}
             />
-            <p className="text-[11px] leading-relaxed text-gray-500">
+            <p className="text-[11px] leading-relaxed text-slate-500">
               用于已发布文档分享页、未构建 React 时的边缘网关模板、堡垒机 WMKS 所需的 jQuery 等。请将仓库{" "}
-              <code className="rounded bg-gray-100 px-0.5">scripts/export-cmdb-cdn-assets.sh</code> 生成的{" "}
-              <code className="rounded bg-gray-100 px-0.5">cmdb/</code> 目录整包上传到该域名下，使{" "}
-              <code className="rounded bg-gray-100 px-0.5">assetsCdnBaseUrl/doc-public/...</code> 可访问。
+              <code className="rounded bg-slate-100 px-0.5">scripts/export-cmdb-cdn-assets.sh</code> 生成的{" "}
+              <code className="rounded bg-slate-100 px-0.5">cmdb/</code> 目录整包上传到该域名下，使{" "}
+              <code className="rounded bg-slate-100 px-0.5">assetsCdnBaseUrl/doc-public/...</code> 可访问。
             </p>
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">SSH 终端（Web）</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">SSH 终端（Web）</h2>
+          <p className="mt-1 text-xs text-slate-500">
             平台内嵌 xterm（K8s Pod、vCenter、云主机、Redis CLI 等）使用的字体；保存后刷新页面生效。
           </p>
         </div>
@@ -114,10 +114,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">平台 URL</h2>
-          <p className="mt-1 text-xs text-gray-500">对外访问基址（与业务路由、回调 URL 相关）</p>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">平台 URL</h2>
+          <p className="mt-1 text-xs text-slate-500">对外访问基址（与业务路由、回调 URL 相关）</p>
         </div>
         <div className="p-6">
           <div className="space-y-2">
@@ -130,10 +130,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">MySQL</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">MySQL</h2>
+          <p className="mt-1 text-xs text-slate-500">
             平台元数据<strong>持久化</strong>存储（账号、审计、部分业务表）；数据在 MySQL 落盘，请自行做好库备份与高可用。分字段填写后保存。
           </p>
         </div>
@@ -196,10 +196,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">Redis</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">Redis</h2>
+          <p className="mt-1 text-xs text-slate-500">
             KV / 热缓存（会话、Prometheus 趋势、vCenter 列表等）；默认内存易失，生产请配持久化（AOF/RDB）或接受缓存可丢。IP 与端口优先于旧版 redisAddr。
           </p>
         </div>
@@ -258,7 +258,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               <Label>键前缀（redisKeyPrefix）</Label>
               <Input
                 className="font-mono text-xs"
-                placeholder="kubebt"
+                placeholder="labplane"
                 value={String(form.redisKeyPrefix ?? "")}
                 onChange={(e) => setField("redisKeyPrefix", e.target.value)}
               />
@@ -272,24 +272,24 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
                 value={Number(form.vcenterCacheTtlSec ?? 120)}
                 onChange={(e) => setField("vcenterCacheTtlSec", Number(e.target.value))}
               />
-              <p className="text-[11px] text-gray-500">写入 Redis 的 VM 列表快照过期时间；过短会增加 vCenter 压力，过长列表更新滞后。</p>
+              <p className="text-[11px] text-slate-500">写入 Redis 的 VM 列表快照过期时间；过短会增加 vCenter 压力，过长列表更新滞后。</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">应用中心 Redis（K8s 默认）</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">应用中心 Redis（K8s 默认）</h2>
+          <p className="mt-1 text-xs text-slate-500">
             Redis 与 redis_exporter 的<strong>完整镜像地址</strong>、私有仓库拉取 Secret 等已迁至「应用中心 → Redis 缓存 → 模版中心」按模版配置。此处仅保留部署向导的持久化默认值（仍可用环境变量覆盖）。
           </p>
         </div>
         <div className="space-y-4 p-6 text-sm">
-          <div className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
             <div>
-              <span className="text-gray-800">redisK8sPersistence</span>
-              <p className="text-xs text-gray-500">K8s 部署是否默认使用 PVC 持久化</p>
+              <span className="text-slate-800">redisK8sPersistence</span>
+              <p className="text-xs text-slate-500">K8s 部署是否默认使用 PVC 持久化</p>
             </div>
             <Switch
               checked={form.redisK8sPersistence !== false}
@@ -318,10 +318,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">加密</h2>
-          <p className="mt-1 text-xs text-gray-500">SSH 凭据等敏感字段加密（留空保留原值）</p>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">加密</h2>
+          <p className="mt-1 text-xs text-slate-500">SSH 凭据等敏感字段加密（留空保留原值）</p>
         </div>
         <div className="p-6">
           <div className="space-y-2">
@@ -334,10 +334,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">控制台登录</h2>
-          <p className="mt-1 text-xs text-gray-500">本地账号、会话与监听地址</p>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">控制台登录</h2>
+          <p className="mt-1 text-xs text-slate-500">本地账号、会话与监听地址</p>
         </div>
         <div className="space-y-4 p-6 text-sm">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -386,8 +386,8 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
                 placeholder=":8080"
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 sm:col-span-2">
-              <span className="text-gray-700">dashboardCookieSecure（HTTPS）</span>
+            <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 sm:col-span-2">
+              <span className="text-slate-700">dashboardCookieSecure（HTTPS）</span>
               <Switch
                 checked={Boolean(form.dashboardCookieSecure)}
                 onCheckedChange={(x) => setField("dashboardCookieSecure", x)}
@@ -397,10 +397,10 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <h2 className="text-base font-bold text-gray-900">OIDC</h2>
-          <p className="mt-1 text-xs text-gray-500">四项须同时填写或全部留空；留空则沿用环境变量</p>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">OIDC</h2>
+          <p className="mt-1 text-xs text-slate-500">四项须同时填写或全部留空；留空则沿用环境变量</p>
         </div>
         <div className="space-y-4 p-6 text-sm">
           <OidcAuthentikHelp />
@@ -410,7 +410,7 @@ const AccountPlatformSettingsBody: React.FC<Props> = ({
               <Input
                 value={String(form.oidcIssuerUrl ?? "")}
                 onChange={(e) => setField("oidcIssuerUrl", e.target.value)}
-                placeholder="https://idp.example.com/application/o/kube-bt-sync/"
+                placeholder="https://idp.example.com/application/o/labplane/"
               />
             </div>
             <div className="space-y-2">

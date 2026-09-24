@@ -152,11 +152,11 @@ func validateSentinelNamePrefix(base string) error {
 
 func sentinelLabels(base, role string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":     "redis",
-		"app.kubernetes.io/instance": base,
+		"app.kubernetes.io/name":      "redis",
+		"app.kubernetes.io/instance":  base,
 		"app.kubernetes.io/component": role,
-		"redis-app":  base,
-		"redis-role": role,
+		"redis-app":                   base,
+		"redis-role":                  role,
 	}
 }
 
@@ -228,10 +228,10 @@ func buildSentinelReplicaDeployment(cfg Config, opts RedisK8sDeployOpts, redisIm
 	exShell := redisRdbShellFragment(opts) + redisEnterpriseArgsShell(opts) + redisExtraArgsShellFragment(opts)
 	if hasPw {
 		c = corev1.Container{
-			Name:  "redis",
-			Image: redisImg,
-			Ports: []corev1.ContainerPort{{Name: "redis", ContainerPort: podPort}},
-			Env:   []corev1.EnvVar{redisPasswordEnv(base)},
+			Name:    "redis",
+			Image:   redisImg,
+			Ports:   []corev1.ContainerPort{{Name: "redis", ContainerPort: podPort}},
+			Env:     []corev1.EnvVar{redisPasswordEnv(base)},
 			Command: []string{"/bin/sh", "-c"},
 			Args: []string{
 				fmt.Sprintf(

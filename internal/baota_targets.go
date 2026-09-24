@@ -75,12 +75,12 @@ func DefaultBaotaTargetID(cfg Config) string {
 }
 
 // BaotaTargetIDFromIngress 读取 Ingress 指定的宝塔实例；空表示使用默认实例。
-// 注解：kube-bt-sync.io/baota-target（推荐）或 i4t.com/baota-target（兼容）。
+// 注解：labplane.io/baota-target。
 func BaotaTargetIDFromIngress(annotations map[string]string) string {
 	if annotations == nil {
 		return ""
 	}
-	v := strings.TrimSpace(baotaAnnotationValue(annotations, "i4t.com/baota-target", "kube-bt-sync.io/baota-target"))
+	v := strings.TrimSpace(baotaAnnotationValue(annotations, "labplane.io/baota-target"))
 	return v
 }
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OpenClawChatMarkdown } from "@/components/OpenClawChatMarkdown";
 
 type Props = {
-  /** Markdown 正文（GFM + 代码块高亮与 Inspect/OpenClaw 助手一致） */
+  /** Markdown 正文（GFM + 代码块高亮，与 AI 巡检/助手一致） */
   source: string;
   /** 左侧标题，右侧为复制按钮 */
   title?: string;

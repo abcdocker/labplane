@@ -123,8 +123,8 @@ const ClusterRBAC: React.FC = () => {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-gray-900">RBAC</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-500">
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900">RBAC</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
           集群级与命名空间级 Role / RoleBinding、ClusterRole / ClusterRoleBinding、以及{" "}
           <strong className="font-medium text-slate-700">ServiceAccount</strong>（与{" "}
           <code className="text-xs">kubectl get sa</code> 对应）概览。管理员在下方<strong className="font-medium text-slate-700">勾选选项后一键创建</strong>

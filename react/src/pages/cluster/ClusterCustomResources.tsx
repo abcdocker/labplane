@@ -96,7 +96,7 @@ function apiPathCrOne(crd: string, namespaceSeg: string, obj: string) {
 
 export function ClusterCustomResourcesLayout() {
   return (
-    <div className="space-y-5 px-1 pb-10">
+    <div className="space-y-5 px-1 pb-2 sm:pb-10">
       <Outlet />
     </div>
   );
@@ -123,8 +123,8 @@ export function ClusterCustomResourceCrdList() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-gray-900">自定义资源（CRD）</h2>
-        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-gray-500">
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900">自定义资源（CRD）</h2>
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-500">
           浏览集群内{" "}
           <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">CustomResourceDefinition</code>{" "}
           及其实例（CR）。点击进入某 CRD 查看实例列表；实例详情含{" "}
@@ -284,7 +284,7 @@ export function ClusterCustomResourceInstances() {
         </Button>
       </div>
       <div>
-        <h2 className="font-mono text-base font-semibold tracking-tight text-gray-900 sm:text-lg">
+        <h2 className="font-mono text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
           {crdName || "—"}
         </h2>
         {q.data && (
@@ -460,7 +460,7 @@ export function ClusterCustomResourceDetail() {
         </Button>
       </div>
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 font-mono sm:text-xl">
+        <h2 className="text-lg font-semibold text-slate-900 font-mono sm:text-xl">
           {objName}
         </h2>
         <p className="mt-1 text-xs text-slate-500">

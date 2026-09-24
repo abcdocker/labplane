@@ -48,6 +48,10 @@
 }
 :root {
   --fontSans: "Inter";
+  --labplane-safe-top: env(safe-area-inset-top, 0px);
+  --labplane-safe-right: env(safe-area-inset-right, 0px);
+  --labplane-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --labplane-safe-left: env(safe-area-inset-left, 0px);
   --background: rgba(255, 255, 255, 1);
   --foreground: rgba(32, 32, 32, 1);
   --card: rgba(255, 255, 255, 1);
@@ -127,7 +131,9 @@
   html,
   body {
     height: 100%;
+    min-width: 0;
     margin: 0;
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground font-sans;
@@ -135,6 +141,8 @@
   #root {
     height: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
+    min-width: 0;
     width: 100%;
     max-width: none;
   }
@@ -143,6 +151,36 @@
 @layer utilities {
   .shadow-custom {
     box-shadow: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
+  }
+
+  .app-mobile-shell {
+    height: 100vh;
+    min-height: 100vh;
+  }
+  @supports (height: 100svh) {
+    .app-mobile-shell {
+      height: 100svh;
+      min-height: 100svh;
+    }
+  }
+  @supports (height: 100dvh) {
+    .app-mobile-shell {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+  }
+
+  .app-safe-x {
+    padding-left: max(0.75rem, var(--labplane-safe-left));
+    padding-right: max(0.75rem, var(--labplane-safe-right));
+  }
+
+  .app-safe-top {
+    padding-top: var(--labplane-safe-top);
+  }
+
+  .app-safe-bottom {
+    padding-bottom: var(--labplane-safe-bottom);
   }
 
   /** 主内容区右侧：细轨道 + 圆角滑块（贴近系统纵向滚动条观感） */
@@ -217,4 +255,10 @@
 }
 .platform-display-name-breathe {
   animation: platform-display-name-breathe 3.5s ease-in-out infinite;
+}
+
+/* vCenter WebMKS 控制台：拉伸铺满模式，强制 canvas 填满容器以消除黑边 */
+.vcenter-console-stretch canvas {
+  width: 100% !important;
+  height: 100% !important;
 }

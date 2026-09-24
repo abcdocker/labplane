@@ -20,24 +20,24 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const kvKeyK8sControlPlaneAdvisory = "kubebt_k8s_control_plane_advisory_v1"
+const kvKeyK8sControlPlaneAdvisory = "labplane_k8s_control_plane_advisory_v1"
 
 // k8sControlPlaneAdvisoryState 周期分析结果（PlatformKV）；铃铛用 bellDismissedRunId 与 runId 比较。
 type k8sControlPlaneAdvisoryState struct {
-	RunID               string `json:"runId"`
-	UpdatedAt           string `json:"updatedAt"`
-	Rating              string `json:"rating"` // ok | warn | critical
-	Markdown            string `json:"markdown"`
-	RunError            string `json:"runError,omitempty"`
-	Acknowledged        bool   `json:"acknowledged"`
-	BellDismissedRunID  string `json:"bellDismissedRunId,omitempty"`
-	PrometheusConfigured bool  `json:"prometheusConfigured"`
-	LogPodsSampled      int    `json:"logPodsSampled,omitempty"`
+	RunID                string `json:"runId"`
+	UpdatedAt            string `json:"updatedAt"`
+	Rating               string `json:"rating"` // ok | warn | critical
+	Markdown             string `json:"markdown"`
+	RunError             string `json:"runError,omitempty"`
+	Acknowledged         bool   `json:"acknowledged"`
+	BellDismissedRunID   string `json:"bellDismissedRunId,omitempty"`
+	PrometheusConfigured bool   `json:"prometheusConfigured"`
+	LogPodsSampled       int    `json:"logPodsSampled,omitempty"`
 }
 
 func k8sControlPlaneAdvisoryInterval() time.Duration {
 	sec := 1800
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 300 && n <= 86400 {
 			sec = n
 		}
@@ -46,7 +46,7 @@ func k8sControlPlaneAdvisoryInterval() time.Duration {
 }
 
 func k8sControlPlaneAdvisoryDisabled() bool {
-	return strings.TrimSpace(os.Getenv("KUBEBT_K8S_CONTROL_PLANE_ADVISORY")) == "0"
+	return strings.TrimSpace(os.Getenv("LABPLANE_K8S_CONTROL_PLANE_ADVISORY")) == "0"
 }
 
 func loadK8sControlPlaneAdvisory(kv PlatformKV) (k8sControlPlaneAdvisoryState, error) {
@@ -210,7 +210,7 @@ func buildClusterCounts(ctx context.Context, k8s *kubernetes.Clientset) (running
 	return running, pending, failed, crash, nsCount, nil
 }
 
-// RunK8sControlPlaneAdvisoryOnce 拉取 kube-system 控制面相关 Pod 日志并调用巡检 OpenClaw；写入 PlatformKV。
+// RunK8sControlPlaneAdvisoryOnce 拉取 kube-system 控制面相关 Pod 日志并调用内嵌判读模型（GLM 等）；写入 PlatformKV。
 func RunK8sControlPlaneAdvisoryOnce(ctx context.Context, app *ServerApp) {
 	if k8sControlPlaneAdvisoryDisabled() {
 		return
@@ -221,16 +221,12 @@ func RunK8sControlPlaneAdvisoryOnce(ctx context.Context, app *ServerApp) {
 		return
 	}
 	cfg := app.Cfg()
-	bundle, err := loadOpsOpenClawBundle(kv)
+	bundle, err := loadOpsAIInspectBundle(kv)
 	if err != nil {
 		return
 	}
-	if !openClawEnabledForRole(bundle, OpsOpenClawRoleClusterAdvisory) {
-		return
-	}
-	work, err := opsOpenClawBundleForLLMRole(app, cfg, bundle, OpsOpenClawRoleClusterAdvisory)
-	if err != nil {
-		log.Printf("k8s-control-plane-advisory: resolve openclaw profile: %v", err)
+	ai := bundle.AI
+	if !opsJudgeReady(ai) {
 		return
 	}
 
@@ -317,14 +313,10 @@ func RunK8sControlPlaneAdvisoryOnce(ctx context.Context, app *ServerApp) {
 		strings.TrimSpace(logB.String()),
 	)
 
-	to := work.OpenClaw.TimeoutSec
-	if to < 60 {
-		to = 180
-	}
-	md, _, err := opsOpenClawChatAPI(cfg, app, work.OpenClaw, work.AI, sys, user, to, 0)
+	md, _, err := opsInspectJudgeCall(app.PlatformKV(), cfg, ai, "advisory", sys, user, 0)
 	if err != nil {
 		_ = mergeAdvisoryError(kv, err.Error())
-		log.Printf("k8s-control-plane-advisory: openclaw: %v", err)
+		log.Printf("k8s-control-plane-advisory: judge: %v", err)
 		return
 	}
 	rating := parseAdvisoryRating(md)
@@ -380,7 +372,7 @@ func StartK8sControlPlaneAdvisoryWorker(ctx context.Context, app *ServerApp) {
 				}
 			}
 		}()
-		log.Printf("k8s-control-plane-advisory: 后台已启动，间隔 %v（KUBEBT_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC 可调）", d)
+		log.Printf("k8s-control-plane-advisory: 后台已启动，间隔 %v（LABPLANE_K8S_CONTROL_PLANE_ADVISORY_INTERVAL_SEC 可调）", d)
 	})
 }
 

@@ -147,7 +147,9 @@ func (p *cloudflareProvider) getZoneID(ctx context.Context, domain string) (stri
 		return "", err
 	}
 	var resp struct {
-		Result []struct{ ID string `json:"id"` } `json:"result"`
+		Result []struct {
+			ID string `json:"id"`
+		} `json:"result"`
 		Success bool `json:"success"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
@@ -172,7 +174,9 @@ func (p *cloudflareProvider) ListDomains(ctx context.Context) ([]string, error) 
 			Result []struct {
 				Name string `json:"name"`
 			} `json:"result"`
-			ResultInfo struct{ TotalPages int `json:"total_pages"` } `json:"result_info"`
+			ResultInfo struct {
+				TotalPages int `json:"total_pages"`
+			} `json:"result_info"`
 			Success bool `json:"success"`
 		}
 		if err := json.Unmarshal(data, &resp); err != nil {
@@ -212,7 +216,9 @@ func (p *cloudflareProvider) ListRecords(ctx context.Context, domain string) ([]
 				Priority *int   `json:"priority"`
 				Proxied  bool   `json:"proxied"`
 			} `json:"result"`
-			ResultInfo struct{ TotalPages int `json:"total_pages"` } `json:"result_info"`
+			ResultInfo struct {
+				TotalPages int `json:"total_pages"`
+			} `json:"result_info"`
 			Success bool `json:"success"`
 		}
 		if err := json.Unmarshal(data, &resp); err != nil {
@@ -268,7 +274,9 @@ func (p *cloudflareProvider) AddRecord(ctx context.Context, domain string, r Dns
 		return "", err
 	}
 	var resp struct {
-		Result struct{ ID string `json:"id"` } `json:"result"`
+		Result struct {
+			ID string `json:"id"`
+		} `json:"result"`
 		Success bool `json:"success"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
@@ -418,9 +426,9 @@ func (p *aliyunProvider) ListRecords(ctx context.Context, domain string) ([]DnsP
 	page := 1
 	for {
 		data, err := p.aliyunRequest(ctx, "DescribeDomainRecords", map[string]string{
-			"DomainName":  domain,
-			"PageNumber":  strconv.Itoa(page),
-			"PageSize":    "500",
+			"DomainName": domain,
+			"PageNumber": strconv.Itoa(page),
+			"PageSize":   "500",
 		})
 		if err != nil {
 			return nil, err
@@ -482,7 +490,9 @@ func (p *aliyunProvider) AddRecord(ctx context.Context, domain string, r DnsProv
 	if err != nil {
 		return "", err
 	}
-	var resp struct{ RecordId string `json:"RecordId"` }
+	var resp struct {
+		RecordId string `json:"RecordId"`
+	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return "", err
 	}
@@ -640,16 +650,18 @@ func (p *tencentProvider) ListRecords(ctx context.Context, domain string) ([]Dns
 		var resp struct {
 			Response struct {
 				RecordList []struct {
-					RecordId uint64 `json:"RecordId"`
-					SubDomain string `json:"SubDomain"`
+					RecordId   uint64 `json:"RecordId"`
+					SubDomain  string `json:"SubDomain"`
 					RecordType string `json:"RecordType"`
-					Line string `json:"Line"`
-					Value string `json:"Value"`
-					TTL int `json:"TTL"`
-					MX int `json:"MX"`
-					Enabled int `json:"Enabled"`
+					Line       string `json:"Line"`
+					Value      string `json:"Value"`
+					TTL        int    `json:"TTL"`
+					MX         int    `json:"MX"`
+					Enabled    int    `json:"Enabled"`
 				} `json:"RecordList"`
-				RecordCountInfo struct{ SubdomainCount int `json:"SubdomainCount"` } `json:"RecordCountInfo"`
+				RecordCountInfo struct {
+					SubdomainCount int `json:"SubdomainCount"`
+				} `json:"RecordCountInfo"`
 			} `json:"Response"`
 		}
 		if err := json.Unmarshal(data, &resp); err != nil {
@@ -661,14 +673,14 @@ func (p *tencentProvider) ListRecords(ctx context.Context, domain string) ([]Dns
 				line = dnsProviderDefaultLineTencentDnspod()
 			}
 			out = append(out, DnsProviderRecord{
-				ID: strconv.FormatUint(r.RecordId, 10),
+				ID:         strconv.FormatUint(r.RecordId, 10),
 				RecordType: r.RecordType,
-				Host: r.SubDomain,
-				Line: line,
-				Value: r.Value,
-				TTL: r.TTL,
+				Host:       r.SubDomain,
+				Line:       line,
+				Value:      r.Value,
+				TTL:        r.TTL,
 				MxPriority: r.MX,
-				Status: r.Enabled,
+				Status:     r.Enabled,
 			})
 		}
 		if len(resp.Response.RecordList) < limit {
@@ -688,7 +700,11 @@ func (p *tencentProvider) AddRecord(ctx context.Context, domain string, r DnsPro
 		return "", err
 	}
 	var resp struct {
-		Response struct{ RecordInfo struct{ ID uint64 `json:"id"` } `json:"RecordInfo"` } `json:"Response"`
+		Response struct {
+			RecordInfo struct {
+				ID uint64 `json:"id"`
+			} `json:"RecordInfo"`
+		} `json:"Response"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return "", err
@@ -728,7 +744,7 @@ func (p *tencentProvider) SetStatus(ctx context.Context, domain string, recordID
 
 type manualProvider struct{}
 
-func (p *manualProvider) ProviderName() string { return "manual" }
+func (p *manualProvider) ProviderName() string                            { return "manual" }
 func (p *manualProvider) ListDomains(_ context.Context) ([]string, error) { return nil, nil }
 func (p *manualProvider) ListRecords(_ context.Context, _ string) ([]DnsProviderRecord, error) {
 	return nil, fmt.Errorf("manual 模式不支持从服务商拉取记录，请手动录入")
@@ -771,7 +787,7 @@ func (p *dnspodTokenProvider) dpRequest(ctx context.Context, action string, para
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "kube-bt-sync/1.0 (admin@i4t.com)")
+	req.Header.Set("User-Agent", "labplane/1.0 (admin@example.com)")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err

@@ -116,7 +116,7 @@ const GlobalSearchBar: React.FC = () => {
   return (
     <div ref={wrapRef} className="relative min-w-0 max-w-md flex-1">
       <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 text-gray-400"
+        className="pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
         size={18}
         aria-hidden
       />
@@ -129,7 +129,7 @@ const GlobalSearchBar: React.FC = () => {
         }}
         onFocus={() => setOpen(true)}
         placeholder="搜索虚拟机、Pod…"
-        className="w-full rounded-xl border-transparent bg-[#F1F5F9] py-2.5 pl-10 pr-4 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200"
+        className="w-full rounded-xl border-transparent bg-[#F1F5F9] py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200"
         aria-label="全局搜索"
         autoComplete="off"
       />

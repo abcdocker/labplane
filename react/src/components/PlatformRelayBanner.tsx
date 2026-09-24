@@ -34,7 +34,7 @@ const PlatformRelayBanner: React.FC<{ className?: string; compact?: boolean }> =
         Pod 发起 SSH / TCP 直连。
       </p>
       <p className="mt-2 text-sky-900/90">
-        SSH 与容器终端均由<strong>平台服务端</strong>（kube-bt-sync 进程）在部署侧发起并转发；您的办公电脑无需与目标网段互通。
+        SSH 与容器终端均由<strong>平台服务端</strong>（labplane 进程）在部署侧发起并转发；您的办公电脑无需与目标网段互通。
       </p>
       <p className="mt-2 text-[11px] text-sky-800/85">
         运维侧请把本服务部署在能访问 vCenter、Kubernetes API 以及目标 SSH 地址的网络环境中；凭据始终保存在服务端，不经浏览器外传。

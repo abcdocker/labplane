@@ -38,7 +38,7 @@ func GinHMySQLSchemaStatus(ctx context.Context, app *ServerApp) gin.H {
 
 	var recorded sql.NullString
 	err := db.QueryRowContext(ctx2,
-		`SELECT v FROM kubebt_schema_meta WHERE k = ? LIMIT 1`,
+		`SELECT v FROM labplane_schema_meta WHERE k = ? LIMIT 1`,
 		"app_schema_version",
 	).Scan(&recorded)
 	switch {

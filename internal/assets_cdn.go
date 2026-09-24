@@ -107,12 +107,12 @@ type DocPublicPageAssetFields struct {
 
 // EdgeGatewayAssetFields templates/index.html 外链。
 type EdgeGatewayAssetFields struct {
-	BootstrapCSS    string
-	BootstrapJS     string
-	FontAwesomeCSS  string
-	JQueryJS        string
-	JQueryUIJS      string
-	JQueryUICSS     string
+	BootstrapCSS   string
+	BootstrapJS    string
+	FontAwesomeCSS string
+	JQueryJS       string
+	JQueryUIJS     string
+	JQueryUICSS    string
 }
 
 func buildDocPublicPageAssetFields(cfg Config) DocPublicPageAssetFields {
@@ -127,14 +127,14 @@ func buildDocPublicPageAssetFields(cfg Config) DocPublicPageAssetFields {
 		return q(defaultU)
 	}
 	return DocPublicPageAssetFields{
-		CSSExcalidraw:     resolveAssetURL(b, assetRelDocExcalidrawCSS, defaultURLDocExcalidrawCSS),
-		CSSGithubMarkdown: resolveAssetURL(b, assetRelDocGithubMarkdownCSS, defaultURLDocGithubMarkdownCSS),
-		CSSHighlightTheme: resolveAssetURL(b, assetRelDocHighlightThemeCSS, defaultURLDocHighlightThemeCSS),
-		CSSKatex:          resolveAssetURL(b, assetRelDocKatexCSS, defaultURLDocKatexCSS),
-		JSHighlight:       resolveAssetURL(b, assetRelDocHighlightJS, defaultURLDocHighlightJS),
-		ESMReactQuoted:          q(resolveAssetURL(b, assetRelDocESMReact, defaultURLDocESMReact)),
-		ESMReactDOMClientQuoted: q(resolveAssetURL(b, assetRelDocESMReactDOMClient, defaultURLDocESMReactDOMClient)),
-		ESMExcalidrawQuoted:     q(resolveAssetURL(b, assetRelDocESMExcalidraw, defaultURLDocESMExcalidraw)),
+		CSSExcalidraw:                   resolveAssetURL(b, assetRelDocExcalidrawCSS, defaultURLDocExcalidrawCSS),
+		CSSGithubMarkdown:               resolveAssetURL(b, assetRelDocGithubMarkdownCSS, defaultURLDocGithubMarkdownCSS),
+		CSSHighlightTheme:               resolveAssetURL(b, assetRelDocHighlightThemeCSS, defaultURLDocHighlightThemeCSS),
+		CSSKatex:                        resolveAssetURL(b, assetRelDocKatexCSS, defaultURLDocKatexCSS),
+		JSHighlight:                     resolveAssetURL(b, assetRelDocHighlightJS, defaultURLDocHighlightJS),
+		ESMReactQuoted:                  q(resolveAssetURL(b, assetRelDocESMReact, defaultURLDocESMReact)),
+		ESMReactDOMClientQuoted:         q(resolveAssetURL(b, assetRelDocESMReactDOMClient, defaultURLDocESMReactDOMClient)),
+		ESMExcalidrawQuoted:             q(resolveAssetURL(b, assetRelDocESMExcalidraw, defaultURLDocESMExcalidraw)),
 		ESMReactFallbackQuoted:          esmFallback(defaultURLDocESMReact),
 		ESMReactDOMClientFallbackQuoted: esmFallback(defaultURLDocESMReactDOMClient),
 		ESMExcalidrawFallbackQuoted:     esmFallback(defaultURLDocESMExcalidraw),

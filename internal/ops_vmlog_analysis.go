@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	kvKeyVmLogOpenClawAnalysis = "kubebt_ops_vmlog_openclaw_analysis_v1"
-	vmlogAnalysisMaxIssues     = 160
-	vmlogAnalysisMaxScopes     = 80
-	vmlogAnalysisMaxSample     = 100
-	vmlogAnalysisMaxUserRunes  = 95000
+	// kvKeyVmLogAIAnalysis 存储已登记问题；沿用历史 KV key（含 openclaw 字样）保证旧数据兼容。
+	kvKeyVmLogAIAnalysis      = "labplane_ops_vmlog_openclaw_analysis_v1"
+	vmlogAnalysisMaxIssues    = 160
+	vmlogAnalysisMaxScopes    = 80
+	vmlogAnalysisMaxSample    = 100
+	vmlogAnalysisMaxUserRunes = 95000
 )
 
 // VmLogAnalysisIssue 已登记问题（按 fingerprint 去重，避免模型重复输出）。
@@ -45,7 +46,7 @@ func loadVmLogAnalysisRoot(kv PlatformKV) (vmLogAnalysisRoot, error) {
 	if kv == nil {
 		return out, fmt.Errorf("kv nil")
 	}
-	raw, ok := kv.Get(kvKeyVmLogOpenClawAnalysis)
+	raw, ok := kv.Get(kvKeyVmLogAIAnalysis)
 	if !ok || strings.TrimSpace(raw) == "" {
 		return out, nil
 	}
@@ -69,7 +70,7 @@ func saveVmLogAnalysisRoot(kv PlatformKV, root vmLogAnalysisRoot) error {
 	if err != nil {
 		return err
 	}
-	return kv.Set(kvKeyVmLogOpenClawAnalysis, string(js))
+	return kv.Set(kvKeyVmLogAIAnalysis, string(js))
 }
 
 func vmlogAnalysisScopeKey(category, k8sNs, keyword, k8sPod, kwField, start, end string, windowMin int) string {
@@ -111,13 +112,13 @@ func normalizeMsgDedupeKey(msg string) string {
 }
 
 type vmlogAggLine struct {
-	firstT   time.Time
-	lastT    time.Time
-	ns       string
-	src      string
-	msg      string
-	count    int
-	hasTime  bool
+	firstT  time.Time
+	lastT   time.Time
+	ns      string
+	src     string
+	msg     string
+	count   int
+	hasTime bool
 }
 
 func buildVmLogSampleForAI(matched []map[string]any, sampleLimit int) string {
@@ -132,7 +133,7 @@ func buildVmLogSampleForAI(matched []map[string]any, sampleLimit int) string {
 	order := []string{}
 
 	for i, row := range merged {
-		msg := vmlogRowMsg(row)
+		msg := redactLogTextForAI(vmlogRowMsg(row))
 		key := normalizeMsgDedupeKey(msg)
 		if key == "" {
 			key = fmt.Sprintf("_empty_line_%d", i)
@@ -258,6 +259,8 @@ type opsVmLogOpenclawAnalyzeBody struct {
 	K8sPodName       string `json:"k8sPodName"`
 	Keyword          string `json:"keyword"`
 	KeywordField     string `json:"keywordField"`
+	Host             string `json:"host"`
+	Level            string `json:"level"`
 	WindowMinutes    int    `json:"windowMinutes"`
 	StartTime        string `json:"startTime"`
 	EndTime          string `json:"endTime"`
@@ -279,17 +282,17 @@ type opsVmLogOpenclawAnalyzeRowBody struct {
 }
 
 type opsVmLogAnalyzeRowIn struct {
-	Time           string               `json:"time"`
-	Scope          string               `json:"scope"`
-	Namespace      string               `json:"namespace"`
-	Pod            string               `json:"pod"`
-	Source         string               `json:"source"`
-	Msg            string               `json:"msg"`
-	Fields         []opsVmLogAnalyzeKV  `json:"fields"`
-	Status         string               `json:"status"`
-	HasError       bool                 `json:"hasError"`
-	Priority       string               `json:"priority"`
-	PriorityReason string               `json:"priorityReason"`
+	Time           string              `json:"time"`
+	Scope          string              `json:"scope"`
+	Namespace      string              `json:"namespace"`
+	Pod            string              `json:"pod"`
+	Source         string              `json:"source"`
+	Msg            string              `json:"msg"`
+	Fields         []opsVmLogAnalyzeKV `json:"fields"`
+	Status         string              `json:"status"`
+	HasError       bool                `json:"hasError"`
+	Priority       string              `json:"priority"`
+	PriorityReason string              `json:"priorityReason"`
 }
 
 type opsVmLogAnalyzeKV struct {
@@ -297,8 +300,8 @@ type opsVmLogAnalyzeKV struct {
 	Value string `json:"value"`
 }
 
-type vmlogOpenclawLLMOut struct {
-	Summary string `json:"summary"`
+type vmlogAILLMOut struct {
+	Summary   string `json:"summary"`
 	NewIssues []struct {
 		Fingerprint    string `json:"fingerprint"`
 		Title          string `json:"title"`
@@ -308,10 +311,11 @@ type vmlogOpenclawLLMOut struct {
 	} `json:"new_issues"`
 }
 
-func handleOpsVmLogOpenclawAnalyze(app *ServerApp) gin.HandlerFunc {
+func handleOpsVmLogAIAnalyze(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body opsVmLogOpenclawAnalyzeBody
 		_ = c.ShouldBindJSON(&body)
+		body.Category = normalizeVmLogQuerySource(body.Category)
 		if body.ClearKnownIssues {
 			if getDashboardRoleFromGin(c) != DashboardRoleAdmin {
 				RespondAPIPermissionDenied(c)
@@ -336,6 +340,7 @@ func handleOpsVmLogOpenclawAnalyze(app *ServerApp) gin.HandlerFunc {
 			Category:      body.Category,
 			K8sNamespace:  body.K8sNamespace,
 			K8sPodName:    body.K8sPodName,
+			Host:          body.Host,
 			Keyword:       body.Keyword,
 			KeywordField:  body.KeywordField,
 			WindowMinutes: body.WindowMinutes,
@@ -353,30 +358,30 @@ func handleOpsVmLogOpenclawAnalyze(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 			return
 		}
+		if hostFilter := strings.ToLower(strings.TrimSpace(body.Host)); hostFilter != "" || strings.TrimSpace(body.Level) != "" {
+			scopeName := vmlogSummaryScope(body.Category)
+			filtered := make([]map[string]any, 0, len(matched))
+			for _, row := range matched {
+				if hostFilter != "" && !strings.Contains(strings.ToLower(vmlogRowHost(row)), hostFilter) {
+					continue
+				}
+				if !vmlogMatchesLevel(scopeName, body.Level, row) {
+					continue
+				}
+				filtered = append(filtered, row)
+			}
+			matched = filtered
+		}
 
 		cfg := app.Cfg()
-		bundle, lerr := loadOpsOpenClawBundle(app.PlatformKV())
+		bundle, lerr := loadOpsAIInspectBundle(app.PlatformKV())
 		if lerr != nil {
 			RespondAPIError500(c, lerr.Error())
 			return
 		}
-		llmBundle := bundle
-		if b2, err := opsOpenClawBundleForLLMRole(app, cfg, bundle, OpsOpenClawRoleVmLogAnalyze); err == nil {
-			llmBundle = b2
-		}
-		oc := llmBundle.OpenClaw
-		if strings.TrimSpace(oc.BaseURL) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "未配置巡检 OpenClaw：请在 AI 巡检配置中填写 Base URL 或选择应用中心实例"})
-			return
-		}
-		key, kerr := opsEncryptionKey(cfg)
-		if kerr != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": kerr.Error()})
-			return
-		}
-		apiKey, _ := decryptSecret(key, oc.APIKeyEnc)
-		if strings.TrimSpace(apiKey) == "" && strings.TrimSpace(oc.EndpointSource) != "appInstance" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "未配置 OpenClaw API Key；若使用应用中心实例请保存并选择正确实例"})
+		ai := bundle.AI
+		if !opsJudgeReady(ai) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未启用内嵌 AI 判读模型：请在 AI 巡检配置中启用判读模型（GLM）并填写 API Key"})
 			return
 		}
 
@@ -410,7 +415,7 @@ func handleOpsVmLogOpenclawAnalyze(app *ServerApp) gin.HandlerFunc {
 		if cat == "" {
 			cat = "all"
 		}
-		userMsg := fmt.Sprintf(`筛选条件：分类=%s，k8s命名空间=%q，关键词=%q，时间窗=%d 分钟（%s ~ %s）。
+		userMsg := fmt.Sprintf(`筛选条件：分类=%s，k8s命名空间=%q，主机=%q，级别=%q，关键词=%q，时间窗=%d 分钟（%s ~ %s）。
 VictoriaLogs 拉取 %d 条原始行，过滤后匹配 %d 条；truncated=%v scanWarn=%q
 
 【已登记问题 fingerprint（禁止在 new_issues 中重复相同 fingerprint；summary 中不要复述这些问题的细节，最多一句话带过「与已登记问题一致」）】
@@ -420,7 +425,7 @@ VictoriaLogs 拉取 %d 条原始行，过滤后匹配 %d 条；truncated=%v scan
 %s
 
 请严格按系统说明只输出 JSON。`,
-			cat, body.K8sNamespace, body.Keyword, win,
+			cat, body.K8sNamespace, body.Host, body.Level, body.Keyword, win,
 			startT.Format(time.RFC3339), endT.Format(time.RFC3339),
 			totalFetched, len(matched), truncated, scanWarn,
 			strings.TrimSpace(knownLines.String()),
@@ -436,17 +441,17 @@ VictoriaLogs 拉取 %d 条原始行，过滤后匹配 %d 条；truncated=%v scan
 5) 回复必须是**单一 JSON 对象**，不要 Markdown 代码围栏以外的文字。结构：
 {"summary":"……","new_issues":[{"fingerprint":"snake_case","title":"……","classification":"attack_suspect|interface_opt|reliability|benign_noise","evidence":"……","recommendation":"……"}]}`
 
-		timeout := oc.TimeoutSec
-		if timeout <= 0 {
-			timeout = 180
-		}
-		rawLLM, latencyMs, cerr := opsOpenClawChatAPI(cfg, app, oc, llmBundle.AI, sys, userMsg, timeout, 8192)
+		SetAuditDetail(c, fmt.Sprintf(
+			"VictoriaLogs AI 分析：category=%s matched=%d sampleLimit=%d，发送前已脱敏",
+			cat, len(matched), body.SampleLimit,
+		))
+		rawLLM, latencyMs, cerr := opsInspectJudgeCall(app.PlatformKV(), cfg, ai, "vmlog_analyze", sys, userMsg, 8192)
 		if cerr != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"error": cerr.Error()})
 			return
 		}
 
-		var parsed vmlogOpenclawLLMOut
+		var parsed vmlogAILLMOut
 		js := extractJSONObjectFromLLM(rawLLM)
 		if js == nil || json.Unmarshal(js, &parsed) != nil {
 			c.JSON(http.StatusOK, gin.H{
@@ -584,7 +589,7 @@ VictoriaLogs 拉取 %d 条原始行，过滤后匹配 %d 条；truncated=%v scan
 	}
 }
 
-func handleOpsVmLogOpenclawAnalyzeRow(app *ServerApp) gin.HandlerFunc {
+func handleOpsVmLogAIAnalyzeRow(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body opsVmLogOpenclawAnalyzeRowBody
 		if err := c.ShouldBindJSON(&body); err != nil {
@@ -597,28 +602,14 @@ func handleOpsVmLogOpenclawAnalyzeRow(app *ServerApp) gin.HandlerFunc {
 		}
 
 		cfg := app.Cfg()
-		bundle, lerr := loadOpsOpenClawBundle(app.PlatformKV())
+		bundle, lerr := loadOpsAIInspectBundle(app.PlatformKV())
 		if lerr != nil {
 			RespondAPIError500(c, lerr.Error())
 			return
 		}
-		llmBundle := bundle
-		if b2, err := opsOpenClawBundleForLLMRole(app, cfg, bundle, OpsOpenClawRoleVmLogAnalyze); err == nil {
-			llmBundle = b2
-		}
-		oc := llmBundle.OpenClaw
-		if strings.TrimSpace(oc.BaseURL) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "未配置巡检 OpenClaw：请在 AI 巡检配置中填写 Base URL 或选择应用中心实例"})
-			return
-		}
-		key, kerr := opsEncryptionKey(cfg)
-		if kerr != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": kerr.Error()})
-			return
-		}
-		apiKey, _ := decryptSecret(key, oc.APIKeyEnc)
-		if strings.TrimSpace(apiKey) == "" && strings.TrimSpace(oc.EndpointSource) != "appInstance" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "未配置 OpenClaw API Key；若使用应用中心实例请保存并选择正确实例"})
+		ai := bundle.AI
+		if !opsJudgeReady(ai) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未启用内嵌 AI 判读模型：请在 AI 巡检配置中启用判读模型（GLM）并填写 API Key"})
 			return
 		}
 
@@ -628,6 +619,11 @@ func handleOpsVmLogOpenclawAnalyzeRow(app *ServerApp) gin.HandlerFunc {
 			v := strings.TrimSpace(kv.Value)
 			if k == "" || v == "" {
 				continue
+			}
+			if sensitiveLogFieldName(k) {
+				v = "[REDACTED]"
+			} else {
+				v = redactLogTextForAI(v)
 			}
 			fieldLines = append(fieldLines, fmt.Sprintf("- %s: %s", k, v))
 		}
@@ -705,16 +701,13 @@ func handleOpsVmLogOpenclawAnalyzeRow(app *ServerApp) gin.HandlerFunc {
 			body.Row.HasError,
 			nullDash(body.Row.Priority),
 			nullDash(body.Row.PriorityReason),
-			nullDash(body.Row.Msg),
+			nullDash(redactLogTextForAI(body.Row.Msg)),
 			strings.Join(fieldLines, "\n"),
 		)
 
 		sys := "你是资深 SRE / 运维排障助手。目标是解释单条日志大概表示什么问题，并给出简短、可执行的排查思路。不要编造不存在的上下文；证据不足时要明确说证据不足。输出使用中文 Markdown，不要加代码围栏。"
-		timeout := oc.TimeoutSec
-		if timeout <= 0 {
-			timeout = 120
-		}
-		rawLLM, latencyMs, cerr := opsOpenClawChatAPI(cfg, app, oc, llmBundle.AI, sys, userMsg, timeout, 2048)
+		SetAuditDetail(c, "VictoriaLogs 单条 AI 分析：scope="+scope+"，发送前已脱敏")
+		rawLLM, latencyMs, cerr := opsInspectJudgeCall(app.PlatformKV(), cfg, ai, "vmlog_analyze_row", sys, userMsg, 2048)
 		if cerr != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"error": cerr.Error()})
 			return

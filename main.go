@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
-	"kube-bt-sync/internal" // 引用模块
+	"github.com/abcdocker/labplane/internal"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -14,7 +17,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	log.Println(">>> 初始化 kube-bt-sync 环境...")
+	log.Println(">>> 初始化 labplane 环境...")
 	app, err := internal.NewServerApp(internal.DataDirFromEnv())
 	if err != nil {
 		log.Fatalf("加载应用状态失败: %v", err)
@@ -41,29 +44,34 @@ func main() {
 
 	bg := app.Cfg().EnableBackgroundJobs
 	if !bg {
-		log.Println(">>> KUBEBT_ENABLE_BACKGROUND_JOBS=false：本进程仅作 API/Web 副本，不启动宝塔同步、告警巡检、Pod 重启关联/报告清理、出站监视、vCenter Prom 缓存刷新、审计裁剪定时器（多副本时请保证至少一个 Pod 为 true）")
+		log.Println(">>> LABPLANE_ENABLE_BACKGROUND_JOBS=false：本进程仅作 API/Web 副本，不启动宝塔同步、告警巡检、Pod 重启关联/报告清理、出站监视、vCenter Prom 缓存刷新、审计裁剪定时器（多副本时请保证至少一个 Pod 为 true）")
 	}
 	if bg {
-		go internal.StartSyncer(ctx, app)
+		internal.StartBackgroundJobsWithLeaderElection(ctx, app)
+	}
+	// 异地组网流量热缓存：后台定时 SSH 采集写入 Redis 热层，页面打开即读热数据。
+	// 默认跟随 LABPLANE_ENABLE_BACKGROUND_JOBS（开=60s，关=不启动）；可用
+	// LABPLANE_MESH_TRAFFIC_INTERVAL_SEC 显式覆盖（秒，0=关闭）。采集为只读操作，多副本重复执行无害。
+	meshIntervalSec := 0
+	if bg {
+		meshIntervalSec = 60
+	}
+	if v := strings.TrimSpace(os.Getenv("LABPLANE_MESH_TRAFFIC_INTERVAL_SEC")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			meshIntervalSec = n
+		}
+	}
+	if meshIntervalSec > 0 {
+		log.Printf(">>> 异地组网流量热采集已启动：每 %ds 采集一次（LABPLANE_MESH_TRAFFIC_INTERVAL_SEC 可调）", meshIntervalSec)
+		internal.StartMeshTrafficWorker(ctx, app, time.Duration(meshIntervalSec)*time.Second)
+	} else {
+		log.Println(">>> 异地组网流量热采集未启动（LABPLANE_MESH_TRAFFIC_INTERVAL_SEC=0 或后台任务关闭）")
 	}
 	internal.StartRedisReconnectLoop(ctx, app)
 	internal.StartCrossPodRuntimeSync(ctx, func() *internal.ServerApp { return app })
 	internal.StartRuntimeStatusRefresher(app)
-	if bg {
-		internal.StartHostEgressWatcher(app)
-		internal.StartVCenterPrometheusMetricsRefresher(app)
-		internal.StartK8sKubeSphereChartsCacheWatcher(app)
-		go internal.BastionNativeSSHReconcileLoop(ctx, func() *internal.ServerApp { return app })
-	}
 	internal.StartVCenterSessionKeepalive(func() *internal.ServerApp { return app })
 	internal.InitLoginSecurityState(app)
-	if bg {
-		internal.StartOpsCenterBackground(app)
-		internal.StartK8sRestartCorrelationWorker(app)
-		internal.StartOpenClawGatewayHealthWatcher(app)
-		internal.StartHarborImageIndexWorker(app)
-		internal.StartVCenterEventWorker(app)
-		internal.StartK8sControlPlaneAdvisoryWorker(ctx, app)
-	}
+	internal.StartAuditWriter(ctx)
 	internal.StartWebServer(ctx, app)
 }

@@ -62,8 +62,8 @@ const VCenterHubDashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">vCenter 巡检</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-slate-900">vCenter 巡检</h1>
+        <p className="text-sm text-slate-500">
           汇总虚拟机、ESXi、公有云主机（管理员）；下方为与 Grafana 同源的 ESXi / 虚拟机 Prometheus 看板（需配置
           prometheusUrlVcenter 与 vmware 指标）。
         </p>

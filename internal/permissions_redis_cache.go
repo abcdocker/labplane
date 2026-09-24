@@ -20,7 +20,7 @@ func redisPermissionsCacheKey(cfg Config, username string) string {
 
 func permissionsCacheTTL() time.Duration {
 	sec := 120
-	if s := strings.TrimSpace(os.Getenv("KUBEBT_PERMISSIONS_CACHE_TTL_SEC")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("LABPLANE_PERMISSIONS_CACHE_TTL_SEC")); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n >= 10 && n <= 3600 {
 			sec = n
 		}
@@ -29,14 +29,14 @@ func permissionsCacheTTL() time.Duration {
 }
 
 type cachedEffPerm struct {
-	K8s              string          `json:"k8s"`
-	VCenter          string          `json:"vcenter"`
-	Baota            string          `json:"baota"`
-	AppCenter        string          `json:"appcenter"`
-	AppCenterRedis   string          `json:"appcenterRedis"`
-	AppCenterCloudVm string          `json:"appcenterCloudVm"`
-	MaskSensitive    bool            `json:"maskSensitive"`
-	LegacyViewer     bool            `json:"legacyViewer"`
+	K8s                            string          `json:"k8s"`
+	VCenter                        string          `json:"vcenter"`
+	Baota                          string          `json:"baota"`
+	AppCenter                      string          `json:"appcenter"`
+	AppCenterRedis                 string          `json:"appcenterRedis"`
+	AppCenterCloudVm               string          `json:"appcenterCloudVm"`
+	MaskSensitive                  bool            `json:"maskSensitive"`
+	LegacyViewer                   bool            `json:"legacyViewer"`
 	K8sPodExec                     bool            `json:"k8sPodExec"`
 	K8sPodDelete                   bool            `json:"k8sPodDelete"`
 	AppCenterCloudVmHysteriaReveal bool            `json:"appcenterCloudVmHysteriaReveal"`
@@ -48,14 +48,14 @@ func effToCached(e *EffectiveDashboardPermissions) *cachedEffPerm {
 		return nil
 	}
 	return &cachedEffPerm{
-		K8s:              e.K8s,
-		VCenter:          e.VCenter,
-		Baota:            e.Baota,
-		AppCenter:        e.AppCenter,
-		AppCenterRedis:   e.AppCenterRedis,
-		AppCenterCloudVm: e.AppCenterCloudVm,
-		MaskSensitive:    e.MaskSensitive,
-		LegacyViewer:     e.LegacyViewer,
+		K8s:                            e.K8s,
+		VCenter:                        e.VCenter,
+		Baota:                          e.Baota,
+		AppCenter:                      e.AppCenter,
+		AppCenterRedis:                 e.AppCenterRedis,
+		AppCenterCloudVm:               e.AppCenterCloudVm,
+		MaskSensitive:                  e.MaskSensitive,
+		LegacyViewer:                   e.LegacyViewer,
 		K8sPodExec:                     e.K8sPodExec,
 		K8sPodDelete:                   e.K8sPodDelete,
 		AppCenterCloudVmHysteriaReveal: e.AppCenterCloudVmHysteriaReveal,
@@ -68,14 +68,14 @@ func cachedToEff(c *cachedEffPerm) *EffectiveDashboardPermissions {
 		return defaultEffectiveLegacyViewer()
 	}
 	return &EffectiveDashboardPermissions{
-		K8s:              c.K8s,
-		VCenter:          c.VCenter,
-		Baota:            c.Baota,
-		AppCenter:        c.AppCenter,
-		AppCenterRedis:   c.AppCenterRedis,
-		AppCenterCloudVm: c.AppCenterCloudVm,
-		MaskSensitive:    c.MaskSensitive,
-		LegacyViewer:     c.LegacyViewer,
+		K8s:                            c.K8s,
+		VCenter:                        c.VCenter,
+		Baota:                          c.Baota,
+		AppCenter:                      c.AppCenter,
+		AppCenterRedis:                 c.AppCenterRedis,
+		AppCenterCloudVm:               c.AppCenterCloudVm,
+		MaskSensitive:                  c.MaskSensitive,
+		LegacyViewer:                   c.LegacyViewer,
 		K8sPodExec:                     c.K8sPodExec,
 		K8sPodDelete:                   c.K8sPodDelete,
 		AppCenterCloudVmHysteriaReveal: c.AppCenterCloudVmHysteriaReveal,

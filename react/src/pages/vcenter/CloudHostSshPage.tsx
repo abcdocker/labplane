@@ -39,18 +39,18 @@ const CloudHostSshPage: React.FC = () => {
             <Terminal className="h-7 w-7" strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
               公有云 · SSH / SFTP
             </h1>
             {host ? (
               <p className="mt-1 font-mono text-sm text-violet-800/90">
                 {host.name}{" "}
-                <span className="text-gray-500">
+                <span className="text-slate-500">
                   · {host.sshHost}:{host.sshPort || 22}
                 </span>
               </p>
             ) : (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {listQ.isLoading ? "加载主机信息…" : "未找到该主机，可能已被删除"}
               </p>
             )}
@@ -105,7 +105,7 @@ const CloudHostSshPage: React.FC = () => {
               </div>
             </div>
           ) : !listQ.isLoading ? (
-            <p className="py-8 text-center text-sm text-gray-500">
+            <p className="py-8 text-center text-sm text-slate-500">
               请返回{" "}
               <Link to="/cluster/vcenter/cloud" className="font-medium text-violet-700 underline">
                 公有云列表

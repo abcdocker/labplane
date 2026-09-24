@@ -77,10 +77,10 @@ const BaotaSync: React.FC = () => {
     <div className="w-full max-w-[1920px] space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Baota Sync</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            宝塔连通性来自 <code className="rounded bg-gray-100 px-1 text-xs">/api/runtime/status</code>
-            ；下方为带同步注解的 Ingress（<code className="rounded bg-gray-100 px-1 text-xs">/api/status</code>）。
+          <h1 className="text-2xl font-bold text-slate-900">Baota Sync</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            宝塔连通性来自 <code className="rounded bg-slate-100 px-1 text-xs">/api/runtime/status</code>
+            ；下方为带同步注解的 Ingress（<code className="rounded bg-slate-100 px-1 text-xs">/api/status</code>）。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -117,17 +117,17 @@ const BaotaSync: React.FC = () => {
             在「Ingress Rules」表单向导中勾选<strong>同步到宝塔</strong>并下发的资源，与集群里已带同步注解的 Ingress 一样，会由本页「立即同步」或定时任务下发到宝塔。
             报告含每步 <strong>最多 4 次</strong> 指数退避重试，持久化在平台 KV。定时同步需{" "}
             <strong className="font-mono">ingressBaotaSyncEnabled</strong> 为开且 Pod 上{" "}
-            <strong className="font-mono">KUBEBT_ENABLE_BACKGROUND_JOBS=true</strong>。
+            <strong className="font-mono">LABPLANE_ENABLE_BACKGROUND_JOBS=true</strong>。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {syncStatusQ.isLoading ? (
-            <p className="text-gray-500">加载同步状态中…</p>
+            <p className="text-slate-500">加载同步状态中…</p>
           ) : syncStatusQ.data?.hint && !rep ? (
-            <p className="text-gray-600">{syncStatusQ.data.hint}</p>
+            <p className="text-slate-600">{syncStatusQ.data.hint}</p>
           ) : rep ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                 <span>
                   触发：<span className="font-mono">{rep.trigger}</span>
                 </span>
@@ -156,16 +156,16 @@ const BaotaSync: React.FC = () => {
                 ) : null}
               </div>
               {rep.running ? <Progress value={progressValue} className="h-2" /> : null}
-              {rep.summary ? <p className="text-gray-800">{rep.summary}</p> : null}
+              {rep.summary ? <p className="text-slate-800">{rep.summary}</p> : null}
               {rep.domains?.length ? (
-                <ul className="space-y-2 border-t border-gray-100 pt-3">
+                <ul className="space-y-2 border-t border-slate-100 pt-3">
                   {rep.domains.map((d) => (
                     <li
                       key={`${d.domain}-${d.baotaTargetId ?? ""}`}
-                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-gray-900">{d.domain}</span>
+                        <span className="font-semibold text-slate-900">{d.domain}</span>
                         {d.baotaTargetId ? (
                           <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
                             {d.baotaTargetId}
@@ -184,14 +184,14 @@ const BaotaSync: React.FC = () => {
                         ) : null}
                       </div>
                       {d.targetUrl ? (
-                        <p className="mt-1 font-mono text-[11px] text-gray-500">反代上游 {d.targetUrl}</p>
+                        <p className="mt-1 font-mono text-[11px] text-slate-500">反代上游 {d.targetUrl}</p>
                       ) : null}
                       <ul className="mt-2 space-y-1">
                         {d.steps.map((s) => (
                           <li key={`${d.domain}-${s.name}`} className="flex flex-wrap gap-2 font-mono text-[11px]">
-                            <span className="text-gray-500">{s.name}</span>
+                            <span className="text-slate-500">{s.name}</span>
                             <span className={s.ok ? "text-emerald-700" : "text-red-700"}>{s.ok ? "ok" : "fail"}</span>
-                            <span className="text-gray-500">×{s.attempts}</span>
+                            <span className="text-slate-500">×{s.attempts}</span>
                             {s.error ? <span className="break-all text-red-600">{s.error}</span> : null}
                           </li>
                         ))}
@@ -202,7 +202,7 @@ const BaotaSync: React.FC = () => {
               ) : null}
             </>
           ) : (
-            <p className="text-gray-500">暂无报告</p>
+            <p className="text-slate-500">暂无报告</p>
           )}
         </CardContent>
       </Card>
@@ -228,22 +228,22 @@ const BaotaSync: React.FC = () => {
         </div>
       </div>
 
-      <h3 className="text-lg font-bold text-gray-900">已托管同步路由（K8s Ingress）</h3>
+      <h3 className="text-lg font-bold text-slate-900">已托管同步路由（K8s Ingress）</h3>
       {loading ? (
-        <p className="text-sm text-gray-500">加载中...</p>
+        <p className="text-sm text-slate-500">加载中...</p>
       ) : routes.length === 0 ? (
-        <p className="text-sm text-gray-500">暂无带注解的 Ingress。</p>
+        <p className="text-sm text-slate-500">暂无带注解的 Ingress。</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {routes.map((site) => (
             <div
               key={`${site.namespace}/${site.name}`}
-              className="bg-white border border-gray-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-blue-300 transition-colors"
+              className="bg-white border border-slate-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-blue-300 transition-colors"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base">{site.domain}</h4>
-                  <p className="text-xs text-gray-500 mt-1 font-mono">
+                  <h4 className="font-bold text-slate-900 text-base">{site.domain}</h4>
+                  <p className="text-xs text-slate-500 mt-1 font-mono">
                     {site.namespace}/{site.name} · DDNS 端口 {site.ddnsPort}
                   </p>
                   <Link
@@ -260,11 +260,11 @@ const BaotaSync: React.FC = () => {
 
               <div className="flex items-center space-x-4 mb-5">
                 <div className="flex items-center space-x-1.5 text-sm">
-                  <Shield size={16} className={site.scheme === "https" ? "text-emerald-500" : "text-gray-300"} />
-                  <span className="text-gray-700">{site.scheme === "https" ? "TLS 已配置" : "HTTP"}</span>
+                  <Shield size={16} className={site.scheme === "https" ? "text-emerald-500" : "text-slate-300"} />
+                  <span className="text-slate-700">{site.scheme === "https" ? "TLS 已配置" : "HTTP"}</span>
                 </div>
-                <div className="h-4 w-px bg-gray-200" />
-                <div className="text-sm text-gray-600">
+                <div className="h-4 w-px bg-slate-200" />
+                <div className="text-sm text-slate-600">
                   RV: <span className="font-semibold">{site.version}</span>
                 </div>
               </div>

@@ -5,7 +5,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { apiGetJson } from "@/lib/api";
-import { useSshKubeBtXtermOptions } from "@/hooks/use-ssh-kube-bt-xterm-options";
+import { useSshLabPlaneXtermOptions } from "@/hooks/use-ssh-labplane-xterm-options";
 import { tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ export type CloudHostSSHSettings = {
   passwordSet?: boolean;
   privateKeySet?: boolean;
   insecureHostKey?: boolean;
+  hostKeyFingerprint?: string;
 };
 
 type CloudHostSshTerminalProps = {
@@ -46,7 +47,7 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
   displayName,
   variant = "default",
 }) => {
-  const xtermOpts = useSshKubeBtXtermOptions();
+  const xtermOpts = useSshLabPlaneXtermOptions();
   const isPage = variant === "page";
   const sshQ = useQuery({
     queryKey: ["cloud-host-ssh-settings", hostId],
@@ -175,7 +176,7 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
             "rounded-xl border border-violet-100 bg-white px-4 py-3 shadow-sm"
           )}
         >
-          <span className="text-base font-semibold text-gray-900">{displayName}</span>
+          <span className="text-base font-semibold text-slate-900">{displayName}</span>
           <span className="font-mono text-sm text-violet-700/90">
             {sshQ.data?.sshHost}:{sshQ.data?.sshPort || 22}
           </span>
@@ -191,7 +192,7 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
 
       {!sshQ.data?.encryptionReady && sshQ.data?.writable === false && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          未配置 <code className="rounded bg-white px-1">KUBEBT_ENCRYPTION_KEY</code> 或 SSH 存储，无法保存每台主机密码/私钥。
+          未配置 <code className="rounded bg-white px-1">LABPLANE_ENCRYPTION_KEY</code> 或 SSH 存储，无法保存每台主机密码/私钥。
             可设置环境变量或全局 SSH 后连接。
         </div>
       )}
@@ -213,12 +214,12 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
         >
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/40 px-1 py-2 sm:px-2">
             {!isPage && (
-              <span className="text-xs text-gray-600">
+              <span className="text-xs text-slate-600">
                 目标为列表中的 SSH 地址；由平台服务端转发，凭据不经过浏览器。
               </span>
             )}
             <div className={`flex items-center gap-3 ${isPage ? "ml-auto w-full justify-end" : ""}`}>
-              <span className="text-xs tabular-nums text-gray-500">
+              <span className="text-xs tabular-nums text-slate-500">
                 {status === "connecting" && "正在连接…"}
                 {status === "open" && "已连接"}
                 {status === "closed" && "已断开"}
@@ -272,8 +273,8 @@ const CloudHostSshTerminal: React.FC<CloudHostSshTerminalProps> = ({
           ) : (
             isPage && (
               <div className="flex min-h-[min(48dvh,420px)] flex-1 flex-col items-center justify-center border border-dashed border-slate-300/90 bg-slate-50/50 px-6 py-10 text-center">
-                <p className="text-sm font-medium text-gray-700">终端区域</p>
-                <p className="mt-1 max-w-sm text-xs text-gray-500">
+                <p className="text-sm font-medium text-slate-700">终端区域</p>
+                <p className="mt-1 max-w-sm text-xs text-slate-500">
                   点击上方「连接 SSH」后，终端将平铺占用下方空间。
                 </p>
               </div>

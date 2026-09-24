@@ -8,7 +8,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { apiGetJson, type AppConfig, wsUrlForApiPath } from "@/lib/api";
-import { resolveSshKubeBtXtermOptions, tryLoadXtermWebgl } from "@/lib/xtermShared";
+import { resolveSshLabPlaneXtermOptions, tryLoadXtermWebgl } from "@/lib/xtermShared";
 import PlatformRelayBanner from "@/components/PlatformRelayBanner";
 
 function buildVCenterSshWsUrl(moref: string): string {
@@ -114,7 +114,7 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
       const el = wrapRef.current;
       if (!el || cancelled) return;
 
-      const baseOpts = resolveSshKubeBtXtermOptions(cfgQ.data);
+      const baseOpts = resolveSshLabPlaneXtermOptions(cfgQ.data);
       if (typeof fontSizeOverride === "number" && fontSizeOverride >= 10 && fontSizeOverride <= 28) {
         baseOpts.fontSize = fontSizeOverride;
       }
@@ -253,7 +253,7 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
 
   const hostCls =
     hostClassName ??
-    "vc-ssh-xterm-host h-[420px] max-h-[min(560px,70vh)] min-h-[280px] w-full shrink-0 overflow-hidden rounded-lg border border-gray-800 bg-[#1e1e1e] p-2";
+    "vc-ssh-xterm-host h-[clamp(240px,52dvh,420px)] max-h-[min(560px,70dvh)] min-h-0 w-full shrink-0 overflow-hidden rounded-lg border border-slate-800 bg-[#1e1e1e] p-2";
 
   if (!showOuterChrome) {
     if (!sshOk) {
@@ -300,12 +300,12 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
 
       {sshOk && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
             <span>
               目标 IP 由 vCenter Guest 信息决定
               {guestIpHint ? (
                 <>
-                  ，当前上报：<span className="font-mono text-gray-900">{guestIpHint}</span>
+                  ，当前上报：<span className="font-mono text-slate-900">{guestIpHint}</span>
                 </>
               ) : (
                 "（请确保已安装 Tools 并拿到 IP）"
@@ -313,9 +313,13 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
             </span>
             <div className="flex gap-2">
               {!started ? (
-                <Button type="button" size="sm" onClick={() => setStarted(true)}>
-                  连接 SSH
-                </Button>
+                autoConnect ? (
+                  <span className="text-slate-500">正在准备 SSH 连接…</span>
+                ) : (
+                  <Button type="button" size="sm" onClick={() => setStarted(true)}>
+                    连接 SSH
+                  </Button>
+                )
               ) : (
                 <Button
                   type="button"
@@ -335,7 +339,7 @@ const VCenterSshTerminal: React.FC<VCenterSshTerminalProps> = ({
             </div>
           </div>
           {started && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               {status === "connecting" && "正在连接…"}
               {status === "open" && "已连接 SSH"}
               {status === "closed" && "已断开"}

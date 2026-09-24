@@ -3,14 +3,14 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { sshXtermThemeForCurrentPreference } from "@/lib/sshTerminalPresets";
 
 /** 字号/字体/主题变更后派发，SSH 终端 hook 用于重建 xterm */
-export const KUBEBT_SSH_APPEARANCE_EVENT = "kubebt-ssh-appearance";
+export const LABPLANE_SSH_APPEARANCE_EVENT = "labplane-ssh-appearance";
 
-export function notifyKubeBtSshAppearanceChanged(): void {
-  window.dispatchEvent(new Event(KUBEBT_SSH_APPEARANCE_EVENT));
+export function notifyLabPlaneSshAppearanceChanged(): void {
+  window.dispatchEvent(new Event(LABPLANE_SSH_APPEARANCE_EVENT));
 }
 
 /** 与虚拟机 SSH 终端一致：深色背景、绿色光标、足够滚动缓冲 */
-export const kubeBtXtermOptions: ITerminalOptions = {
+export const labPlaneXtermOptions: ITerminalOptions = {
   cursorBlink: true,
   scrollback: 800,
   fontFamily: "SF Mono, ui-monospace, Menlo, Monaco, Consolas, monospace",
@@ -30,10 +30,10 @@ export type SshTerminalFontConfig = {
 };
 
 /** 合并后台 /api/config 或 runtime-config 中的 SSH 终端字体设置 */
-export function resolveKubeBtXtermOptions(cfg: SshTerminalFontConfig | null | undefined): ITerminalOptions {
+export function resolveLabPlaneXtermOptions(cfg: SshTerminalFontConfig | null | undefined): ITerminalOptions {
   const o: ITerminalOptions = {
-    ...kubeBtXtermOptions,
-    theme: kubeBtXtermOptions.theme ? { ...kubeBtXtermOptions.theme } : undefined,
+    ...labPlaneXtermOptions,
+    theme: labPlaneXtermOptions.theme ? { ...labPlaneXtermOptions.theme } : undefined,
   };
   const fam = cfg?.sshTerminalFontFamily?.trim();
   if (fam) o.fontFamily = fam;
@@ -43,8 +43,8 @@ export function resolveKubeBtXtermOptions(cfg: SshTerminalFontConfig | null | un
 }
 
 /** SSH：合并服务端字体 + 本机配色预设（localStorage） */
-export function resolveSshKubeBtXtermOptions(cfg: SshTerminalFontConfig | null | undefined): ITerminalOptions {
-  const base = resolveKubeBtXtermOptions(cfg);
+export function resolveSshLabPlaneXtermOptions(cfg: SshTerminalFontConfig | null | undefined): ITerminalOptions {
+  const base = resolveLabPlaneXtermOptions(cfg);
   const sshTheme = sshXtermThemeForCurrentPreference();
   return {
     ...base,

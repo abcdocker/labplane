@@ -72,13 +72,25 @@ export default function DnsDomains() {
   const saveMut = useMutation({
     mutationFn: async () => {
       const body = { ...form };
-      if (editID !== null) return apiPutJson(`/api/dns/domains/${editID}`, body);
-      return apiPostJson("/api/dns/domains", body);
+      if (editID !== null) {
+        return apiPutJson<{ domain: Domain; message: string }>(`/api/dns/domains/${editID}`, body);
+      }
+      return apiPostJson<{ id: number; message: string }>("/api/dns/domains", body);
     },
-    onSuccess: () => {
-      toast.success(editID !== null ? "域名已更新" : "域名已添加");
+    onSuccess: async (res) => {
+      const isEdit = editID !== null;
+      toast.success(isEdit ? "域名已更新" : "域名已添加");
       setDialogOpen(false);
-      void qc.invalidateQueries({ queryKey: ["dns-domains"] });
+      if (isEdit && "domain" in res && res.domain) {
+        const updated = res.domain;
+        qc.setQueryData<{ domains: Domain[] }>(["dns-domains"], (old) => {
+          if (!old) return old;
+          return {
+            domains: old.domains.map((d) => (d.id === editID ? updated : d)),
+          };
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["dns-domains"] });
     },
     onError: (e) => toast.error(fmtErr(e)),
   });

@@ -12,11 +12,11 @@ import (
 	"strings"
 )
 
-// deriveAESKey 从 KUBEBT_ENCRYPTION_KEY 得到 32 字节密钥：64 位十六进制视为原始字节，否则对字符串做 SHA256。
+// deriveAESKey 从 LABPLANE_ENCRYPTION_KEY 得到 32 字节密钥：64 位十六进制视为原始字节，否则对字符串做 SHA256。
 func deriveAESKey(raw string) ([]byte, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return nil, errors.New("KUBEBT_ENCRYPTION_KEY 未设置")
+		return nil, errors.New("LABPLANE_ENCRYPTION_KEY 未设置")
 	}
 	if len(raw) == 64 {
 		b, err := hex.DecodeString(raw)

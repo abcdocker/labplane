@@ -1,262 +1,351 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useAppConfig } from "@/hooks/use-app-config";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { apiGetJson, type AppConfig, wsUrlForApiPath } from "@/lib/api";
-import { bastionJqueryUrls } from "@/lib/assets-cdn";
+import RFB from "@novnc/novnc";
+import { Keyboard, Maximize2, RefreshCw, Scaling, StretchHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { apiPostJson } from "@/lib/api";
+import { vcenterConsoleText as t } from "./vcenterConsole.i18n";
 
-type WmksLike = {
-  connect: (url: string) => void;
-  disconnect?: () => void;
-  destroy?: () => void;
-};
+type ConsoleState = "connecting" | "connected" | "disconnected" | "error";
 
-function loadStylesheetOnce(href: string) {
-  if (document.querySelector(`link[href="${href}"]`)) return;
-  const l = document.createElement("link");
-  l.rel = "stylesheet";
-  l.href = href;
-  document.head.appendChild(l);
-}
-
-function loadScriptOnce(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const sel = `script[src="${src}"]`;
-    if (document.querySelector(sel)) {
-      resolve();
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = src;
-    s.async = false;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(src));
-    document.head.appendChild(s);
-  });
-}
-
-function wmksCreateFactory():
-  | ((id: string, o: Record<string, unknown>) => WmksLike)
-  | undefined {
-  const g = window as unknown as {
-    WMKS?: { createWMKS?: (id: string, o: Record<string, unknown>) => WmksLike };
-    VMwareWMKS?: { createWMKS?: (id: string, o: Record<string, unknown>) => WmksLike };
-  };
-  if (g.WMKS && typeof g.WMKS.createWMKS === "function") return g.WMKS.createWMKS;
-  if (g.VMwareWMKS && typeof g.VMwareWMKS.createWMKS === "function") return g.VMwareWMKS.createWMKS;
-  return undefined;
-}
-
-function jQueryWmksPlugin(): ((...args: unknown[]) => unknown) | undefined {
-  const $ = (window as unknown as { jQuery?: { fn?: Record<string, unknown> } }).jQuery;
-  const fn = $?.fn;
-  if (!fn) return undefined;
-  if (typeof fn.wmks === "function") return fn.wmks as (...args: unknown[]) => unknown;
-  if (typeof fn.WMKS === "function") return fn.WMKS as (...args: unknown[]) => unknown;
-  return undefined;
-}
-
-function wmksApiLikelyReady(): boolean {
-  return Boolean(wmksCreateFactory() || jQueryWmksPlugin());
-}
-
-function tryCreateWmks(containerId: string, wsUrl: string): { inst: WmksLike; cleanup: () => void } | null {
-  const create = wmksCreateFactory();
-  if (create) {
-    try {
-      const inst = create(containerId, {});
-      inst.connect(wsUrl);
-      return {
-        inst,
-        cleanup: () => {
-          try {
-            inst.disconnect?.();
-            inst.destroy?.();
-          } catch {
-            /* ignore */
-          }
-        },
-      };
-    } catch {
-      /* fall through to jQuery */
-    }
-  }
-
-  const $ = (window as unknown as { jQuery?: (sel: string) => unknown }).jQuery;
-  if ($) {
-    const $el = $(`#${containerId}`) as {
-      wmks?: (...a: unknown[]) => void;
-      WMKS?: (...a: unknown[]) => void;
-    };
-    const invoke = typeof $el.wmks === "function" ? $el.wmks.bind($el) : typeof $el.WMKS === "function" ? $el.WMKS.bind($el) : null;
-    if (invoke) {
-      try {
-        invoke({});
-        invoke("connect", wsUrl);
-        return {
-          inst: { connect: () => {} },
-          cleanup: () => {
-            try {
-              invoke("disconnect");
-            } catch {
-              /* ignore */
-            }
-          },
-        };
-      } catch {
-        return null;
-      }
-    }
-  }
-
-  return null;
-}
-
-function waitForWmksGlobals(maxMs: number, stepMs: number, cancelled: () => boolean): Promise<boolean> {
-  return new Promise((resolve) => {
-    const start = performance.now();
-    const tick = () => {
-      if (cancelled()) {
-        resolve(false);
-        return;
-      }
-      if (wmksApiLikelyReady()) {
-        resolve(true);
-        return;
-      }
-      if (performance.now() - start >= maxMs) {
-        resolve(wmksApiLikelyReady());
-        return;
-      }
-      window.setTimeout(tick, stepMs);
-    };
-    tick();
-  });
-}
-
-/**
- * 全屏 WebMKS。HTML Console SDK 依赖 jQuery + jQuery UI 先于 wmks.min.js 加载。
- */
-const VCenterBastionConsoleEmbed: React.FC = () => {
-  const { moref = "" } = useParams<{ moref: string }>();
-  const dec = decodeURIComponent(moref);
-  const cfgQ = useAppConfig();
+export const VCenterWebMKSConsole: React.FC<{
+  moref: string;
+  className?: string;
+  fitToContainer?: boolean;
+  /** 锁定客机会话分辨率，只保留浏览器全屏切换。 */
+  lockedViewport?: boolean;
+}> = ({ moref, className, fitToContainer = true, lockedViewport = false }) => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [msg, setMsg] = useState("正在准备 WebMKS（加载 jQuery / WMKS）…");
+  const screenRef = useRef<HTMLDivElement>(null);
+  const rfbRef = useRef<RFB | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<ConsoleState>("connecting");
+  const [message, setMessage] = useState(t("connecting"));
+  const [fit, setFit] = useState(lockedViewport ? false : fitToContainer);
+  const [stretch, setStretch] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const hideTimerRef = useRef<number | null>(null);
+  const resizeTimerRef = useRef<number | null>(null);
+  const resizingRef = useRef(false);
 
-  const wsUrl = wsUrlForApiPath(`/api/vcenter/vms/${encodeURIComponent(dec)}/console-ws`);
+  const requestRemoteResize = useCallback(
+    (width: number, height: number) => {
+      if (!moref || !fit || stretch) return;
+      if (width < 640 || height < 480) return;
+      if (resizingRef.current) return;
+      resizingRef.current = true;
+      apiPostJson(`/api/vcenter/vms/${encodeURIComponent(moref)}/screen-resolution`, {
+        width: Math.round(width),
+        height: Math.round(height),
+      })
+        .catch(() => {
+          // 静默失败：VMware Tools 可能未响应或 VM 不支持，前端仍有 resizeSession 兜底
+        })
+        .finally(() => {
+          resizingRef.current = false;
+        });
+    },
+    [moref, fit, stretch]
+  );
 
   useEffect(() => {
-    if (!dec) {
-      setMsg("缺少虚拟机 moRef。");
-      return;
-    }
-    if (!cfgQ.data) return;
+    const screen = screenRef.current;
+    if (!screen || !moref) return;
 
-    let cancelled = false;
-    let cleanup: (() => void) | null = null;
+    let active = true;
+    setState("connecting");
+    setMessage(t("connecting"));
+    screen.replaceChildren();
 
-    const run = async () => {
-      const cfg = cfgQ.data;
-      const jq = bastionJqueryUrls(cfg);
-      try {
-        loadStylesheetOnce(jq.jqueryUiCss);
-        await loadScriptOnce(jq.jquery);
-        await loadScriptOnce(jq.jqueryUiJs);
-      } catch (e) {
-        if (!cancelled) {
-          setMsg(
-            "加载 jQuery / jQuery UI 失败（可能被 CSP 拦截）。请在后台配置静态资源 CDN 并上传 edge/jquery* 文件，或允许访问默认脚本域名。"
-          );
-        }
-        return;
-      }
+    const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${scheme}//${window.location.host}/api/vcenter/vms/${encodeURIComponent(moref)}/console-ws`;
+    const socket = new WebSocket(wsUrl);
+    let serverCloseReason = "";
+    let serverCloseCode = 0;
+    const socketClosed = (event: CloseEvent) => {
+      serverCloseCode = event.code;
+      serverCloseReason = event.reason.trim();
+    };
+    socket.addEventListener("close", socketClosed);
 
-      const css = [cfg.vcenterWmksCssUrl, ...(cfg.vcenterWmksCssUrlCandidates ?? [])].filter(
-        Boolean
-      ) as string[];
-      const js = [cfg.vcenterWmksScriptUrl, ...(cfg.vcenterWmksScriptUrlCandidates ?? [])].filter(
-        Boolean
-      ) as string[];
+    const rfb = new RFB(screen, socket, { shared: true });
+    rfbRef.current = rfb;
+    // 在当前页面容器内自适应显示；是否向客机同步分辨率由 resizeSession 决定。
+    rfb.scaleViewport = true;
+    rfb.resizeSession = lockedViewport ? false : fit;
+    rfb.viewOnly = false;
+    rfb.showDotCursor = true;
+    rfb.background = "#020617";
 
-      for (const href of css) {
-        try {
-          loadStylesheetOnce(href);
-        } catch {
-          /* ignore */
-        }
-      }
-
-      let loaded = false;
-      for (const src of js) {
-        try {
-          await loadScriptOnce(src);
-          loaded = true;
-          break;
-        } catch {
-          /* try next */
-        }
-      }
-      if (cancelled) return;
-      if (!loaded) {
-        setMsg("无法加载 WMKS 脚本，请配置 VCENTER_WMKS_SCRIPT_URL。");
-        return;
-      }
-
-      const ready = await waitForWmksGlobals(4000, 40, () => cancelled);
-      if (cancelled) return;
-      if (!ready) {
-        setMsg(
-          "WMKS 脚本已加载，但仍未暴露 WMKS / VMwareWMKS.createWMKS 或 jQuery.wmks（部分版本延后挂载 API，可刷新重试；并确认与 vCenter 版本匹配的 wmks.min.js 且已加载 jQuery UI）。"
-        );
-        return;
-      }
-
-      const host = rootRef.current;
-      if (!host) return;
-      const id = "wmks-bastion-canvas";
-      host.innerHTML = "";
-      const inner = document.createElement("div");
-      inner.id = id;
-      inner.style.width = "100%";
-      inner.style.height = "100%";
-      host.appendChild(inner);
-
-      let created: { inst: WmksLike; cleanup: () => void } | null = null;
-      for (let attempt = 0; attempt < 8 && !created; attempt++) {
-        if (attempt > 0) {
-          await new Promise<void>((r) => {
-            requestAnimationFrame(() => requestAnimationFrame(() => r()));
-          });
-        }
-        created = tryCreateWmks(id, wsUrl);
-      }
-      if (!created) {
-        setMsg(
-          "WMKS API 已检测到，但创建实例失败（请确认 wmks.min.js 与 vCenter 版本一致，且 jQuery UI 在 WMKS 之前加载）。"
-        );
-        return;
-      }
-      cleanup = created.cleanup;
-      setMsg("");
+    const connected = () => {
+      if (!active) return;
+      setState("connected");
+      setMessage("");
+      rfb.focus({ preventScroll: true });
+    };
+    const disconnected = (event: Event) => {
+      if (!active) return;
+      const clean = Boolean((event as CustomEvent<{ clean?: boolean }>).detail?.clean);
+      setState(clean ? "disconnected" : "error");
+      setMessage(
+        serverCloseReason
+          ? serverCloseReason
+          : serverCloseCode === 1006
+          ? t("proxyUpgradeFailed")
+          : clean
+          ? t("disconnected")
+          : t("internalConnectionFailed")
+      );
+    };
+    const securityFailure = (event: Event) => {
+      if (!active) return;
+      const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason;
+      setState("error");
+      setMessage(
+        reason
+          ? t("securityNegotiationFailedWithReason", { reason })
+          : t("securityNegotiationFailed")
+      );
+    };
+    const credentialsRequired = () => {
+      if (!active) return;
+      setState("error");
+      setMessage(t("credentialsRequired"));
+      rfb.disconnect();
     };
 
-    void run();
+    rfb.addEventListener("connect", connected);
+    rfb.addEventListener("disconnect", disconnected);
+    rfb.addEventListener("securityfailure", securityFailure);
+    rfb.addEventListener("credentialsrequired", credentialsRequired);
 
     return () => {
-      cancelled = true;
-      cleanup?.();
+      active = false;
+      rfb.removeEventListener("connect", connected);
+      rfb.removeEventListener("disconnect", disconnected);
+      rfb.removeEventListener("securityfailure", securityFailure);
+      rfb.removeEventListener("credentialsrequired", credentialsRequired);
+      socket.removeEventListener("close", socketClosed);
+      rfb.disconnect();
+      rfbRef.current = null;
+      screen.replaceChildren();
     };
-  }, [cfgQ.data, dec, wsUrl]);
+  }, [attempt, moref]);
+
+  useEffect(() => {
+    if (rfbRef.current) {
+      rfbRef.current.resizeSession = lockedViewport ? false : fit;
+    }
+  }, [fit, lockedViewport]);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        window.clearTimeout(hideTimerRef.current);
+      }
+      if (resizeTimerRef.current) {
+        window.clearTimeout(resizeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || lockedViewport || !fit || stretch) return;
+
+    const scheduleResize = () => {
+      if (resizeTimerRef.current) {
+        window.clearTimeout(resizeTimerRef.current);
+      }
+      resizeTimerRef.current = window.setTimeout(() => {
+        const rect = root.getBoundingClientRect();
+        requestRemoteResize(rect.width, rect.height);
+      }, 500);
+    };
+
+    scheduleResize();
+    const ro = new ResizeObserver(scheduleResize);
+    ro.observe(root);
+    return () => {
+      ro.disconnect();
+      if (resizeTimerRef.current) {
+        window.clearTimeout(resizeTimerRef.current);
+      }
+    };
+  }, [fit, stretch, lockedViewport, requestRemoteResize]);
+
+  const showControls = () => {
+    setControlsVisible(true);
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+    }
+    hideTimerRef.current = window.setTimeout(() => {
+      setControlsVisible(false);
+    }, 3000);
+  };
+
+  const reconnect = () => setAttempt((value) => value + 1);
+
+  const toggleFit = () => setFit((value) => !value);
+
+  const toggleStretch = () => setStretch((value) => !value);
+
+  const enterFullscreen = async () => {
+    try {
+      await rootRef.current?.requestFullscreen();
+      rfbRef.current?.focus({ preventScroll: true });
+    } catch {
+      // 浏览器可能拒绝全屏请求。
+    }
+  };
+
+  const sendCtrlAltDel = () => {
+    rfbRef.current?.sendCtrlAltDel();
+    rfbRef.current?.focus({ preventScroll: true });
+  };
+
+  const showOverlay = state !== "connected";
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black">
-      {msg ? (
-        <div className="absolute inset-x-0 top-0 z-10 border-b border-amber-900/50 bg-amber-950/95 px-3 py-2 text-center text-xs text-amber-100">
-          {msg}
+    <div
+      ref={rootRef}
+      className={cn("relative min-h-0 overflow-hidden bg-black", className)}
+      onMouseDown={() => rfbRef.current?.focus({ preventScroll: true })}
+      onMouseMove={showControls}
+      onClick={showControls}
+    >
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-end gap-2 border-b border-white/10 bg-black/75 px-3 backdrop-blur-sm transition-opacity duration-300",
+          controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+        onMouseEnter={() => {
+          setControlsVisible(true);
+          if (hideTimerRef.current) {
+            window.clearTimeout(hideTimerRef.current);
+          }
+        }}
+        onMouseLeave={showControls}
+      >
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          className="bg-white/10 text-white hover:bg-white/20"
+          onClick={sendCtrlAltDel}
+          disabled={state !== "connected"}
+          title={t("ctrlAltDelete")}
+        >
+          <Keyboard className="h-4 w-4" />
+          <span className="sr-only">{t("ctrlAltDelete")}</span>
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          className="bg-white/10 text-white hover:bg-white/20"
+          onClick={reconnect}
+          title={t("newSession")}
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="sr-only">{t("newSession")}</span>
+        </Button>
+        {!lockedViewport && (
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className={cn(
+                "bg-white/10 text-white hover:bg-white/20",
+                fit && "ring-1 ring-blue-400"
+              )}
+              onClick={toggleFit}
+              disabled={state !== "connected"}
+              title={fit ? t("fitToContainerOn") : t("fitToContainerOff")}
+            >
+              <Scaling className="h-4 w-4" />
+              <span className="sr-only">{fit ? t("fitToContainerOn") : t("fitToContainerOff")}</span>
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className={cn(
+                "bg-white/10 text-white hover:bg-white/20",
+                stretch && "ring-1 ring-blue-400"
+              )}
+              onClick={toggleStretch}
+              disabled={state !== "connected"}
+              title={stretch ? t("stretchOff") : t("stretchOn")}
+            >
+              <StretchHorizontal className="h-4 w-4" />
+              <span className="sr-only">{stretch ? t("stretchOff") : t("stretchOn")}</span>
+            </Button>
+          </>
+        )}
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          className="bg-white/10 text-white hover:bg-white/20"
+          onClick={enterFullscreen}
+          title={t("fullscreen")}
+        >
+          <Maximize2 className="h-4 w-4" />
+          <span className="sr-only">{t("fullscreen")}</span>
+        </Button>
+      </div>
+
+      {showOverlay ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950 px-6 text-center text-sm text-slate-200">
+          <div>
+            <p>{message}</p>
+            {state !== "connecting" ? (
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-slate-600 bg-transparent text-slate-100"
+                  onClick={reconnect}
+                >
+                  {t("retry")}
+                </Button>
+                {message.includes("no such host") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => window.location.assign("/cluster/vcenter/settings")}
+                  >
+                    {t("configureESXi")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
-      <div ref={rootRef} className="h-full w-full" />
+
+      <div
+        ref={screenRef}
+        className={cn(
+          "h-full min-h-0 w-full bg-slate-950",
+          stretch && "vcenter-console-stretch"
+        )}
+      />
+    </div>
+  );
+};
+
+const VCenterBastionConsoleEmbed: React.FC = () => {
+  const { moref = "" } = useParams<{ moref: string }>();
+  const decoded = decodeURIComponent(moref);
+  return (
+    <div className="fixed inset-0 z-[100] bg-black">
+      <VCenterWebMKSConsole moref={decoded} className="h-full min-h-0" />
     </div>
   );
 };

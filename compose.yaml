@@ -1,0 +1,80 @@
+name: labplane
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?run bash scripts/init-compose-env.sh first}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-labplane}
+      MYSQL_USER: ${MYSQL_USER:-labplane}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?run bash scripts/init-compose-env.sh first}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?run bash scripts/init-compose-env.sh first}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?run bash scripts/init-compose-env.sh first}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      args:
+        BUILD_VERSION: compose
+        BASE_RUNTIME: ${BASE_RUNTIME:-gcr.io/distroless/static-debian12:nonroot}
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+    image: labplane:local
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${LABPLANE_BIND_ADDRESS:-127.0.0.1}:${LABPLANE_PORT:-18081}:8080"
+    environment:
+      TZ: Asia/Shanghai
+      DASHBOARD_HTTP_ADDR: :8080
+      DASHBOARD_USER: ${DASHBOARD_USER:-admin}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?run bash scripts/init-compose-env.sh first}
+      DASHBOARD_SESSION_SECRET: ${DASHBOARD_SESSION_SECRET:?run bash scripts/init-compose-env.sh first}
+      LABPLANE_ENCRYPTION_KEY: ${LABPLANE_ENCRYPTION_KEY:?run bash scripts/init-compose-env.sh first}
+      LABPLANE_DATA_DIR: /app/data
+      PLATFORM_PUBLIC_URL: ${PLATFORM_PUBLIC_URL:-http://127.0.0.1:${LABPLANE_PORT:-18081}}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-labplane}
+      MYSQL_USER: ${MYSQL_USER:-labplane}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?run bash scripts/init-compose-env.sh first}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?run bash scripts/init-compose-env.sh first}
+      SSH_SETTINGS_BACKEND: file
+      SSH_SETTINGS_DIR: /app/data/ssh-settings
+      LABPLANE_ENABLE_BACKGROUND_JOBS: "true"
+      LABPLANE_PERFORMANCE_MODE: "true"
+    volumes:
+      - app-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  app-data:
+  mysql-data:
+  redis-data:

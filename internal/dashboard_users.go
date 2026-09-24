@@ -31,11 +31,11 @@ func dashboardUserAuthenticate(db *sql.DB, login, password string) (dbUsername, 
 	var r string
 	var disabled bool
 	var dbUser string
-	q := `SELECT password_hash, role, disabled, username FROM kubebt_dashboard_users WHERE username = ? LIMIT 1`
+	q := `SELECT password_hash, role, disabled, username FROM labplane_dashboard_users WHERE username = ? LIMIT 1`
 	err = db.QueryRowContext(ctx, q, login).Scan(&hash, &r, &disabled, &dbUser)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = db.QueryRowContext(ctx,
-			`SELECT password_hash, role, disabled, username FROM kubebt_dashboard_users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND TRIM(COALESCE(email,'')) <> '' ORDER BY id ASC LIMIT 1`,
+			`SELECT password_hash, role, disabled, username FROM labplane_dashboard_users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND TRIM(COALESCE(email,'')) <> '' ORDER BY id ASC LIMIT 1`,
 			login).Scan(&hash, &r, &disabled, &dbUser)
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", "", false, false, nil
@@ -59,7 +59,7 @@ func dashboardUserAuthenticate(db *sql.DB, login, password string) (dbUsername, 
 	return dbUser, r, true, true, nil
 }
 
-// DashboardMysqlUserActive 若用户在 kubebt_dashboard_users 中存在且未禁用则 true；无行（非库内账号）则 true。
+// DashboardMysqlUserActive 若用户在 labplane_dashboard_users 中存在且未禁用则 true；无行（非库内账号）则 true。
 func DashboardMysqlUserActive(db *sql.DB, username string) bool {
 	if db == nil {
 		return true
@@ -71,7 +71,7 @@ func DashboardMysqlUserActive(db *sql.DB, username string) bool {
 	var dis int
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := db.QueryRowContext(ctx, `SELECT disabled FROM kubebt_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&dis)
+	err := db.QueryRowContext(ctx, `SELECT disabled FROM labplane_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&dis)
 	if errors.Is(err, sql.ErrNoRows) {
 		return true
 	}
@@ -102,7 +102,7 @@ func verifyDashboardUserCurrentPassword(db *sql.DB, ctx context.Context, usernam
 		return ErrLoginPasswordTooLong
 	}
 	var hash string
-	err := db.QueryRowContext(ctx, `SELECT password_hash FROM kubebt_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&hash)
+	err := db.QueryRowContext(ctx, `SELECT password_hash FROM labplane_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("库内无该平台用户")
 	}

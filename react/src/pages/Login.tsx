@@ -100,13 +100,13 @@ function LoginErrorPanel({ err, hint }: { err: string | null; hint: string | nul
   );
 }
 
-/** OIDC 入口：沿用 Login.css 运维卡片（login-card-ops / 顶条），与历史浅色样式一致 */
+/** OIDC 入口：只负责展示，跳转地址仍由服务端 OIDC 登录接口处理。 */
 function LoginOidcOpsCard({ href, showLocalDivider }: { href: string; showLocalDivider: boolean }) {
   return (
-    <div className="login-oidc-ops-card mb-7 space-y-3 sm:mb-8">
+    <div className="login-oidc-ops-card mb-6 space-y-3 sm:mb-7">
       <div
         className={cn(
-          "login-card login-card-ops relative overflow-hidden rounded-xl border border-slate-200/90 shadow-sm",
+          "login-card login-card-ops relative overflow-hidden rounded-2xl border border-slate-200/90 shadow-sm",
           "dark:border-slate-600/90"
         )}
       >
@@ -114,23 +114,25 @@ function LoginOidcOpsCard({ href, showLocalDivider }: { href: string; showLocalD
         <a
           href={href}
           className={cn(
-            "login-oidc-ops-link group flex min-h-[3.5rem] w-full items-center gap-3 px-4 py-4 pl-5 transition sm:min-h-[3.75rem] sm:gap-4 sm:px-5 sm:py-5",
+            "login-oidc-ops-link group flex min-h-[4.25rem] w-full items-center gap-3 px-4 py-4 pl-5 transition sm:min-h-[4.5rem] sm:gap-4 sm:px-5 sm:py-5",
             "text-left text-slate-900 dark:text-slate-100",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950"
           )}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/12 to-indigo-500/12 ring-1 ring-slate-200/90 dark:from-cyan-400/10 dark:to-indigo-400/10 dark:ring-slate-600">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/12 to-indigo-500/12 ring-1 ring-slate-200/90 dark:from-cyan-400/10 dark:to-indigo-400/10 dark:ring-slate-600">
             <Shield className="h-5 w-5 text-[#0891b2] dark:text-cyan-400" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-              SSO · OIDC
+              SSO · OIDC · Authentik
             </p>
-            <p className="truncate text-base font-semibold sm:text-lg">使用 i4t SSO 登录</p>
-            <p className="truncate text-xs text-slate-500 sm:text-[13px] dark:text-slate-400">跳转授权后返回控制台</p>
+            <p className="truncate text-base font-semibold sm:text-lg">使用统一身份认证登录</p>
+            <p className="truncate text-xs text-slate-500 sm:text-[13px] dark:text-slate-400">
+              跳转到 IdP 授权，完成后自动回到控制台
+            </p>
           </div>
           <ChevronRight
-            className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#1a5ec8] dark:group-hover:text-cyan-400"
+            className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#7c3aed] dark:group-hover:text-cyan-400"
             aria-hidden
           />
         </a>
@@ -138,7 +140,9 @@ function LoginOidcOpsCard({ href, showLocalDivider }: { href: string; showLocalD
       {showLocalDivider ? (
         <div className="flex items-center gap-2.5 pt-0.5 sm:gap-3">
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400">或本地账号</span>
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            或使用本地账号
+          </span>
           <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
         </div>
       ) : null}
@@ -244,7 +248,7 @@ function LoginLeftStatusPanel({ sc, loading }: { sc: SystemCheck | undefined; lo
         {metrics.map((m) => (
           <div key={m.label} className="flex min-w-0 flex-col gap-1 min-[380px]:max-w-none sm:max-w-[220px]">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-              <span className="text-[var(--login-v2-primary,#1a5ec8)]">{m.icon}</span>
+              <span className="text-[var(--login-v2-primary,#7c3aed)]">{m.icon}</span>
               <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{m.value}</span>
             </div>
             <span className="text-xs text-slate-500 dark:text-slate-400">{m.label}</span>
@@ -303,6 +307,79 @@ const TECH_ITEMS = [
   },
 ] as const;
 
+function LoginCapabilityGrid({ sc, loading }: { sc: SystemCheck | undefined; loading: boolean }) {
+  const cards = [
+    {
+      title: "Kubernetes / Ingress",
+      desc: "集群资源、工作负载、YAML、Pod 终端与 Ingress 发布。",
+      status: loading ? "检测中" : sc?.k8s?.ingressInstalled ? "Ingress 已检测" : "等待接入",
+      tone: "blue",
+      icon: <Layers className="h-4 w-4" />,
+    },
+    {
+      title: "宝塔同步 / DDNS",
+      desc: "将受管 Ingress 自动同步为宝塔站点与 HTTPS 反向代理。",
+      status: loading
+        ? "检测中"
+        : `${shortStatusLabel(sc?.baota?.status ?? "")} · ${shortStatusLabel(sc?.ddns?.status ?? "")}`,
+      tone: "emerald",
+      icon: <Server className="h-4 w-4" />,
+    },
+    {
+      title: "vCenter / SSH / 控制台",
+      desc: "虚拟机详情、vSphere 控制台、堡垒机 SSH、SFTP 与主机监控。",
+      status: "登录后可用",
+      tone: "violet",
+      icon: <Terminal className="h-4 w-4" />,
+    },
+    {
+      title: "审计与安全",
+      desc: "登录限流、TOTP、OIDC、权限控制、异地登录提醒与平台审计。",
+      status: "安全登录",
+      tone: "cyan",
+      icon: <Shield className="h-4 w-4" />,
+    },
+  ];
+
+  return (
+    <div className="login-v2-fade-in-up login-v2-d300 grid gap-3 sm:grid-cols-2">
+      {cards.map((card) => (
+        <div
+          key={card.title}
+          className={cn(
+            "login-feature-card rounded-2xl border bg-white/88 p-4 shadow-sm backdrop-blur dark:bg-slate-900/62",
+            card.tone === "blue" && "border-blue-200/80 dark:border-blue-900/60",
+            card.tone === "emerald" && "border-emerald-200/80 dark:border-emerald-900/60",
+            card.tone === "violet" && "border-violet-200/80 dark:border-violet-900/60",
+            card.tone === "cyan" && "border-cyan-200/80 dark:border-cyan-900/60"
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                card.tone === "blue" && "bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300",
+                card.tone === "emerald" && "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+                card.tone === "violet" && "bg-violet-50 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300",
+                card.tone === "cyan" && "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-300"
+              )}
+            >
+              {card.icon}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{card.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{card.desc}</p>
+              <p className="mt-3 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                {card.status}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -310,7 +387,6 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [usernameUnlocked, setUsernameUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [errHint, setErrHint] = useState<string | null>(null);
@@ -443,13 +519,25 @@ const Login: React.FC = () => {
       setLoginSuccess(true);
     } catch (e) {
       if (e instanceof ApiHttpError && e.path.includes("/api/auth/login")) {
-        setErr(mapLoginApiError(e));
+        const msg = mapLoginApiError(e);
+        setErr(msg);
         setErrHint(e.serverHint?.trim() ? e.serverHint : null);
+        // 若后端提示需要验证码（如连续失败或验证码缺失），同步刷新 challenge 确保输入框立即出现
+        if (msg.includes("验证码")) {
+          try {
+            const c = await fetchLoginChallenge();
+            setChallenge(c);
+          } catch {
+            /* ignore */
+          }
+        } else {
+          void fetchLoginChallenge().then(setChallenge);
+        }
       } else {
         setErr((e as Error).message);
         setErrHint(null);
+        void fetchLoginChallenge().then(setChallenge);
       }
-      void fetchLoginChallenge().then(setChallenge);
       setCaptchaAnswer("");
     } finally {
       setSubmitting(false);
@@ -484,7 +572,7 @@ const Login: React.FC = () => {
       <div
         className="login-page-v2-scan-line pointer-events-none absolute left-0 right-0 top-0 h-px opacity-20"
         style={{
-          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #1a5ec8), transparent)",
+          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #7c3aed), transparent)",
         }}
       />
       <div
@@ -504,7 +592,15 @@ const Login: React.FC = () => {
         <div className="absolute inset-0 z-0">{shell}</div>
         <div className="relative z-10 flex min-h-[100dvh] min-h-screen w-full items-center justify-center px-4 py-6">
           <div className="login-v2-fade-in-up mx-auto flex w-full max-w-[min(100vw-2rem,400px)] flex-col items-center gap-4 rounded-2xl border border-slate-200/90 bg-white/95 px-6 py-7 shadow-sm sm:px-10 sm:py-8 dark:border-slate-700 dark:bg-slate-900/90">
-            <img src={BRAND_LOGO} alt="" width={200} height={61} className="h-9 w-auto object-contain opacity-90 sm:h-10" />
+            <div className="flex items-center gap-3">
+              <img src={BRAND_LOGO} alt="" width={48} height={48} className="h-11 w-11 object-contain" />
+              <div>
+                <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">LabPlane</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-cyan-300">
+                  Your HomeLab Control Plane
+                </p>
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
               <span className="text-sm text-slate-500">加载中</span>
@@ -524,7 +620,10 @@ const Login: React.FC = () => {
         <div className="absolute inset-0 z-0">{shell}</div>
         <div className="relative z-10 flex min-h-[100dvh] min-h-screen w-full items-center justify-center px-4 py-6">
           <div className="login-v2-fade-in-up mx-auto flex w-full max-w-[min(100vw-2rem,400px)] flex-col items-center gap-4 rounded-2xl border border-slate-200/90 bg-white/95 px-6 py-7 shadow-sm sm:px-10 sm:py-8 dark:border-slate-700 dark:bg-slate-900/90">
-            <img src={BRAND_LOGO} alt="" width={200} height={61} className="h-9 w-auto object-contain opacity-90 sm:h-10" />
+            <div className="flex items-center gap-3">
+              <img src={BRAND_LOGO} alt="" width={48} height={48} className="h-11 w-11 object-contain" />
+              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">LabPlane</span>
+            </div>
             <span className="text-sm text-slate-500">正在跳转</span>
           </div>
         </div>
@@ -540,50 +639,48 @@ const Login: React.FC = () => {
       <div
         className="login-page-v2-scan-line pointer-events-none absolute left-0 right-0 top-0 h-px opacity-15 dark:opacity-25"
         style={{
-          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #1a5ec8), transparent)",
+          background: "linear-gradient(90deg, transparent, var(--login-v2-primary, #7c3aed), transparent)",
         }}
       />
       <div
         className="pointer-events-none absolute left-1/4 top-1/4 h-96 w-96 rounded-full blur-3xl opacity-[0.05] dark:opacity-[0.08]"
-        style={{ background: "#326de6" }}
+        style={{ background: "#7c3aed" }}
       />
       <div
         className="pointer-events-none absolute bottom-1/4 right-1/3 h-72 w-72 rounded-full blur-3xl opacity-[0.04] dark:opacity-[0.07]"
-        style={{ background: "#6ab04c" }}
+        style={{ background: "#22d3ee" }}
       />
 
       {loginSuccess && <LoginSuccessOverlay />}
 
-      <div className="relative z-10 mx-auto w-full max-w-[min(100%,92rem)] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-7 md:px-9 lg:px-12 lg:pb-10 lg:pt-8 xl:px-14 xl:pt-10">
+      <div className="relative z-10 mx-auto w-full max-w-[min(100%,92rem)] px-5 pb-[max(1.25rem,var(--labplane-safe-bottom,env(safe-area-inset-bottom)))] pt-[max(0.75rem,var(--labplane-safe-top,env(safe-area-inset-top)))] sm:px-7 md:px-9 lg:px-12 lg:pb-10 lg:pt-8 xl:px-14 xl:pt-10">
         <div className="grid w-full grid-cols-1 content-start gap-y-10 gap-x-0 py-6 sm:gap-y-12 sm:py-8 md:py-10 lg:min-h-[100dvh] lg:grid-cols-[minmax(0,1.14fr)_minmax(0,0.86fr)] lg:content-center lg:items-center lg:gap-x-12 lg:gap-y-0 lg:py-14 xl:gap-x-16 2xl:gap-x-20">
         {/* 左栏：大屏在左；小屏排在登录表单之后 */}
         <div className="order-2 flex min-h-0 w-full flex-col justify-center border-t border-slate-200/80 pt-8 dark:border-slate-800/80 lg:order-none lg:border-t-0 lg:border-r lg:border-b-0 lg:pt-0 lg:pb-0 lg:pr-10 xl:pr-14">
           <div className="mx-auto flex w-full max-w-xl flex-col space-y-7 sm:space-y-8 lg:mx-0 lg:max-w-[min(100%,46rem)] xl:max-w-[50rem]">
-            <div className="login-v2-fade-in-up login-v2-d100 mb-5 flex flex-wrap items-center gap-2 sm:mb-8 sm:gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1a5ec8] shadow-sm">
-                <Shield className="h-5 w-5 text-white" aria-hidden />
+            <div className="login-v2-fade-in-up login-v2-d100 mb-5 flex flex-wrap items-center gap-3 sm:mb-8">
+              <img src={BRAND_LOGO} alt="" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+              <div className="mr-1">
+                <p className="text-2xl font-bold tracking-[-0.035em] text-slate-950 sm:text-3xl dark:text-white">LabPlane</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600 sm:text-[11px] dark:text-cyan-300">
+                  Your HomeLab Control Plane
+                </p>
               </div>
-              <img src={BRAND_LOGO} alt="" className="h-9 w-auto max-w-[200px] object-contain sm:h-10" />
               <span
-                className="rounded-full border px-2 py-0.5 text-xs font-semibold"
-                style={{
-                  borderColor: "rgba(106,176,76,0.35)",
-                  color: "#3d7a2e",
-                  background: "rgba(106,176,76,0.12)",
-                }}
+                className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-200"
               >
-                运行状态
+                私有部署
               </span>
             </div>
 
             <div className="login-v2-fade-in-up login-v2-d200 mb-3 sm:mb-4">
               <h1 className="mb-2 text-[1.65rem] font-bold leading-[1.2] tracking-tight text-slate-900 sm:mb-3 sm:text-3xl sm:leading-tight md:text-4xl lg:text-[2.65rem] xl:text-5xl dark:text-slate-50">
-                云原生基础设施
+                一个平台，掌控你的
                 <br />
-                <span className="text-[#1a5ec8]">管理平台</span>
+                <span className="login-brand-heading">HomeLab 全栈基础设施</span>
               </h1>
               <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-400">
-                统一管理 Kubernetes、容器工作负载、监控与虚拟化等能力；登录后按权限访问各模块。
+                统一管理 Kubernetes、Ingress 发布、异地组网、vCenter、SSH 堡垒机、监控与安全审计。基础设施很复杂，入口不必复杂。
               </p>
             </div>
 
@@ -602,59 +699,19 @@ const Login: React.FC = () => {
               ))}
             </div>
 
-            <div
-              className="login-v2-fade-in-up login-v2-d300 w-full rounded-2xl border border-slate-200/90 bg-white/90 px-5 py-4 shadow-sm sm:px-6 sm:py-5 dark:border-slate-700 dark:bg-slate-900/60"
-              style={{ borderLeft: "3px solid #6ab04c" }}
-            >
-              <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-4">
-                <VCenterLogo size={18} />
-                <span className="text-xs font-bold uppercase tracking-wider text-[#4a8c3a]">基础设施探活</span>
-                <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  未登录可见
-                </span>
-              </div>
-              <p className="mb-4 text-xs leading-relaxed text-slate-500 sm:text-sm dark:text-slate-400">
-                宝塔仅显示 TCP/状态与说明，<strong className="text-slate-700 dark:text-slate-200">不展示面板地址</strong>
-                ；DDNS 与 Ingress 仅展示状态类摘要（不展示域名与节点地址）。
-              </p>
+            <LoginCapabilityGrid sc={sc} loading={pubQ.isPending} />
+
+            <div className="login-v2-fade-in-up login-v2-d400 rounded-2xl border border-slate-200/90 bg-slate-50/80 px-5 py-4 text-xs leading-relaxed text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
               {pubQ.isError ? (
-                <p className="text-sm text-amber-700 dark:text-amber-300">状态暂不可用（{String(pubQ.error?.message ?? "错误")}）</p>
+                <span className="text-amber-700 dark:text-amber-300">
+                  未登录探活暂不可用：{String(pubQ.error?.message ?? "错误")}
+                </span>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-3 sm:gap-5">
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">宝塔</p>
-                    <p className="mt-0.5 text-base font-semibold text-slate-900 dark:text-slate-100">
-                      {pubQ.isPending ? "…" : shortStatusLabel(sc?.baota?.status ?? "")}
-                    </p>
-                    {sc?.baota?.msg ? (
-                      <p className="mt-2 line-clamp-3 text-xs text-slate-500 dark:text-slate-400">{sc.baota.msg}</p>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">DDNS</p>
-                    <p className="mt-0.5 text-base font-semibold text-slate-900 dark:text-slate-100">
-                      {pubQ.isPending ? "…" : shortStatusLabel(sc?.ddns?.status ?? "")}
-                    </p>
-                    {sc?.ddns?.msg ? (
-                      <p className="mt-2 line-clamp-3 text-xs text-slate-500 dark:text-slate-400">{sc.ddns.msg}</p>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Ingress</p>
-                    <p className="mt-0.5 text-base font-semibold text-slate-900 dark:text-slate-100">
-                      {pubQ.isPending ? "…" : sc?.k8s?.ingressInstalled ? "已检测" : "未检测"}
-                    </p>
-                    {sc?.k8s?.ingressHostNetwork ? (
-                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">主机网络模式</p>
-                    ) : sc?.k8s?.ingressInstalled ? (
-                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">控制器就绪</p>
-                    ) : null}
-                  </div>
-                </div>
+                <>
+                  未登录仅展示状态摘要，不暴露宝塔地址、DDNS 域名、节点地址、API Key、日志或 Secret。登录后将按账号角色加载完整工作台。
+                </>
               )}
             </div>
-
-            <LoginLeftStatusPanel sc={sc} loading={pubQ.isPending} />
           </div>
         </div>
 
@@ -664,28 +721,49 @@ const Login: React.FC = () => {
             <div className="login-v2-fade-in-up login-v2-d200 login-card-glow-v2 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm sm:rounded-3xl sm:p-8 md:p-10 dark:border-slate-700 dark:bg-slate-900/85">
               <div className="mb-6 sm:mb-8">
                 <div className="flex items-center gap-3 sm:gap-3.5">
-                  <Terminal className="h-6 w-6 shrink-0 text-[#1a5ec8] sm:h-7 sm:w-7" aria-hidden />
-                  <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem] dark:text-slate-50">登录账户</h2>
+                  <Terminal className="h-6 w-6 shrink-0 text-[#7c3aed] sm:h-7 sm:w-7" aria-hidden />
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem] dark:text-slate-50">
+                      登录 LabPlane
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      OIDC 与本地账号可并存，跳转后会回到原访问页面。
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="mb-6 flex flex-wrap content-start gap-2 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 sm:mb-8 sm:gap-2.5 sm:px-4 sm:py-3 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="mb-6 flex flex-wrap content-start gap-2 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 sm:mb-7 sm:gap-2.5 sm:px-4 sm:py-3 dark:border-slate-700 dark:bg-slate-800/50">
                 <span className="w-full shrink-0 text-xs font-medium text-slate-500 sm:w-auto dark:text-slate-400">
-                  平台组件
+                  可用入口
                 </span>
-                {TECH_ITEMS.map((t) => (
+                {showOidc ? (
                   <span
-                    key={t.name}
                     className="rounded-md border px-2 py-1 text-xs font-semibold dark:border-slate-600"
                     style={{
-                      background: `${t.color}14`,
-                      color: t.color,
-                      borderColor: `${t.color}33`,
+                      background: "#0891b214",
+                      color: "#0891b2",
+                      borderColor: "#0891b233",
                     }}
                   >
-                    {t.name}
+                    OIDC SSO
                   </span>
-                ))}
+                ) : null}
+                {showPassword ? (
+                  <span
+                    className="rounded-md border px-2 py-1 text-xs font-semibold dark:border-slate-600"
+                    style={{
+                      background: "#7c3aed14",
+                      color: "#7c3aed",
+                      borderColor: "#7c3aed33",
+                    }}
+                  >
+                    本地密码
+                  </span>
+                ) : null}
+                <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  安全会话
+                </span>
               </div>
 
               {showOidc ? <LoginOidcOpsCard href={oidcHref} showLocalDivider={showPassword} /> : null}
@@ -707,18 +785,16 @@ const Login: React.FC = () => {
                       autoCorrect="off"
                       autoCapitalize="off"
                       spellCheck={false}
-                      readOnly={!usernameUnlocked}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       onFocus={() => {
-                        setUsernameUnlocked(true);
                         setFocusedField("username");
                       }}
                       onBlur={() => setFocusedField(null)}
                       placeholder="用户名"
                       className={cn(
                         "login-v2-input h-12 rounded-xl border bg-white px-4 text-base transition dark:border-slate-600 dark:bg-slate-950 sm:text-sm",
-                        focusedField === "username" ? "border-[#1a5ec8] ring-0" : "border-slate-200"
+                        focusedField === "username" ? "border-[#7c3aed] ring-0" : "border-slate-200"
                       )}
                     />
                   </div>
@@ -739,7 +815,7 @@ const Login: React.FC = () => {
                         onBlur={() => setFocusedField(null)}
                         className={cn(
                           "login-v2-input h-12 rounded-xl border bg-white pr-11 pl-4 text-base transition dark:border-slate-600 dark:bg-slate-950 sm:text-sm",
-                          focusedField === "password" ? "border-[#1a5ec8] ring-0" : "border-slate-200"
+                          focusedField === "password" ? "border-[#7c3aed] ring-0" : "border-slate-200"
                         )}
                       />
                       <button
@@ -775,7 +851,7 @@ const Login: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1a5ec8] to-[#0891b2] text-base font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-60 sm:text-sm"
+                    className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#0891b2] text-base font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-60 sm:text-sm"
                   >
                     {submitting ? (
                       <>认证中…</>

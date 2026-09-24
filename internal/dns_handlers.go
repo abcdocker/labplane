@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	mysql "github.com/go-sql-driver/mysql"
 	"github.com/gin-gonic/gin"
+	mysql "github.com/go-sql-driver/mysql"
 )
 
 // registerDnsAppCenterRoutes registers all /api/dns/* routes.
@@ -173,6 +174,41 @@ func handleDnsAccountGet(c *gin.Context, app *ServerApp) {
 	})
 }
 
+// validateDNSProviderCredentials validates provider-specific credentials before save.
+func validateDNSProviderCredentials(ctx context.Context, provider string, cfg map[string]string) error {
+	switch strings.ToLower(provider) {
+	case "tencent", "tencentcloud", "dnspod":
+		secretID := cfg["secretId"]
+		secretKey := cfg["secretKey"]
+		if secretID == "" || secretKey == "" {
+			return fmt.Errorf("腾讯云账号必须填写 SecretId 和 SecretKey")
+		}
+		if _, err := testTencentCredentials(ctx, secretID, secretKey); err != nil {
+			return fmt.Errorf("腾讯云凭证验证失败: %w", err)
+		}
+	case "qiniu":
+		ak := cfg["accessKey"]
+		sk := cfg["secretKey"]
+		if ak == "" || sk == "" {
+			return fmt.Errorf("七牛云账号必须填写 AccessKey 和 SecretKey")
+		}
+		if err := testQiniuCredentials(ctx, ak, sk); err != nil {
+			return fmt.Errorf("七牛云凭证验证失败: %w", err)
+		}
+	case "upyun":
+		serviceName := cfg["serviceName"]
+		operator := cfg["operator"]
+		password := cfg["password"]
+		if serviceName == "" || operator == "" || password == "" {
+			return fmt.Errorf("又拍云账号必须填写服务名、操作员和密码")
+		}
+		if err := testUpyunCredentials(ctx, serviceName, operator, password); err != nil {
+			return fmt.Errorf("又拍云凭证验证失败: %w", err)
+		}
+	}
+	return nil
+}
+
 func handleDnsAccountCreate(c *gin.Context, app *ServerApp) {
 	if !dnsRequireWrite(c) {
 		return
@@ -198,6 +234,12 @@ func handleDnsAccountCreate(c *gin.Context, app *ServerApp) {
 	cfgJSON, _ := json.Marshal(body.Config)
 	user, _ := c.Get("dashboardUser")
 	createdBy, _ := user.(string)
+
+	// Validate provider credentials if applicable
+	if err := validateDNSProviderCredentials(c.Request.Context(), body.Provider, body.Config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
@@ -262,6 +304,15 @@ func handleDnsAccountUpdate(c *gin.Context, app *ServerApp) {
 		}
 	}
 	cfgJSON, _ := json.Marshal(body.Config)
+
+	// Validate provider credentials if applicable
+	var checkCfg map[string]string
+	_ = json.Unmarshal(cfgJSON, &checkCfg)
+	if err := validateDNSProviderCredentials(c.Request.Context(), body.Provider, checkCfg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := dnsAccountUpdate(ctx, db, id, body.Name, body.Provider, string(cfgJSON), body.Remark); err != nil {
 		RespondAPIError500(c, err.Error())
 		return
@@ -301,7 +352,9 @@ func handleDnsAccountTest(c *gin.Context, app *ServerApp) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var body struct{ Domain string `json:"domain"` }
+	var body struct {
+		Domain string `json:"domain"`
+	}
 	_ = c.ShouldBindJSON(&body)
 	testDomain := strings.TrimSpace(body.Domain)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
@@ -494,7 +547,12 @@ func handleDnsDomainUpdate(c *gin.Context, app *ServerApp) {
 		RespondAPIError500(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "域名已更新"})
+	d, err := dnsDomainGet(ctx, db, id)
+	if err != nil {
+		RespondAPIError500(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"domain": d, "message": "域名已更新"})
 }
 
 func handleDnsDomainDelete(c *gin.Context, app *ServerApp) {
@@ -572,7 +630,7 @@ func handleDnsRecordSync(c *gin.Context, app *ServerApp) {
 	}
 	acc, err := dnsAccountGet(ctx, db, domain.AccountID)
 	if err != nil {
-		RespondAPIError500(c, "获取账号信息失败: " + err.Error())
+		RespondAPIError500(c, "获取账号信息失败: "+err.Error())
 		return
 	}
 	client, err := newDnsProviderClient(acc.Provider, acc.ConfigJSON)
@@ -770,7 +828,9 @@ func handleDnsRecordSetStatus(c *gin.Context, app *ServerApp) {
 		return
 	}
 	recordID := c.Param("rid")
-	var body struct{ Enabled bool `json:"enabled"` }
+	var body struct {
+		Enabled bool `json:"enabled"`
+	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1161,7 +1221,7 @@ func handleDnsCertCreate(c *gin.Context, app *ServerApp) {
 	order := DnsCertOrder{
 		Name: body.Name, AccountID: body.AccountID,
 		Domains: string(domainsJSON),
-		Email: body.Email, AutoRenew: body.AutoRenew,
+		Email:   body.Email, AutoRenew: body.AutoRenew,
 		BaotaSiteName: strings.TrimSpace(body.BaotaSiteName),
 		AutoPushBaota: body.AutoPushBaota,
 		CreatedBy:     createdBy,

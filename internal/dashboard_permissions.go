@@ -26,7 +26,7 @@ const (
 	AppCenterRedisScopeManagedOnly = "managed_only"
 )
 
-// DashboardPermissionsJSON 存于 kubebt_dashboard_users.permissions_json。
+// DashboardPermissionsJSON 存于 labplane_dashboard_users.permissions_json。
 type DashboardPermissionsJSON struct {
 	K8s       string `json:"k8s"`
 	VCenter   string `json:"vcenter"`
@@ -58,14 +58,14 @@ type EffectiveDashboardPermissions struct {
 	AppCenterRedis string
 	// AppCenterCloudVm: full | readonly | managed_only（空表示与 AppCenterRedis 相同）
 	AppCenterCloudVm string
-	MaskSensitive  bool
+	MaskSensitive    bool
 	// LegacyViewer 为 true 时保留原有 viewer 路径黑名单（与自定义 JSON 互斥）。
 	LegacyViewer bool
 	K8sPodExec   bool
 	K8sPodDelete bool
 	// AppCenterCloudVmHysteriaReveal 验证平台密码后可查看 Hysteria2 客户端敏感配置；admin 恒为 true。
 	AppCenterCloudVmHysteriaReveal bool
-	Menu         map[string]bool
+	Menu                           map[string]bool
 }
 
 const ginKeyDashboardPermissions = "dashboardPermissions"
@@ -82,14 +82,14 @@ func normalizeModuleAccess(s string) string {
 
 func defaultEffectiveAdmin() *EffectiveDashboardPermissions {
 	return &EffectiveDashboardPermissions{
-		K8s:            ModuleAccessRW,
-		VCenter:        ModuleAccessRW,
-		Baota:          ModuleAccessRW,
-		AppCenter:        ModuleAccessRW,
-		AppCenterRedis:   AppCenterRedisScopeFull,
-		AppCenterCloudVm: AppCenterRedisScopeFull,
-		MaskSensitive:  false,
-		LegacyViewer:   false,
+		K8s:                            ModuleAccessRW,
+		VCenter:                        ModuleAccessRW,
+		Baota:                          ModuleAccessRW,
+		AppCenter:                      ModuleAccessRW,
+		AppCenterRedis:                 AppCenterRedisScopeFull,
+		AppCenterCloudVm:               AppCenterRedisScopeFull,
+		MaskSensitive:                  false,
+		LegacyViewer:                   false,
 		K8sPodExec:                     true,
 		K8sPodDelete:                   true,
 		AppCenterCloudVmHysteriaReveal: true,
@@ -99,14 +99,14 @@ func defaultEffectiveAdmin() *EffectiveDashboardPermissions {
 
 func defaultEffectiveLegacyViewer() *EffectiveDashboardPermissions {
 	return &EffectiveDashboardPermissions{
-		K8s:            ModuleAccessRO,
-		VCenter:        ModuleAccessRO,
-		Baota:          ModuleAccessRO,
-		AppCenter:        ModuleAccessRO,
-		AppCenterRedis:   AppCenterRedisScopeFull,
-		AppCenterCloudVm: AppCenterRedisScopeFull,
-		MaskSensitive:  true,
-		LegacyViewer:   true,
+		K8s:                            ModuleAccessRO,
+		VCenter:                        ModuleAccessRO,
+		Baota:                          ModuleAccessRO,
+		AppCenter:                      ModuleAccessRO,
+		AppCenterRedis:                 AppCenterRedisScopeFull,
+		AppCenterCloudVm:               AppCenterRedisScopeFull,
+		MaskSensitive:                  true,
+		LegacyViewer:                   true,
 		K8sPodExec:                     false,
 		K8sPodDelete:                   false,
 		AppCenterCloudVmHysteriaReveal: false,
@@ -148,18 +148,18 @@ func effectivePermissionsFromJSON(role string, raw string) *EffectiveDashboardPe
 		hyReveal = true
 	}
 	out := &EffectiveDashboardPermissions{
-		K8s:              k8sAcc,
-		VCenter:          normalizeModuleAccess(j.VCenter),
-		Baota:            normalizeModuleAccess(j.Baota),
-		AppCenter:        normalizeModuleAccess(j.AppCenter),
-		AppCenterRedis:   redisScope,
-		AppCenterCloudVm: cloudVmScope,
-		MaskSensitive:    mask,
-		LegacyViewer:     false,
-		K8sPodExec:       resolveK8sPodBool(j.K8sPodExec, k8sAcc, true),
-		K8sPodDelete:     resolveK8sPodBool(j.K8sPodDelete, k8sAcc, true),
+		K8s:                            k8sAcc,
+		VCenter:                        normalizeModuleAccess(j.VCenter),
+		Baota:                          normalizeModuleAccess(j.Baota),
+		AppCenter:                      normalizeModuleAccess(j.AppCenter),
+		AppCenterRedis:                 redisScope,
+		AppCenterCloudVm:               cloudVmScope,
+		MaskSensitive:                  mask,
+		LegacyViewer:                   false,
+		K8sPodExec:                     resolveK8sPodBool(j.K8sPodExec, k8sAcc, true),
+		K8sPodDelete:                   resolveK8sPodBool(j.K8sPodDelete, k8sAcc, true),
 		AppCenterCloudVmHysteriaReveal: hyReveal,
-		Menu:             j.Menu,
+		Menu:                           j.Menu,
 	}
 	if role == DashboardRoleAdmin {
 		return defaultEffectiveAdmin()
@@ -192,7 +192,7 @@ func LoadEffectiveDashboardPermissions(db *sql.DB, username, role string) *Effec
 	var raw sql.NullString
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	err := db.QueryRowContext(ctx, `SELECT permissions_json FROM kubebt_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&raw)
+	err := db.QueryRowContext(ctx, `SELECT permissions_json FROM labplane_dashboard_users WHERE username=? LIMIT 1`, u).Scan(&raw)
 	if err != nil || !raw.Valid || strings.TrimSpace(raw.String) == "" {
 		return defaultEffectiveLegacyViewer()
 	}
@@ -357,27 +357,7 @@ func permissionEndpointForbidden(method, path string, eff *EffectiveDashboardPer
 			}
 		}
 	}
-	// 应用中心 OpenClaw（与云主机同一子权限模型）
-	if strings.HasPrefix(path, "/api/app-center/openclaw/") {
-		if eff.AppCenter == ModuleAccessNone {
-			return true
-		}
-		cs := eff.AppCenterCloudVm
-		if cs == "" {
-			cs = eff.AppCenterRedis
-		}
-		if cs == AppCenterRedisScopeReadonly {
-			if httpMethodIsMutating(method) {
-				return true
-			}
-		}
-		if cs == AppCenterRedisScopeManagedOnly {
-			if httpMethodIsMutating(method) {
-				return true
-			}
-		}
-	}
-	// 应用中心 OpenSearch（与 OpenClaw 同一子权限模型）
+	// 应用中心 OpenSearch（子权限模型）
 	if strings.HasPrefix(path, "/api/app-center/opensearch/") {
 		if eff.AppCenter == ModuleAccessNone {
 			return true
@@ -525,16 +505,16 @@ func EffectivePermissionsToPublic(eff *EffectiveDashboardPermissions) gin.H {
 		eff = defaultEffectiveLegacyViewer()
 	}
 	out := gin.H{
-		"k8s":               eff.K8s,
-		"vcenter":           eff.VCenter,
-		"baota":             eff.Baota,
-		"appcenter":          eff.AppCenter,
-		"appcenterRedis":     eff.AppCenterRedis,
-		"appcenterCloudVm":   eff.AppCenterCloudVm,
-		"maskSensitiveData": eff.MaskSensitive,
-		"legacyViewer":      eff.LegacyViewer,
-		"k8sPodExec":                       eff.K8sPodExec,
-		"k8sPodDelete":                     eff.K8sPodDelete,
+		"k8s":                            eff.K8s,
+		"vcenter":                        eff.VCenter,
+		"baota":                          eff.Baota,
+		"appcenter":                      eff.AppCenter,
+		"appcenterRedis":                 eff.AppCenterRedis,
+		"appcenterCloudVm":               eff.AppCenterCloudVm,
+		"maskSensitiveData":              eff.MaskSensitive,
+		"legacyViewer":                   eff.LegacyViewer,
+		"k8sPodExec":                     eff.K8sPodExec,
+		"k8sPodDelete":                   eff.K8sPodDelete,
 		"appcenterCloudVmHysteriaReveal": eff.AppCenterCloudVmHysteriaReveal,
 	}
 	if len(eff.Menu) > 0 {

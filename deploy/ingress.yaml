@@ -2,10 +2,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kube-bt-sync
-  namespace: kube-bt-sync
+  name: labplane
+  namespace: labplane
   labels:
-    app.kubernetes.io/name: kube-bt-sync
+    app.kubernetes.io/name: labplane
   annotations:
     # 应用中心 OpenClaw 对话等长请求；默认 60s 易 504，且勿小于后端 WriteTimeout。
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
@@ -14,13 +14,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: kube-bt-sync.example.com
+    - host: labplane.example.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: kube-bt-sync
+                name: labplane
                 port:
                   number: 8080

@@ -29,7 +29,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, trend, t
   const shell =
     variant === 'soft'
       ? 'rounded-3xl border border-slate-100/90 bg-white p-5 shadow-[0_8px_40px_-12px_rgba(15,23,42,0.08)] hover:shadow-[0_12px_48px_-12px_rgba(15,23,42,0.1)] dark:border-slate-700/80 dark:bg-slate-950/80'
-      : 'rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]';
+      : 'rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]';
 
   return (
     <div data-cmp="StatCard" className={`flex flex-col justify-between transition-shadow duration-300 ${shell}`}>
@@ -47,7 +47,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, trend, t
         <h3
           className={cn(
             'mb-1 text-sm font-medium',
-            variant === 'soft' ? 'text-slate-500 dark:text-slate-400' : 'text-gray-500'
+            variant === 'soft' ? 'text-slate-500 dark:text-slate-400' : 'text-slate-500'
           )}
         >
           {title}
@@ -55,7 +55,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, trend, t
         <div
           className={cn(
             'text-3xl font-bold tracking-tight',
-            variant === 'soft' ? 'text-slate-900 dark:text-slate-50' : 'text-gray-900'
+            variant === 'soft' ? 'text-slate-900 dark:text-slate-50' : 'text-slate-900'
           )}
         >
           {value}
@@ -64,7 +64,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, trend, t
           <div
             className={cn(
               'mt-1 text-xs tabular-nums',
-              variant === 'soft' ? 'text-slate-500 dark:text-slate-400' : 'text-gray-400'
+              variant === 'soft' ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400'
             )}
           >
             {description}

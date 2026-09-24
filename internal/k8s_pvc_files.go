@@ -223,7 +223,7 @@ func handleK8sPVCFileMounts(c *gin.Context, k8s *kubernetes.Clientset) {
 	defer cancel()
 	list, err := k8s.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		RespondAPIError500(c, "列出 Pod 失败: " + err.Error())
+		RespondAPIError500(c, "列出 Pod 失败: "+err.Error())
 		return
 	}
 	_, err = k8s.CoreV1().PersistentVolumeClaims(ns).Get(ctx, pvcName, metav1.GetOptions{})
@@ -232,7 +232,7 @@ func handleK8sPVCFileMounts(c *gin.Context, k8s *kubernetes.Clientset) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "PVC 不存在"})
 			return
 		}
-		RespondAPIError500(c, "读取 PVC 失败: " + err.Error())
+		RespondAPIError500(c, "读取 PVC 失败: "+err.Error())
 		return
 	}
 	mounts := pvcMountsForClaim(list.Items, pvcName)
@@ -361,7 +361,7 @@ base64 -w0 "$f" 2>/dev/null || base64 "$f" | tr -d '\n'
 	}
 	raw, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		RespondAPIError500(c, "解码失败: " + err.Error())
+		RespondAPIError500(c, "解码失败: "+err.Error())
 		return
 	}
 	text := ""
