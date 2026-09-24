@@ -1172,11 +1172,13 @@ func handleMeshJoinReport(app *ServerApp) gin.HandlerFunc {
 	}
 }
 
-// handleMeshJoinTool 生成并下载 Windows 一键加入工具 ZIP 包。
-// 内含 .bat 启动器 + tsjoin.ps1（GUI 脚本）+ tsjoin.json（配置含密钥）。
+// handleMeshJoinTool 生成并下载一键加入工具 ZIP 包（AdminOnly）。
+// ?os=windows（默认）：.bat 启动器 + tsjoin.ps1（GUI 脚本）+ tsjoin.json（配置含密钥）；
+// ?os=macos：加入节点.command（0755，解压双击即可，自动装客户端 + 免浏览器加入）。
 func handleMeshJoinTool(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		instID := c.Param("id")
+		osName := strings.ToLower(strings.TrimSpace(c.Query("os")))
 		hostname := strings.TrimSpace(c.Query("hostname"))
 		if hostname == "" {
 			hostname = "device-" + strconv.FormatInt(time.Now().Unix(), 10)
@@ -1213,17 +1215,27 @@ func handleMeshJoinTool(app *ServerApp) gin.HandlerFunc {
 			}
 			platform = scheme + "://" + c.Request.Host
 		}
-		zipData, zerr := mesh_joingoing.BuildZip(mesh_joingoing.ToolConfig{
+		toolCfg := mesh_joingoing.ToolConfig{
 			Server:    strings.TrimRight(inst.APIURL, "/"),
 			AuthKey:   authkey,
 			Hostname:  hostname,
 			ReportURL: fmt.Sprintf("%s/api/ops/mesh/instances/%s/join-report", platform, instID),
-		})
+		}
+
+		var zipData []byte
+		var zerr error
+		filename := "tailscale-join-tool.zip"
+		if osName == "macos" {
+			filename = "tailscale-join-macos.zip"
+			zipData, zerr = mesh_joingoing.BuildMacZip(toolCfg)
+		} else {
+			zipData, zerr = mesh_joingoing.BuildZip(toolCfg)
+		}
 		if zerr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": zerr.Error()})
 			return
 		}
-		c.Header("Content-Disposition", `attachment; filename="tailscale-join-tool.zip"`)
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 		c.Data(http.StatusOK, "application/zip", zipData)
 	}
 }

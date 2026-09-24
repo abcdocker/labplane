@@ -16,7 +16,7 @@ type Device = { id: string; emoji: string; name: string; desc: string };
 
 const DEVICES: Device[] = [
   { id: "windows", emoji: "🪟", name: "Windows", desc: "一键加入工具 / PowerShell" },
-  { id: "macos", emoji: "🍎", name: "macOS", desc: "终端 zsh 命令" },
+  { id: "macos", emoji: "🍎", name: "macOS", desc: "一键加入工具 / 终端命令" },
   { id: "linux", emoji: "🐧", name: "Linux", desc: "终端命令" },
   { id: "ios", emoji: "📱", name: "iPhone / iPad", desc: "Tailscale App" },
   { id: "android", emoji: "🤖", name: "Android", desc: "Tailscale App" },
@@ -95,11 +95,11 @@ const MeshJoin: React.FC = () => {
     </div>
   );
 
-  const downloadZip = async () => {
+  const downloadZip = async (os: "windows" | "macos" = "windows") => {
     if (!inst?.id) return;
     setScriptBusy(true);
     try {
-      const res = await fetch(`/api/ops/mesh/instances/${inst.id}/join-tool?hostname=${encodeURIComponent(hn || "device")}`, { credentials: "include" });
+      const res = await fetch(`/api/ops/mesh/instances/${inst.id}/join-tool?os=${os}&hostname=${encodeURIComponent(hn || "device")}`, { credentials: "include" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
@@ -107,7 +107,7 @@ const MeshJoin: React.FC = () => {
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "tailscale-join-tool.zip";
+      a.download = os === "macos" ? "tailscale-join-macos.zip" : "tailscale-join-tool.zip";
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
@@ -147,7 +147,7 @@ const MeshJoin: React.FC = () => {
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
             <LogIn className="h-6 w-6 text-indigo-600" /> 加入节点
           </h1>
-          <p className="mt-1 text-sm text-slate-600">三步接入：选设备类型 → 装客户端并执行命令 → Authentik SSO 登录（Windows 支持免浏览器一键工具）。</p>
+          <p className="mt-1 text-sm text-slate-600">三步接入：选设备类型 → 装客户端并执行命令 → Authentik SSO 登录（Windows / macOS 支持免浏览器一键工具）。</p>
         </div>
         <a href={(() => { try { return new URL(server).origin + "/admin"; } catch { return server; } })()} target="_blank" rel="noreferrer"
           className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
@@ -255,7 +255,7 @@ const MeshJoin: React.FC = () => {
                 <ShieldCheck className="h-3.5 w-3.5" /> 推荐方式：一键加入工具（自动检查依赖 / 下载客户端 / 免浏览器加入）
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button type="button" disabled={scriptBusy} onClick={downloadZip}
+                <button type="button" disabled={scriptBusy} onClick={() => downloadZip("windows")}
                   className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
                   {scriptBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
                   下载 Windows 工具 (.zip)
@@ -335,12 +335,35 @@ const MeshJoin: React.FC = () => {
         ) : null}
 
         {device === "macos" ? (
-          <div className="space-y-2">
-            <CodeCard tag="mac" text={macCmd} label="zsh · 首次加入命令" />
-            <p className="text-[11px] text-slate-500">
-              ① 安装 Tailscale（<a className="text-indigo-600 hover:underline" href="https://d.frps.cn/file/tools/headscale/Tailscale-1.98.5-macos.pkg" target="_blank" rel="noreferrer">下载 PKG <Download className="inline h-3 w-3" /></a>）
-              → ② 填主机名复制命令 → ③ 浏览器跳转 Authentik SSO。
-            </p>
+          <div className="space-y-3">
+            {/* macOS 一键工具 */}
+            <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 to-white p-4 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-slate-900/40">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-900 dark:text-indigo-300">
+                <ShieldCheck className="h-3.5 w-3.5" /> 推荐方式：一键加入工具（自动装客户端 / 免浏览器加入 / 回传设备名）
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button type="button" disabled={scriptBusy} onClick={() => downloadZip("macos")}
+                  className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {scriptBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                  下载 macOS 工具 (.zip)
+                </button>
+              </div>
+              <p className="mt-1.5 text-[10px] text-indigo-700/80 dark:text-indigo-200/70">
+                解压 zip → 双击「加入节点.command」（首次运行被 macOS 拦截时：右键 →「打开」）。
+                工具会自动：检测/安装 Tailscale（Homebrew 或官方安装包）→ 用平台密钥直接加入（无需浏览器）→ 回传设备名。
+              </p>
+              {!isAdmin ? <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-500">工具内含密钥，仅管理员可下载。</p> : null}
+            </div>
+
+            {/* 手动命令（备用） */}
+            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">备用：终端手动加入（SSO 方式）</p>
+              <div className="mt-1.5"><CodeCard tag="mac" text={macCmd} label="zsh · 首次加入命令" /></div>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                也可先安装 Tailscale（<a className="text-indigo-600 hover:underline dark:text-indigo-400" href="https://d.frps.cn/file/tools/headscale/Tailscale-1.98.5-macos.pkg" target="_blank" rel="noreferrer">下载 PKG <Download className="inline h-3 w-3" /></a>）
+                → 复制命令执行 → 浏览器跳转 Authentik SSO。
+              </p>
+            </div>
           </div>
         ) : null}
 
