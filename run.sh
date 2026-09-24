@@ -148,7 +148,7 @@ build_amd64_image() {
       -t "${IMAGE_REF}" \
       --build-arg BUILD_VERSION="${TAG}" \
       --build-arg BASE_NODE="${BASE_NODE:-node:20-alpine}" \
-      --build-arg BASE_GOLANG="${BASE_GOLANG:-golang:1.25.6-alpine}" \
+      --build-arg BASE_GOLANG="${BASE_GOLANG:-golang:1.26-alpine}" \
       --build-arg BASE_RUNTIME="${BASE_RUNTIME:-gcr.io/distroless/static-debian12:nonroot}" \
       --build-arg HTTP_PROXY="${HTTP_PROXY:-}" \
       --build-arg HTTPS_PROXY="${HTTPS_PROXY:-}" \

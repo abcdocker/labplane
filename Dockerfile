@@ -2,7 +2,7 @@
 # 构建参数
 # ------------------------------------------------------------------------------
 ARG BASE_NODE=node:20-alpine
-ARG BASE_GOLANG=golang:1.25.6-alpine
+ARG BASE_GOLANG=golang:1.26-alpine
 ARG BASE_RUNTIME=gcr.io/distroless/static-debian12:nonroot
 
 # ------------------------------------------------------------------------------
