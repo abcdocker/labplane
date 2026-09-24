@@ -134,12 +134,18 @@ helm dependency build charts/labplane
 helm install labplane ./charts/labplane
 ```
 
+> MySQL / Redis 不随 Chart 部署，请提前准备可达实例（集群内或外部均可），
+> 安装后在 `/setup` 向导中填写连接信息。
+
 ### Kubectl
 
 ```bash
 kubectl apply -f deploy/labplane-all.yaml   # 单文件模板（NodePort 32080）
 # 或模块化：kubectl apply -k deploy/
 ```
+
+> MySQL / Redis 不随清单部署，请提前准备可达实例（集群内或外部均可），
+> `/setup` 初始化向导会校验连通性。
 
 ### Local Development
 
