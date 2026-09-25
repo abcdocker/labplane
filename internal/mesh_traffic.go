@@ -478,13 +478,15 @@ type TailscaleProbeResult struct {
 	Raw     string `json:"raw,omitempty"`
 }
 
-// tailscaleProbeScript 节点内执行的探测脚本：
-// 1) 原生二进制——扩展 PATH 后按常见路径逐一试探（覆盖 deb/rpm、snap、手动安装）；
+// tailscaleProbeScript 节点内执行的探测脚本（Linux/macOS/类 Unix NAS 通用，POSIX sh）：
+// 1) 原生二进制——扩展 PATH 后按常见路径逐一试探：
+//    deb/rpm、snap、macOS GUI 版（.app）与 Homebrew（ARM/Intel）、
+//    群晖 SPK（/var/packages/Tailscale）、QNAP（/opt/tailscale）、unRAID 插件；
 // 2) 容器化运行——依次尝试 docker / podman / nerdctl / crictl（k8s containerd），
 //    每个运行时在无权限时自动 `sudo -n` 重试（群晖等 root 场景由外层 sudo -S 兜底）。
 const tailscaleProbeScript = `
-export PATH="$PATH:/usr/local/bin:/usr/sbin:/sbin:/snap/bin:/opt/bin:/usr/lib/tailscale/bin"
-for c in tailscale /usr/bin/tailscale /usr/local/bin/tailscale /usr/sbin/tailscale /sbin/tailscale /opt/tailscale/bin/tailscale /usr/lib/tailscale/bin/tailscale /snap/bin/tailscale "$HOME/tailscale"; do
+export PATH="$PATH:/usr/local/bin:/usr/sbin:/sbin:/snap/bin:/opt/bin:/usr/lib/tailscale/bin:/opt/homebrew/bin"
+for c in tailscale /usr/bin/tailscale /usr/local/bin/tailscale /usr/sbin/tailscale /sbin/tailscale /opt/tailscale/bin/tailscale /usr/lib/tailscale/bin/tailscale /snap/bin/tailscale /opt/homebrew/bin/tailscale "/Applications/Tailscale.app/Contents/MacOS/Tailscale" /var/packages/Tailscale/target/bin/tailscale /opt/tailscale/tailscale /opt/Tailscale/tailscale /usr/local/emhttp/plugins/tailscale/bin/tailscale "$HOME/tailscale"; do
   if command -v "$c" >/dev/null 2>&1 || [ -x "$c" ]; then
     echo "native:$c"
     "$c" version 2>/dev/null | head -n 1
@@ -553,12 +555,13 @@ func isContainerProbeLine(ln string) bool {
 }
 
 // ProbeTailscaleInstall SSH 登录节点探测 tailscale 安装方式并生成采集命令。
-// 先以普通用户执行探测脚本；群晖等需要 root 的场景自动用密码走 sudo -S 重试。
+// 通过 uname 先分流：Linux/macOS/类 Unix（含群晖/QNAP/unRAID 等 NAS）走 POSIX 脚本，
+// Windows（OpenSSH 默认 shell 为 cmd，报错文案随本地化变化，无法可靠识别时也按 Windows 试）走 cmd 探测。
+// POSIX 先以普通用户执行；群晖等需要 root 的场景自动用密码走 sudo -S 重试。
 // HostKey 校验采用 TOFU-宽松模式（仅读取状态，不写入配置），指纹以正式采集首次学习为准。
 func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, password string) TailscaleProbeResult {
 	res := TailscaleProbeResult{Mode: "none"}
-	script := tailscaleProbeScript
-	run := func(sudo bool) string {
+	withSession := func(f func(*ssh.Session) string) string {
 		cfg := &ssh.ClientConfig{
 			User:            user,
 			Auth:            []ssh.AuthMethod{ssh.Password(password)},
@@ -581,40 +584,98 @@ func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, pas
 			return "创建会话失败: " + err.Error()
 		}
 		defer sess.Close()
-		if sudo {
-			sess.Stdin = strings.NewReader(password + "\n")
-			out, _ := sess.CombinedOutput("sudo -S -p '' sh -c " + shellQuote(script) + " 2>/dev/null")
+		return f(sess)
+	}
+	runPosix := func(script string, sudo bool) string {
+		return withSession(func(sess *ssh.Session) string {
+			if sudo {
+				sess.Stdin = strings.NewReader(password + "\n")
+				out, _ := sess.CombinedOutput("sudo -S -p '' sh -c " + shellQuote(script) + " 2>/dev/null")
+				return string(out)
+			}
+			out, _ := sess.CombinedOutput(script + " 2>/dev/null")
 			return string(out)
-		}
-		out, _ := sess.CombinedOutput(script + " 2>/dev/null")
-		return string(out)
+		})
+	}
+	runWin := func(cmdLine string) string {
+		return withSession(func(sess *ssh.Session) string {
+			out, _ := sess.CombinedOutput(cmdLine)
+			return string(out)
+		})
 	}
 
-	raw := run(false)
-	if r, ok := parseTailscaleProbe(raw); ok {
-		res = r
-	}
-	if res.Mode == "none" {
-		// 需要提权的场景（群晖 docker、非 root 用户）用 sudo 重试一次
-		raw2 := run(true)
-		if r, ok := parseTailscaleProbe(raw2); ok {
+	// OS 分流：Windows OpenSSH 默认 shell（cmd/PowerShell）下 uname 不存在且报错文案
+	// 随系统语言本地化，因此只白名单识别已知 Unix 内核名，其余一律按 Windows 探测。
+	osOut := strings.TrimSpace(strings.TrimSuffix(runPosix("uname -s", false), "\n"))
+	switch {
+	case strings.HasPrefix(osOut, "SSH "), strings.HasPrefix(osOut, "创建会话"):
+		res.Raw = osOut
+		return res
+	case osOut == "Linux" || osOut == "Darwin" || strings.HasSuffix(osOut, "BSD"), osOut == "SunOS" || osOut == "AIX":
+		raw := runPosix(tailscaleProbeScript, false)
+		if r, ok := parseTailscaleProbe(raw); ok {
 			res = r
-		} else if trimmed := strings.TrimSpace(raw2); trimmed != "" && len(trimmed) > len(strings.TrimSpace(raw)) {
-			raw = raw2
 		}
-	}
-	if len(res.Raw) == 0 {
-		raw = strings.TrimSpace(raw)
-		if len(raw) > 240 {
-			raw = raw[:240]
+		if res.Mode == "none" {
+			// 需要提权的场景（群晖 docker、非 root 用户）用 sudo 重试一次
+			raw2 := runPosix(tailscaleProbeScript, true)
+			if r, ok := parseTailscaleProbe(raw2); ok {
+				res = r
+			} else if trimmed := strings.TrimSpace(raw2); trimmed != "" && len(trimmed) > len(strings.TrimSpace(raw)) {
+				raw = raw2
+			}
 		}
-		res.Raw = raw
+		if len(res.Raw) == 0 {
+			raw = strings.TrimSpace(raw)
+			if len(raw) > 240 {
+				raw = raw[:240]
+			}
+			res.Raw = raw
+		}
+		return res
 	}
-	if res.Mode == "none" && strings.HasPrefix(res.Raw, "SSH ") {
-		// 连接/握手失败：把错误放到 Command 空位，Raw 已带原因
-		res.Raw = strings.TrimSpace(res.Raw)
+	return probeWindowsTailscale(runWin)
+}
+
+// probeWindowsTailscale Windows 节点探测（SSH 默认 shell 为 cmd 的常见部署）：
+// `where tailscale` → 回退固定安装路径（MSI 默认）→ 生成采集命令。
+// 生成的命令同样按 cmd 语法（路径含空格时加引号）；PowerShell 默认 shell 的节点不支持。
+func probeWindowsTailscale(runWin func(string) string) TailscaleProbeResult {
+	res := TailscaleProbeResult{Mode: "none"}
+	firstLine := func(out string) string {
+		for _, ln := range strings.Split(out, "\n") {
+			if t := strings.TrimSpace(strings.TrimSuffix(ln, "\r")); t != "" {
+				return t
+			}
+		}
+		return ""
 	}
+	var raws []string
+	path := firstLine(runWin(`where tailscale 2>nul`))
+	raws = append(raws, "where tailscale 2>nul => "+path)
+	if path == "" {
+		path = firstLine(runWin(`if exist "C:\Program Files\Tailscale\tailscale.exe" echo C:\Program Files\Tailscale\tailscale.exe`))
+		raws = append(raws, "固定路径探测 => "+path)
+	}
+	if path == "" {
+		res.Raw = strings.Join(raws, "\n")
+		return res
+	}
+	res = TailscaleProbeResult{Mode: "native", Command: windowsTSCommand(path)}
+	if v := firstLine(runWin(`"`+path+`" version`)); v != "" && !strings.Contains(v, "not recognized") {
+		res.Version = v
+	}
+	raws = append(raws, "version => "+res.Version)
+	res.Raw = strings.Join(raws, "\n")
 	return res
+}
+
+// windowsTSCommand 生成 Windows 采集命令；路径含空格（默认 MSI 路径）时按 cmd 规则加引号。
+func windowsTSCommand(path string) string {
+	if strings.ContainsAny(path, " ") {
+		return `"` + path + `" status --json`
+	}
+	return path + " status --json"
 }
 
 type meshTrafficCache struct {

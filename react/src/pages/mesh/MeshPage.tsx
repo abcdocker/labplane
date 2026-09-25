@@ -228,7 +228,7 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
         updCollectorRef.current?.(p.idx, { command: res.command });
         toast.success(`探测成功（${res.mode}）：已自动填入采集命令${res.version ? ` · ${res.version}` : ""}`);
       } else {
-        toast.error("未探测到 tailscale（已检查原生常见路径与 docker/podman/nerdctl/crictl 容器），请手动填写采集命令；探测原始输出可在表单下方查看");
+        toast.error("未探测到 tailscale（已检查原生常见路径与 docker/podman/nerdctl/crictl 容器，支持 Linux/macOS/Windows/群晖/QNAP/unRAID 等），请手动填写采集命令；探测原始输出可在表单下方查看");
       }
     },
     onError: (e) => toast.error(apiErr(e)),

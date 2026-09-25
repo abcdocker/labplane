@@ -48,3 +48,12 @@ func TestParseTailscaleProbeNone(t *testing.T) {
 		t.Fatal("空输出不应判定为找到")
 	}
 }
+
+func TestWindowsTSCommand(t *testing.T) {
+	if got := windowsTSCommand(`C:\Program Files\Tailscale\tailscale.exe`); got != `"C:\Program Files\Tailscale\tailscale.exe" status --json` {
+		t.Fatalf("含空格路径应加引号: %q", got)
+	}
+	if got := windowsTSCommand(`C:\tailscale\tailscale.exe`); got != `C:\tailscale\tailscale.exe status --json` {
+		t.Fatalf("无空格路径不应加引号: %q", got)
+	}
+}
