@@ -470,7 +470,7 @@ func fetchHeadscaleVersion(cfg Config, inst MeshInstance) string {
 	return ""
 }
 
-// TailscaleProbeResult 自动扫描结果：Mode = native | docker | none。
+// TailscaleProbeResult 自动扫描结果：Mode = native | docker | podman | nerdctl | crictl | none。
 type TailscaleProbeResult struct {
 	Mode    string `json:"mode"`
 	Command string `json:"command"`
@@ -478,27 +478,86 @@ type TailscaleProbeResult struct {
 	Raw     string `json:"raw,omitempty"`
 }
 
-// ProbeTailscaleInstall SSH 登录节点探测 tailscale 安装方式并生成采集命令。
-// 先以普通用户执行探测脚本；群晖等需要 root 的场景自动用密码走 sudo -S 重试。
-// HostKey 校验采用 TOFU-宽松模式（仅读取状态，不写入配置），指纹以正式采集首次学习为准。
-func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, password string) TailscaleProbeResult {
-	res := TailscaleProbeResult{Mode: "none"}
-	script := `
-for c in tailscale /usr/bin/tailscale /usr/local/bin/tailscale /opt/tailscale/bin/tailscale /snap/bin/tailscale; do
+// tailscaleProbeScript 节点内执行的探测脚本：
+// 1) 原生二进制——扩展 PATH 后按常见路径逐一试探（覆盖 deb/rpm、snap、手动安装）；
+// 2) 容器化运行——依次尝试 docker / podman / nerdctl / crictl（k8s containerd），
+//    每个运行时在无权限时自动 `sudo -n` 重试（群晖等 root 场景由外层 sudo -S 兜底）。
+const tailscaleProbeScript = `
+export PATH="$PATH:/usr/local/bin:/usr/sbin:/sbin:/snap/bin:/opt/bin:/usr/lib/tailscale/bin"
+for c in tailscale /usr/bin/tailscale /usr/local/bin/tailscale /usr/sbin/tailscale /sbin/tailscale /opt/tailscale/bin/tailscale /usr/lib/tailscale/bin/tailscale /snap/bin/tailscale "$HOME/tailscale"; do
   if command -v "$c" >/dev/null 2>&1 || [ -x "$c" ]; then
     echo "native:$c"
     "$c" version 2>/dev/null | head -n 1
     exit 0
   fi
 done
-D=$(command -v docker 2>/dev/null)
-if [ -z "$D" ] && [ -x /usr/local/bin/docker ]; then D=/usr/local/bin/docker; fi
-if [ -n "$D" ]; then
-  "$D" ps --format '{{.Names}} {{.Image}}' 2>/dev/null | grep -i tailscale | head -n 3 | while read n img; do echo "docker:$D:$n"; done
+for R in docker podman nerdctl; do
+  command -v "$R" >/dev/null 2>&1 || continue
+  OUT=$("$R" ps --format "{{.Names}} {{.Image}}" 2>/dev/null)
+  [ -z "$OUT" ] && OUT=$(sudo -n "$R" ps --format "{{.Names}} {{.Image}}" 2>/dev/null)
+  echo "$OUT" | grep -i tailscale | head -n 3 | while read n img; do echo "$R:$R:$n"; done
+done
+if command -v crictl >/dev/null 2>&1; then
+  OUT=$(crictl ps -a 2>/dev/null)
+  [ -z "$OUT" ] && OUT=$(sudo -n crictl ps -a 2>/dev/null)
+  echo "$OUT" | grep -i tailscale | head -n 3 | while read id rest; do echo "crictl:crictl:$id"; done
+fi
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active tailscaled >/dev/null 2>&1; then
+  echo "native:tailscale"
+  tailscale version 2>/dev/null | head -n 1
   exit 0
 fi
 echo "none"
 `
+
+// parseTailscaleProbe 解析探测输出。容器行格式 `runtime:binary:container`，
+// runtime ∈ docker/podman/nerdctl/crictl；原生行为 `native:path`（下一行为版本，可缺省）。
+func parseTailscaleProbe(out string) (TailscaleProbeResult, bool) {
+	var best TailscaleProbeResult
+	found := false
+	lines := strings.Split(out, "\n")
+	for i, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		switch {
+		case strings.HasPrefix(ln, "native:"):
+			path := strings.TrimPrefix(ln, "native:")
+			best = TailscaleProbeResult{Mode: "native", Command: path + " status --json"}
+			if i+1 < len(lines) {
+				v := strings.TrimSpace(lines[i+1])
+				if v != "" && !strings.HasPrefix(v, "native:") && !strings.HasPrefix(v, "none:") &&
+					!isContainerProbeLine(v) {
+					best.Version = v
+				}
+			}
+			found = true
+		case isContainerProbeLine(ln):
+			runtime := ln[:strings.Index(ln, ":")]
+			rest := strings.TrimPrefix(ln, runtime+":")
+			parts := strings.SplitN(rest, ":", 2)
+			if len(parts) == 2 {
+				best = TailscaleProbeResult{Mode: runtime, Command: parts[0] + " exec " + parts[1] + " tailscale status --json"}
+				found = true
+			}
+		}
+	}
+	return best, found
+}
+
+func isContainerProbeLine(ln string) bool {
+	for _, p := range []string{"docker:", "podman:", "nerdctl:", "crictl:"} {
+		if strings.HasPrefix(ln, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// ProbeTailscaleInstall SSH 登录节点探测 tailscale 安装方式并生成采集命令。
+// 先以普通用户执行探测脚本；群晖等需要 root 的场景自动用密码走 sudo -S 重试。
+// HostKey 校验采用 TOFU-宽松模式（仅读取状态，不写入配置），指纹以正式采集首次学习为准。
+func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, password string) TailscaleProbeResult {
+	res := TailscaleProbeResult{Mode: "none"}
+	script := tailscaleProbeScript
 	run := func(sudo bool) string {
 		cfg := &ssh.ClientConfig{
 			User:            user,
@@ -532,41 +591,13 @@ echo "none"
 	}
 
 	raw := run(false)
-	parse := func(out string) (TailscaleProbeResult, bool) {
-		var best TailscaleProbeResult
-		found := false
-		lines := strings.Split(out, "\n")
-		for i, ln := range lines {
-			ln = strings.TrimSpace(ln)
-			switch {
-			case strings.HasPrefix(ln, "native:"):
-				path := strings.TrimPrefix(ln, "native:")
-				best = TailscaleProbeResult{Mode: "native", Command: path + " status --json"}
-				if i+1 < len(lines) {
-					v := strings.TrimSpace(lines[i+1])
-					if v != "" && !strings.HasPrefix(v, "native:") && !strings.HasPrefix(v, "docker:") && v != "none" {
-						best.Version = v
-					}
-				}
-				found = true
-			case strings.HasPrefix(ln, "docker:"):
-				rest := strings.TrimPrefix(ln, "docker:")
-				parts := strings.SplitN(rest, ":", 2)
-				if len(parts) == 2 {
-					best = TailscaleProbeResult{Mode: "docker", Command: parts[0] + " exec " + parts[1] + " tailscale status --json"}
-					found = true
-				}
-			}
-		}
-		return best, found
-	}
-	if r, ok := parse(raw); ok {
+	if r, ok := parseTailscaleProbe(raw); ok {
 		res = r
 	}
 	if res.Mode == "none" {
 		// 需要提权的场景（群晖 docker、非 root 用户）用 sudo 重试一次
 		raw2 := run(true)
-		if r, ok := parse(raw2); ok {
+		if r, ok := parseTailscaleProbe(raw2); ok {
 			res = r
 		} else if trimmed := strings.TrimSpace(raw2); trimmed != "" && len(trimmed) > len(strings.TrimSpace(raw)) {
 			raw = raw2
