@@ -61,6 +61,8 @@ const meshOsEmoji = (os?: string) => {
 
 const meshTime = (iso?: string) => {
   if (!iso) return "—";
+  // headscale 零值时间（0001-01-01）表示"永不过期"，按原始时间格式化会出现荒谬数字
+  if (iso.startsWith("0001-")) return "永不过期";
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return iso;
   const diff = Date.now() - t;
@@ -446,7 +448,11 @@ const MeshDashboard: React.FC = () => {
                   <span className="text-slate-400">密钥过期</span>
                   <span className="text-slate-800 dark:text-slate-200">{detailNode?.expiry ? meshTime(detailNode.expiry) : "—"}</span>
                   <span className="text-slate-400">注册方式</span>
-                  <span className="text-slate-800 dark:text-slate-200">{detailNode?.registerMethod || "—"}</span>
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {detailNode?.registerMethod === "REGISTER_METHOD_AUTH_KEY" ? "预授权密钥"
+                      : detailNode?.registerMethod === "REGISTER_METHOD_OIDC" ? "OIDC 登录"
+                      : detailNode?.registerMethod ? detailNode.registerMethod.replace("REGISTER_METHOD_", "") : "—"}
+                  </span>
                   <span className="text-slate-400">归属用户</span>
                   <span className="text-slate-800 dark:text-slate-200">{detailNode?.user?.name || "—"}</span>
                   <span className="text-slate-400">Tailscale IP</span>
