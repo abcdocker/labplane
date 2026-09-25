@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { apiGetJson, ApiHttpError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/auth/auth-context";
 
 // 异地组网 Dashboard：跨 headscale 实例的总体态势。
@@ -31,6 +32,7 @@ type DiscoverNode = {
   approvedRoutes?: string[]; availableRoutes?: string[]; tags?: string[];
   user?: { name?: string };
   duplicate?: boolean;
+  createdAt?: string; expiry?: string; registerMethod?: string; clientVersion?: string;
 };
 type DiscoverSite = {
   subnet: string; router: string; routerId: string; approved: boolean;
@@ -187,6 +189,9 @@ const MeshDashboard: React.FC = () => {
     if (a.online !== b.online) return a.online ? -1 : 1;
     return (a.givenName || a.name).localeCompare(b.givenName || b.name);
   });
+
+  // 节点详情弹窗（点击节点明细行）
+  const [detailNode, setDetailNode] = React.useState<(DiscoverNode & { instName?: string }) | null>(null);
 
   return (
     <div className="space-y-6">
@@ -385,7 +390,10 @@ const MeshDashboard: React.FC = () => {
                     const tsIp = (n.ipAddresses ?? []).find((x) => x.startsWith("100.")) ?? "—";
                     const routes = [...(n.approvedRoutes ?? []), ...(n.availableRoutes ?? [])];
                     return (
-                      <tr key={n.instId + n.id} className={cn("border-t border-slate-50", !n.online && "opacity-60")}>
+                      <tr key={n.instId + n.id}
+                        onClick={() => setDetailNode({ ...n })}
+                        title="点击查看节点详情"
+                        className={cn("cursor-pointer border-t border-slate-50 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40", !n.online && "opacity-60")}>
                         <td className="px-3 py-2">
                           <span className="flex items-center gap-1.5 font-medium text-slate-800">
                             {n.online ? <Wifi className="h-3 w-3 text-emerald-600" /> : <WifiOff className="h-3 w-3 text-slate-300" />}
@@ -407,6 +415,55 @@ const MeshDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* 节点详情弹窗 */}
+            <Dialog open={!!detailNode} onOpenChange={(o) => !o && setDetailNode(null)}>
+              <DialogContent className="max-w-md dark:border-slate-700 dark:bg-slate-900">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-sm dark:text-slate-100">
+                    {detailNode ? meshOsEmoji(detailNode.os) : null}
+                    <span>{detailNode?.givenName || detailNode?.name}</span>
+                    {detailNode?.online ? (
+                      <span className="flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"><Wifi className="h-3 w-3" /> 在线</span>
+                    ) : (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">离线</span>
+                    )}
+                    {detailNode?.duplicate ? <span className="rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">重复</span> : null}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs dark:text-slate-400">
+                    节点详情 · 实例「{detailNode?.instName}」
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-[92px_1fr] items-start gap-x-3 gap-y-2.5 text-xs">
+                  <span className="text-slate-400">操作系统</span>
+                  <span className="text-slate-800 dark:text-slate-200">{detailNode?.os ? `${meshOsEmoji(detailNode.os)} ${detailNode.os}` : "—（采集器覆盖后显示）"}</span>
+                  <span className="text-slate-400">客户端版本</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">{detailNode?.clientVersion || "—"}</span>
+                  <span className="text-slate-400">加入时间</span>
+                  <span className="text-slate-800 dark:text-slate-200">{meshTime(detailNode?.createdAt)}</span>
+                  <span className="text-slate-400">最近在线</span>
+                  <span className="text-slate-800 dark:text-slate-200">{meshTime(detailNode?.lastSeen)}</span>
+                  <span className="text-slate-400">密钥过期</span>
+                  <span className="text-slate-800 dark:text-slate-200">{detailNode?.expiry ? meshTime(detailNode.expiry) : "—"}</span>
+                  <span className="text-slate-400">注册方式</span>
+                  <span className="text-slate-800 dark:text-slate-200">{detailNode?.registerMethod || "—"}</span>
+                  <span className="text-slate-400">归属用户</span>
+                  <span className="text-slate-800 dark:text-slate-200">{detailNode?.user?.name || "—"}</span>
+                  <span className="text-slate-400">Tailscale IP</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">{(detailNode?.ipAddresses ?? []).join(", ") || "—"}</span>
+                  <span className="text-slate-400">真实地址</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400">{(detailNode?.realIps ?? []).join(", ") || "—（建立直连后显示）"}</span>
+                  <span className="text-slate-400">子网路由</span>
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {(detailNode?.approvedRoutes ?? []).length > 0 ? <span className="text-sky-700 dark:text-sky-400">已批准: {detailNode?.approvedRoutes?.join(", ")}</span> : null}
+                    {(detailNode?.availableRoutes ?? []).some((r) => !(detailNode?.approvedRoutes ?? []).includes(r)) ? <span className="text-amber-700 dark:text-amber-400">待批准: {detailNode?.availableRoutes?.filter((r) => !(detailNode?.approvedRoutes ?? []).includes(r)).join(", ")}</span> : null}
+                    {(detailNode?.approvedRoutes ?? []).length === 0 && (detailNode?.availableRoutes ?? []).length === 0 ? "—" : null}
+                  </span>
+                  <span className="text-slate-400">标签</span>
+                  <span className="text-slate-800 dark:text-slate-200">{(detailNode?.tags ?? []).join(", ") || "—"}</span>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* 站点与子网 */}
