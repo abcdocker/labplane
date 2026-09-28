@@ -72,7 +72,7 @@ run_case prod --public
 assert_line_count 1 "push registry.lan/homelab/labplane:v9.9.9-test"
 assert_line_count 1 "tag registry.lan/homelab/labplane:v9.9.9-test ghcr.io/abcdocker/labplane:v9.9.9-test"
 assert_line_count 1 "push ghcr.io/abcdocker/labplane:v9.9.9-test"
-assert_line_count 1 "buildx build --platform linux/amd64 -t registry.lan/homelab/labplane:v9.9.9-test --build-arg BUILD_VERSION=v9.9.9-test --build-arg BASE_NODE=node:20-alpine --build-arg BASE_GOLANG=golang:1.25.6-alpine --build-arg BASE_RUNTIME=gcr.io/distroless/static-debian12:nonroot --build-arg HTTP_PROXY= --build-arg HTTPS_PROXY= --build-arg NO_PROXY= --build-arg GOPROXY=https://proxy.golang.org,direct --load -f ${ROOT}/Dockerfile ${ROOT}"
+assert_line_count 1 "buildx build --platform linux/amd64 -t registry.lan/homelab/labplane:v9.9.9-test --build-arg BUILD_VERSION=v9.9.9-test --build-arg BASE_NODE=node:20-alpine --build-arg BASE_GOLANG=golang:1.26-alpine --build-arg BASE_RUNTIME=gcr.io/distroless/static-debian12:nonroot --build-arg HTTP_PROXY= --build-arg HTTPS_PROXY= --build-arg NO_PROXY= --build-arg GOPROXY=https://proxy.golang.org,direct --load -f ${ROOT}/Dockerfile ${ROOT}"
 
 # New LABPLANE_* settings take precedence over legacy values.
 run_case_with_env bash "${ROOT}/run.sh" prod >/dev/null
