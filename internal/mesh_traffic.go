@@ -36,17 +36,58 @@ type MeshTrafficPeer struct {
 
 // MeshTrafficSnapshot 一次采集的完整快照。
 type MeshTrafficSnapshot struct {
+	InstanceID    string            `json:"instanceId"`
 	CollectorID   string            `json:"collectorId"`
 	CollectorName string            `json:"collectorName"`
 	Host          string            `json:"host"`
+	Port          int               `json:"port"`
+	User          string            `json:"user"`
 	CollectedAt   string            `json:"collectedAt"`
-	HostKeyFp     string            `json:"hostKeyFp,omitempty"` // TOFU 学习到的指纹
+	HostKeyFp     string            `json:"hostKeyFp,omitempty"` // 已确认的主机指纹
 	Version       string            `json:"version,omitempty"`
 	BackendState  string            `json:"backendState,omitempty"`
 	SelfHostName  string            `json:"selfHostName,omitempty"`
 	SelfIPs       []string          `json:"selfIps,omitempty"`
 	Peers         []MeshTrafficPeer `json:"peers"`
 	Error         string            `json:"error,omitempty"`
+	Stale         bool              `json:"stale,omitempty"` // 读取缓存时计算；不持久化为采集事实
+}
+
+const meshSnapshotMaxAge = 10 * time.Minute
+
+func meshSnapshotIsStale(s MeshTrafficSnapshot, now time.Time) bool {
+	at, err := time.Parse(time.RFC3339, s.CollectedAt)
+	return err != nil || at.After(now.Add(time.Minute)) || now.Sub(at) > meshSnapshotMaxAge
+}
+
+func meshTrafficCacheKey(instanceID, collectorID string) string {
+	return strconv.Itoa(len(instanceID)) + ":" + instanceID + collectorID
+}
+
+func meshSnapshotMatchesCollector(instID string, collector MeshTrafficCollector, snap MeshTrafficSnapshot) bool {
+	return snap.InstanceID == instID && snap.CollectorID == collector.ID && meshCollectorEndpointMatches(collector, snap.Host, snap.Port, snap.User)
+}
+
+// meshSnapshotsForInstance 只返回当前实例配置的采集器快照，避免跨实例同名节点互相污染。
+func meshSnapshotsForInstance(inst MeshInstance, cache map[string]MeshTrafficSnapshot) []MeshTrafficSnapshot {
+	out := make([]MeshTrafficSnapshot, 0, len(inst.TrafficCollectors))
+	for _, collector := range inst.TrafficCollectors {
+		if snap, ok := cache[meshTrafficCacheKey(inst.ID, collector.ID)]; ok && meshSnapshotMatchesCollector(inst.ID, collector, snap) {
+			out = append(out, snap)
+		}
+	}
+	return out
+}
+
+func meshFreshSnapshotsForInstance(inst MeshInstance, cache map[string]MeshTrafficSnapshot, now time.Time) []MeshTrafficSnapshot {
+	all := meshSnapshotsForInstance(inst, cache)
+	fresh := all[:0]
+	for _, snap := range all {
+		if !meshSnapshotIsStale(snap, now) {
+			fresh = append(fresh, snap)
+		}
+	}
+	return fresh
 }
 
 type tsStatusJSON struct {
@@ -75,16 +116,15 @@ type tsStatusJSON struct {
 // MeshTrafficCollector 对应 mesh_store.go 中的采集器定义（此处仅操作快照/指纹）。
 
 // collectMeshTrafficViaSSH 采集单个采集器的流量快照。
-// Host key 采用 TOFU：collector.HostKeyFp 为空时记录本次指纹并放行，
-// 之后指纹不一致直接拒绝（防中间人）。
+// 首次采集前必须已通过探测确认 host key，之后指纹不一致直接拒绝。
 func collectMeshTrafficViaSSH(ctx context.Context, c MeshTrafficCollector, password string) MeshTrafficSnapshot {
-	snap := MeshTrafficSnapshot{
-		CollectorID: c.ID, CollectorName: c.Name, Host: c.Host,
-		CollectedAt: time.Now().UTC().Format(time.RFC3339), Peers: []MeshTrafficPeer{},
-	}
 	port := c.Port
 	if port <= 0 {
 		port = 22
+	}
+	snap := MeshTrafficSnapshot{
+		CollectorID: c.ID, CollectorName: c.Name, Host: c.Host, Port: port, User: c.User,
+		CollectedAt: time.Now().UTC().Format(time.RFC3339), Peers: []MeshTrafficPeer{},
 	}
 	if strings.TrimSpace(c.Host) == "" || strings.TrimSpace(c.User) == "" {
 		snap.Error = "采集器未配置主机或用户名"
@@ -94,13 +134,12 @@ func collectMeshTrafficViaSSH(ctx context.Context, c MeshTrafficCollector, passw
 		snap.Error = "未配置 SSH 密码"
 		return snap
 	}
-	var learnedFp string
+	if strings.TrimSpace(c.HostKeyFp) == "" {
+		snap.Error = "SSH host key 指纹未确认：请在采集器设置中自动扫描并核对指纹"
+		return snap
+	}
 	hostKeyCb := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		fp := ssh.FingerprintSHA256(key)
-		if strings.TrimSpace(c.HostKeyFp) == "" {
-			learnedFp = fp
-			return nil
-		}
 		if fp != strings.TrimSpace(c.HostKeyFp) {
 			return fmt.Errorf("SSH host key 指纹不匹配（可能存在中间人），期望 %s，实际 %s", c.HostKeyFp, fp)
 		}
@@ -118,13 +157,14 @@ func collectMeshTrafficViaSSH(ctx context.Context, c MeshTrafficCollector, passw
 		snap.Error = "连接失败: " + err.Error()
 		return snap
 	}
+	defer conn.Close()
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, fmt.Sprintf("%s:%d", c.Host, port), cfg)
 	if err != nil {
 		snap.Error = "SSH 握手失败: " + err.Error()
 		return snap
 	}
 	defer sshConn.Close()
-	snap.HostKeyFp = learnedFp
+	snap.HostKeyFp = c.HostKeyFp
 	client := ssh.NewClient(sshConn, chans, reqs)
 	defer client.Close()
 
@@ -218,35 +258,21 @@ func collectMeshTrafficAll(app *ServerApp, inst MeshInstance) []MeshTrafficSnaps
 				pass, _ = decryptSecret(key, c.PassEnc)
 			}
 			snaps[i] = collectMeshTrafficViaSSH(ctx, c, pass)
+			snaps[i].InstanceID = inst.ID
 		}(i, c)
 	}
 	wg.Wait()
-	// 回写运行时状态 + 缓存最近快照
-	cur := loadMeshSettings(app.PlatformKV())
-	now := time.Now().UTC().Format(time.RFC3339)
-	for i, c := range collectors {
-		for ci := range cur.Instances {
-			if cur.Instances[ci].ID != inst.ID {
-				continue
-			}
-			for j := range cur.Instances[ci].TrafficCollectors {
-				tc := &cur.Instances[ci].TrafficCollectors[j]
-				if tc.ID != c.ID {
-					continue
-				}
-				tc.LastSnapshotAt = now
-				tc.LastError = snaps[i].Error
-				if snaps[i].Error == "" && snaps[i].HostKeyFp != "" && strings.TrimSpace(tc.HostKeyFp) == "" {
-					tc.HostKeyFp = snaps[i].HostKeyFp
-				}
-			}
-		}
+	// 运行状态单独按采集器写入，避免定时采集覆盖同时保存的实例配置。
+	for _, snap := range snaps {
+		_ = saveMeshCollectorStatus(app.PlatformKV(), inst.ID, snap.CollectorID, meshCollectorStatus{
+			Host: snap.Host, Port: snap.Port, User: snap.User,
+			LastSnapshotAt: snap.CollectedAt, LastError: snap.Error,
+		})
 	}
-	_ = saveMeshSettings(app.PlatformKV(), cur)
 	cache := loadMeshTrafficCache(app.PlatformKV())
 	for _, s := range snaps {
 		if s.Error == "" {
-			cache[s.CollectorID] = s
+			cache[meshTrafficCacheKey(inst.ID, s.CollectorID)] = s
 		}
 	}
 	saveMeshTrafficCache(app.PlatformKV(), cache)
@@ -289,11 +315,12 @@ func appendMeshTrafficHistory(kv PlatformKV, snaps []MeshTrafficSnapshot) {
 		if s.Error != "" {
 			continue
 		}
-		items := append(hist[s.CollectorID], s)
+		key := meshTrafficCacheKey(s.InstanceID, s.CollectorID)
+		items := append(hist[key], s)
 		if len(items) > meshTrafficHistoryMaxPerCollector {
 			items = items[len(items)-meshTrafficHistoryMaxPerCollector:]
 		}
-		hist[s.CollectorID] = items
+		hist[key] = items
 	}
 	js, err := json.Marshal(struct {
 		Items map[string][]MeshTrafficSnapshot `json:"items"`
@@ -345,7 +372,7 @@ func StartMeshTrafficWorker(ctx context.Context, app *ServerApp, interval time.D
 					// 密钥 used 翻转检测：页面关闭时也能记录"使用时间"
 					if cli, _, ok, _ := meshClientFor(app, inst.ID); ok {
 						if keys, err := cli.ListPreAuthKeys(ctx, ""); err == nil {
-							reconcileKeyMeta(app.PlatformKV(), keys)
+							reconcileKeyMeta(app.PlatformKV(), inst.ID, keys)
 						}
 					}
 					if v := fetchHeadscaleVersion(app.Cfg(), inst); v != "" {
@@ -472,18 +499,20 @@ func fetchHeadscaleVersion(cfg Config, inst MeshInstance) string {
 
 // TailscaleProbeResult 自动扫描结果：Mode = native | docker | podman | nerdctl | crictl | none。
 type TailscaleProbeResult struct {
-	Mode    string `json:"mode"`
-	Command string `json:"command"`
-	Version string `json:"version,omitempty"`
-	Raw     string `json:"raw,omitempty"`
+	Mode          string `json:"mode"`
+	Command       string `json:"command"`
+	Version       string `json:"version,omitempty"`
+	Raw           string `json:"raw,omitempty"`
+	HostKeyFp     string `json:"hostKeyFp,omitempty"`
+	RequiresTrust bool   `json:"requiresTrust,omitempty"`
 }
 
 // tailscaleProbeScript 节点内执行的探测脚本（Linux/macOS/类 Unix NAS 通用，POSIX sh）：
-// 1) 原生二进制——扩展 PATH 后按常见路径逐一试探：
-//    deb/rpm、snap、macOS GUI 版（.app）与 Homebrew（ARM/Intel）、
-//    群晖 SPK（/var/packages/Tailscale）、QNAP（/opt/tailscale）、unRAID 插件；
-// 2) 容器化运行——依次尝试 docker / podman / nerdctl / crictl（k8s containerd），
-//    每个运行时在无权限时自动 `sudo -n` 重试（群晖等 root 场景由外层 sudo -S 兜底）。
+//  1. 原生二进制——扩展 PATH 后按常见路径逐一试探：
+//     deb/rpm、snap、macOS GUI 版（.app）与 Homebrew（ARM/Intel）、
+//     群晖 SPK（/var/packages/Tailscale）、QNAP（/opt/tailscale）、unRAID 插件；
+//  2. 容器化运行——依次尝试 docker / podman / nerdctl / crictl（k8s containerd），
+//     每个运行时在无权限时自动 `sudo -n` 重试（群晖等 root 场景由外层 sudo -S 兜底）。
 const tailscaleProbeScript = `
 export PATH="$PATH:/usr/local/bin:/usr/sbin:/sbin:/snap/bin:/opt/bin:/usr/lib/tailscale/bin:/opt/homebrew/bin"
 for c in tailscale /usr/bin/tailscale /usr/local/bin/tailscale /usr/sbin/tailscale /sbin/tailscale /opt/tailscale/bin/tailscale /usr/lib/tailscale/bin/tailscale /snap/bin/tailscale /opt/homebrew/bin/tailscale "/Applications/Tailscale.app/Contents/MacOS/Tailscale" /var/packages/Tailscale/target/bin/tailscale /opt/tailscale/tailscale /opt/Tailscale/tailscale /usr/local/emhttp/plugins/tailscale/bin/tailscale "$HOME/tailscale"; do
@@ -558,20 +587,38 @@ func isContainerProbeLine(ln string) bool {
 // 通过 uname 先分流：Linux/macOS/类 Unix（含群晖/QNAP/unRAID 等 NAS）走 POSIX 脚本，
 // Windows（OpenSSH 默认 shell 为 cmd，报错文案随本地化变化，无法可靠识别时也按 Windows 试）走 cmd 探测。
 // POSIX 先以普通用户执行；群晖等需要 root 的场景自动用密码走 sudo -S 重试。
-// HostKey 校验采用 TOFU-宽松模式（仅读取状态，不写入配置），指纹以正式采集首次学习为准。
-func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, password string) TailscaleProbeResult {
+// 首次连接仅获取指纹，在用户确认指纹前不进行密码认证。
+func meshProbeHostKeyCallback(expected string, observed *string) ssh.HostKeyCallback {
+	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		fingerprint := ssh.FingerprintSHA256(key)
+		if observed != nil {
+			*observed = fingerprint
+		}
+		if expected == "" {
+			return fmt.Errorf("首次连接需确认 SSH host key 指纹 %s", fingerprint)
+		}
+		if fingerprint != expected {
+			return fmt.Errorf("SSH host key 指纹不匹配（期望 %s，实际 %s）", expected, fingerprint)
+		}
+		return nil
+	}
+}
+
+func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, password, expectedHostKeyFp string) TailscaleProbeResult {
 	res := TailscaleProbeResult{Mode: "none"}
+	var observedHostKeyFp string
 	withSession := func(f func(*ssh.Session) string) string {
 		cfg := &ssh.ClientConfig{
 			User:            user,
 			Auth:            []ssh.AuthMethod{ssh.Password(password)},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			HostKeyCallback: meshProbeHostKeyCallback(expectedHostKeyFp, &observedHostKeyFp),
 			Timeout:         6 * time.Second,
 		}
 		conn, err := (&net.Dialer{Timeout: 6 * time.Second}).DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			return "SSH 连接失败: " + err.Error()
 		}
+		defer conn.Close()
 		sshConn, chans, reqs, err := ssh.NewClientConn(conn, net.JoinHostPort(host, strconv.Itoa(port)), cfg)
 		if err != nil {
 			return "SSH 握手失败: " + err.Error()
@@ -607,6 +654,11 @@ func ProbeTailscaleInstall(ctx context.Context, host string, port int, user, pas
 	// OS 分流：Windows OpenSSH 默认 shell（cmd/PowerShell）下 uname 不存在且报错文案
 	// 随系统语言本地化，因此只白名单识别已知 Unix 内核名，其余一律按 Windows 探测。
 	osOut := strings.TrimSpace(strings.TrimSuffix(runPosix("uname -s", false), "\n"))
+	if expectedHostKeyFp == "" && observedHostKeyFp != "" {
+		res.HostKeyFp = observedHostKeyFp
+		res.RequiresTrust = true
+		return res
+	}
 	switch {
 	case strings.HasPrefix(osOut, "SSH "), strings.HasPrefix(osOut, "创建会话"):
 		res.Raw = osOut
@@ -662,7 +714,7 @@ func probeWindowsTailscale(runWin func(string) string) TailscaleProbeResult {
 		return res
 	}
 	res = TailscaleProbeResult{Mode: "native", Command: windowsTSCommand(path)}
-	if v := firstLine(runWin(`"`+path+`" version`)); v != "" && !strings.Contains(v, "not recognized") {
+	if v := firstLine(runWin(`"` + path + `" version`)); v != "" && !strings.Contains(v, "not recognized") {
 		res.Version = v
 	}
 	raws = append(raws, "version => "+res.Version)

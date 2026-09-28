@@ -318,9 +318,10 @@ func aiAssistantUserWriteTools() []aiAssistantTool {
 					if encKey, kerr := meshEncryptionKey(app.Cfg()); kerr == nil {
 						if enc, eerr := encryptSecret(encKey, k.Key); eerr == nil {
 							items := loadMeshKeyMeta(app.PlatformKV())
-							m := items[k.ID]
+							id := meshKeyMetaID(inst.ID, k.ID)
+							m, _ := meshKeyMetaFor(app.PlatformKV(), inst.ID, k.ID)
 							m.FullEnc = enc
-							items[k.ID] = m
+							items[id] = m
 							saveMeshKeyMeta(app.PlatformKV(), items)
 						}
 					}

@@ -21,9 +21,11 @@ package internal
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"net"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,10 +54,12 @@ func registerMeshRoutes(api gin.IRouter, app *ServerApp) {
 	idg.DELETE("/nodes/:nid", AdminOnlyMiddleware(app), handleMeshNodeDelete(app))
 	idg.POST("/nodes/cleanup", AdminOnlyMiddleware(app), handleMeshNodeCleanup(app))
 	idg.POST("/nodes/:nid/routes", AdminOnlyMiddleware(app), handleMeshNodeRoutes(app))
+	idg.POST("/nodes/:nid/rename", AdminOnlyMiddleware(app), handleMeshNodeRename(app))
 	idg.POST("/nodes/:nid/tags", AdminOnlyMiddleware(app), handleMeshNodeTags(app))
 	idg.GET("/collector-discover", AdminOnlyMiddleware(app), handleMeshCollectorDiscover(app))
 	idg.POST("/collector-probe", AdminOnlyMiddleware(app), handleMeshCollectorProbe(app))
 	idg.GET("/keys", handleMeshKeysGet(app))
+	idg.POST("/users", AdminOnlyMiddleware(app), handleMeshUserCreate(app))
 	idg.POST("/keys", AdminOnlyMiddleware(app), handleMeshKeyCreate(app))
 	idg.POST("/keys/expire", AdminOnlyMiddleware(app), handleMeshKeyExpire(app))
 	idg.POST("/keys/delete", AdminOnlyMiddleware(app), handleMeshKeyDelete(app))
@@ -67,6 +71,8 @@ func registerMeshRoutes(api gin.IRouter, app *ServerApp) {
 	idg.GET("/keys/join-script", AdminOnlyMiddleware(app), handleMeshJoinScript(app))
 	idg.GET("/join-tool", AdminOnlyMiddleware(app), handleMeshJoinTool(app))
 	idg.POST("/join-report", handleMeshJoinReport(app))
+	idg.GET("/policy", handleMeshPolicyGet(app))
+	idg.PUT("/policy", AdminOnlyMiddleware(app), handleMeshPolicyPut(app))
 }
 
 // meshClientFor 从 bundle 找实例并构造已鉴权客户端。
@@ -95,7 +101,7 @@ func handleMeshInstancesGet(app *ServerApp) gin.HandlerFunc {
 		b := loadMeshSettings(app.PlatformKV())
 		out := make([]map[string]any, 0, len(b.Instances))
 		for _, in := range b.Instances {
-			out = append(out, meshInstancePublic(in))
+			out = append(out, meshInstancePublic(in, app.PlatformKV()))
 		}
 		c.JSON(http.StatusOK, gin.H{"instances": out})
 	}
@@ -122,6 +128,12 @@ func handleMeshInstancesPut(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		b := loadMeshSettings(app.PlatformKV())
+		if len(b.Instances) == 1 {
+			if err := migrateLegacyMeshKeyMeta(app.PlatformKV(), b.Instances[0].ID); err != nil {
+				RespondAPIError500(c, "迁移旧密钥记录失败: "+err.Error())
+				return
+			}
+		}
 		inst, _, err := upsertMeshInstance(b, in, func(p string) (string, error) { return encryptSecret(key, p) }, key)
 		if err != nil {
 			RespondAPIError500(c, err.Error())
@@ -131,7 +143,7 @@ func handleMeshInstancesPut(app *ServerApp) gin.HandlerFunc {
 			RespondAPIError500(c, err.Error())
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "已保存", "instance": meshInstancePublic(inst)})
+		c.JSON(http.StatusOK, gin.H{"message": "已保存", "instance": meshInstancePublic(inst, app.PlatformKV())})
 	}
 }
 
@@ -217,7 +229,7 @@ func handleMeshInstanceOverview(app *ServerApp) gin.HandlerFunc {
 		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 		defer cancel()
-		out := gin.H{"instance": meshInstancePublic(inst)}
+		out := gin.H{"instance": meshInstancePublic(inst, app.PlatformKV())}
 		// Health/用户/节点并行拉取（原先串行，公网 RTT 高时整页明显变慢）
 		var (
 			healthErr  error
@@ -265,7 +277,7 @@ func handleMeshInstanceOverview(app *ServerApp) gin.HandlerFunc {
 		// 按用户循环拉取会重复 N 次，这里单次调用 + 按 id 去重 + 附加平台元数据
 		if keys, kerr := cli.ListPreAuthKeys(ctx, ""); kerr == nil {
 			keys = dedupePreAuthKeys(keys)
-			enrichKeyMeta(app.PlatformKV(), keys)
+			enrichKeyMeta(app.PlatformKV(), inst.ID, keys)
 			sort.Slice(keys, func(i, j int) bool { return keys[i].CreatedAt > keys[j].CreatedAt })
 			out["preAuthKeys"] = keys
 		}
@@ -362,6 +374,31 @@ func handleMeshNodeDelete(app *ServerApp) gin.HandlerFunc {
 	})
 }
 
+var meshNodeNamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+
+func handleMeshNodeRename(app *ServerApp) gin.HandlerFunc {
+	return meshNodeAction(app, func(cli *headscaleClient, nid string, c *gin.Context) error {
+		var body struct {
+			Name string `json:"name"`
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+		if err := c.ShouldBindJSON(&body); err != nil {
+			return fmt.Errorf("参数无效")
+		}
+		name := strings.ToLower(strings.TrimSpace(body.Name))
+		if !meshNodeNamePattern.MatchString(name) {
+			return fmt.Errorf("节点名称需为 1–63 位小写字母、数字或中间连字符")
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		defer cancel()
+		if err := cli.RenameNode(ctx, nid, name); err != nil {
+			return err
+		}
+		SetAuditDetail(c, fmt.Sprintf("Headscale 重命名节点 instance=%s node=%s name=%s", c.Param("id"), nid, name))
+		return nil
+	})
+}
+
 func handleMeshNodeRoutes(app *ServerApp) gin.HandlerFunc {
 	return meshNodeAction(app, func(cli *headscaleClient, nid string, c *gin.Context) error {
 		var body struct {
@@ -372,8 +409,53 @@ func handleMeshNodeRoutes(app *ServerApp) gin.HandlerFunc {
 		}
 		ctx, cancel := reqCtx()
 		defer cancel()
-		return cli.SetApprovedRoutes(ctx, nid, body.Routes)
+		if err := setAndVerifyMeshRoutes(ctx, cli, nid, body.Routes); err != nil {
+			return err
+		}
+		SetAuditDetail(c, fmt.Sprintf("Headscale 路由审批 instance=%s node=%s routes=%d", c.Param("id"), nid, len(body.Routes)))
+		return nil
 	})
+}
+
+func setAndVerifyMeshRoutes(ctx context.Context, cli *headscaleClient, nodeID string, routes []string) error {
+	if routes == nil {
+		routes = []string{}
+	}
+	if err := cli.SetApprovedRoutes(ctx, nodeID, routes); err != nil {
+		return err
+	}
+	nodes, err := cli.ListNodes(ctx)
+	if err != nil {
+		return fmt.Errorf("路由提交后无法核实状态: %w", err)
+	}
+	for _, node := range nodes {
+		if node.ID != nodeID {
+			continue
+		}
+		want := make(map[string]bool, len(routes))
+		got := make(map[string]bool, len(node.ApprovedRoutes))
+		for _, route := range routes {
+			want[strings.TrimSpace(route)] = true
+		}
+		for _, route := range node.ApprovedRoutes {
+			got[strings.TrimSpace(route)] = true
+		}
+		if len(want) != len(got) {
+			break
+		}
+		match := true
+		for route := range want {
+			if !got[route] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return nil
+		}
+		break
+	}
+	return fmt.Errorf("Headscale 返回成功，但读回的已批路由与提交内容不一致；请刷新节点并核对（该版本可能无法持久化清空路由）")
 }
 
 func handleMeshNodeTags(app *ServerApp) gin.HandlerFunc {
@@ -541,7 +623,7 @@ func handleMeshCollectorDiscover(app *ServerApp) gin.HandlerFunc {
 		return ip == nil || !(ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast())
 	}
 	return func(c *gin.Context) {
-		cli, _, ok, err := meshClientFor(app, c.Param("id"))
+		cli, inst, ok, err := meshClientFor(app, c.Param("id"))
 		if !ok {
 			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
 			return
@@ -559,7 +641,7 @@ func handleMeshCollectorDiscover(app *ServerApp) gin.HandlerFunc {
 		}
 		// 流量快照里的 CurAddr 可补充真实 IP（endpoints 之外的第二来源）
 		curAddrByIP := map[string]string{}
-		for _, s := range loadMeshTrafficCache(app.PlatformKV()) {
+		for _, s := range meshFreshSnapshotsForInstance(inst, loadMeshTrafficCache(app.PlatformKV()), time.Now()) {
 			for _, p := range s.Peers {
 				tsIP := ""
 				for _, x := range p.TailscaleIPs {
@@ -627,6 +709,19 @@ func handleMeshCollectorDiscover(app *ServerApp) gin.HandlerFunc {
 // handleMeshCollectorProbe SSH 登录节点自动扫描 tailscale 安装方式（原生二进制 /
 // docker 容器 / 群晖 sudo），返回可直接使用的采集命令。body.password 为空且
 // collectorId 命中已存采集器时，沿用已加密存储的密码。
+func meshCollectorForProbe(inst MeshInstance, collectorID, host string, port int, user string) (MeshTrafficCollector, bool) {
+	for _, collector := range inst.TrafficCollectors {
+		collectorPort := collector.Port
+		if collectorPort <= 0 {
+			collectorPort = 22
+		}
+		if collector.ID == collectorID && strings.EqualFold(strings.TrimSpace(collector.Host), strings.TrimSpace(host)) && collectorPort == port && collector.User == user {
+			return collector, true
+		}
+	}
+	return MeshTrafficCollector{}, false
+}
+
 func handleMeshCollectorProbe(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
@@ -635,28 +730,35 @@ func handleMeshCollectorProbe(app *ServerApp) gin.HandlerFunc {
 			Port        int    `json:"port"`
 			User        string `json:"user"`
 			Password    string `json:"password"`
+			HostKeyFp   string `json:"hostKeyFp"`
 		}
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Host) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
 			return
 		}
+		_, inst, ok, err := meshClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		port := body.Port
+		if port <= 0 {
+			port = 22
+		}
 		password := body.Password
-		if strings.TrimSpace(password) == "" && strings.TrimSpace(body.CollectorID) != "" {
-			_, inst, ok, err := meshClientFor(app, c.Param("id"))
-			if !ok {
-				c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
-				return
+		expectedHostKeyFp := strings.TrimSpace(body.HostKeyFp)
+		if tc, matches := meshCollectorForProbe(inst, body.CollectorID, body.Host, port, body.User); matches {
+			if tc.HostKeyFp != "" {
+				expectedHostKeyFp = tc.HostKeyFp
 			}
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-			key, kerr := meshEncryptionKey(app.Cfg())
-			if kerr == nil {
-				for _, tc := range inst.TrafficCollectors {
-					if tc.ID == body.CollectorID {
-						password, _ = decryptSecret(key, tc.PassEnc)
-					}
+			if strings.TrimSpace(password) == "" {
+				key, kerr := meshEncryptionKey(app.Cfg())
+				if kerr == nil {
+					password, _ = decryptSecret(key, tc.PassEnc)
 				}
 			}
 		}
@@ -664,14 +766,10 @@ func handleMeshCollectorProbe(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "请先填写 SSH 密码（或该采集器已保存过密码）"})
 			return
 		}
-		port := body.Port
-		if port <= 0 {
-			port = 22
-		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 		defer cancel()
-		res := ProbeTailscaleInstall(ctx, strings.TrimSpace(body.Host), port, strings.TrimSpace(body.User), password)
-		c.JSON(http.StatusOK, gin.H{"mode": res.Mode, "command": res.Command, "version": res.Version, "raw": res.Raw})
+		res := ProbeTailscaleInstall(ctx, strings.TrimSpace(body.Host), port, strings.TrimSpace(body.User), password, expectedHostKeyFp)
+		c.JSON(http.StatusOK, res)
 	}
 }
 
@@ -718,8 +816,63 @@ func handleMeshKeysGet(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		keys = dedupePreAuthKeys(keys)
-		enrichKeyMeta(app.PlatformKV(), keys)
+		enrichKeyMeta(app.PlatformKV(), c.Param("id"), keys)
 		c.JSON(http.StatusOK, gin.H{"preAuthKeys": keys})
+	}
+}
+
+func validateMeshNewUser(name string, users []HSUser) error {
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > 63 || strings.ContainsAny(name, "\r\n\t") {
+		return fmt.Errorf("用户名无效")
+	}
+	for _, user := range users {
+		if strings.EqualFold(user.Name, name) {
+			return fmt.Errorf("用户 %s 已存在", name)
+		}
+	}
+	return nil
+}
+
+func handleMeshUserCreate(app *ServerApp) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Name        string `json:"name"`
+			DisplayName string `json:"displayName"`
+			Email       string `json:"email"`
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+			return
+		}
+		cli, _, ok, err := meshClientFor(app, c.Param("id"))
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
+		defer cancel()
+		users, err := cli.ListUsers(ctx)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			return
+		}
+		if err := validateMeshNewUser(body.Name, users); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		created, err := cli.CreateUser(ctx, strings.TrimSpace(body.Name), strings.TrimSpace(body.DisplayName), strings.TrimSpace(body.Email))
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			return
+		}
+		SetAuditDetail(c, fmt.Sprintf("Headscale 创建本地用户 instance=%s user=%s", c.Param("id"), created.Name))
+		c.JSON(http.StatusOK, gin.H{"user": created})
 	}
 }
 
@@ -769,9 +922,10 @@ func handleMeshKeyCreate(app *ServerApp) gin.HandlerFunc {
 			if encKey, kerr := meshEncryptionKey(app.Cfg()); kerr == nil {
 				if enc, eerr := encryptSecret(encKey, k.Key); eerr == nil {
 					items := loadMeshKeyMeta(app.PlatformKV())
-					m := items[k.ID]
+					id := meshKeyMetaID(c.Param("id"), k.ID)
+					m, _ := meshKeyMetaFor(app.PlatformKV(), c.Param("id"), k.ID)
 					m.FullEnc = enc
-					items[k.ID] = m
+					items[id] = m
 					saveMeshKeyMeta(app.PlatformKV(), items)
 				}
 			}
@@ -833,7 +987,7 @@ func handleMeshKeyDelete(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		pruneMeshKeyMeta(app.PlatformKV(), []string{strings.TrimSpace(body.ID)})
+		pruneMeshKeyMeta(app.PlatformKV(), c.Param("id"), []string{strings.TrimSpace(body.ID)})
 		c.JSON(http.StatusOK, gin.H{"message": "已删除"})
 	}
 }
@@ -911,7 +1065,7 @@ func handleMeshKeyCleanup(app *ServerApp) gin.HandlerFunc {
 			deleted = append(deleted, sk.Key)
 			deletedIDs = append(deletedIDs, sk.ID)
 		}
-		pruneMeshKeyMeta(app.PlatformKV(), deletedIDs)
+		pruneMeshKeyMeta(app.PlatformKV(), c.Param("id"), deletedIDs)
 		c.JSON(http.StatusOK, gin.H{"count": len(deleted), "deleted": deleted, "failed": failed})
 	}
 }
@@ -928,9 +1082,10 @@ func handleMeshKeyNote(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		items := loadMeshKeyMeta(app.PlatformKV())
-		m := items[body.ID]
+		id := meshKeyMetaID(c.Param("id"), body.ID)
+		m, _ := meshKeyMetaFor(app.PlatformKV(), c.Param("id"), body.ID)
 		m.Note = strings.TrimSpace(body.Note)
-		items[body.ID] = m
+		items[id] = m
 		saveMeshKeyMeta(app.PlatformKV(), items)
 		c.JSON(http.StatusOK, gin.H{"message": "已保存"})
 	}
@@ -947,7 +1102,7 @@ func handleMeshKeyReveal(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少密钥 id"})
 			return
 		}
-		m, ok := loadMeshKeyMeta(app.PlatformKV())[body.ID]
+		m, ok := meshKeyMetaFor(app.PlatformKV(), c.Param("id"), body.ID)
 		if !ok || m.FullEnc == "" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "未保存该密钥的完整值（可能非本平台创建，headscale 不支持事后查看）"})
 			return
@@ -991,7 +1146,8 @@ func handleMeshDefaultKeyGet(app *ServerApp) gin.HandlerFunc {
 			out["createdBy"] = dk.CreatedBy
 			out["days"] = dk.Days
 			out["createdAt"] = dk.CreatedAt
-			out["devices"] = loadMeshKeyMeta(app.PlatformKV())[dk.KeyID].Devices
+			meta, _ := meshKeyMetaFor(app.PlatformKV(), instID, dk.KeyID)
+			out["devices"] = meta.Devices
 			if keys, kerr := cli.ListPreAuthKeys(ctx, ""); kerr == nil {
 				for _, k := range keys {
 					if k.ID == dk.KeyID {
@@ -1075,10 +1231,12 @@ func handleMeshDefaultKeyReset(app *ServerApp) gin.HandlerFunc {
 			CreatedAt: time.Now().Format(time.RFC3339),
 		})
 		items := loadMeshKeyMeta(app.PlatformKV())
-		m := items[k.ID]
+		id := meshKeyMetaID(instID, k.ID)
+		m, _ := meshKeyMetaFor(app.PlatformKV(), instID, k.ID)
 		m.FullEnc = enc
 		m.Note = fmt.Sprintf("默认加入密钥 · %d天 · %s", days, target.Name)
-		items[k.ID] = m
+		m.User = target.Name
+		items[id] = m
 		saveMeshKeyMeta(app.PlatformKV(), items)
 		c.JSON(http.StatusOK, gin.H{"id": k.ID, "key": k.Key, "user": target.Name, "days": days, "expiration": exp.Format(time.RFC3339)})
 	}
@@ -1141,11 +1299,12 @@ func handleMeshJoinScript(app *ServerApp) gin.HandlerFunc {
 // 平台记录 key↔设备 关联。headscale API 无此能力，由脚本+平台实现。
 func handleMeshJoinReport(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
 		var body struct {
 			Hostname string `json:"hostname"`
 			AuthKey  string `json:"authkey"`
 		}
-		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.AuthKey) == "" {
+		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.AuthKey) == "" || len(body.AuthKey) > 512 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
 			return
 		}
@@ -1155,15 +1314,36 @@ func handleMeshJoinReport(app *ServerApp) gin.HandlerFunc {
 			return
 		}
 		hostname := strings.TrimSpace(body.Hostname)
-		if hostname == "" {
-			hostname = "unknown"
+		if hostname == "" || len(hostname) > 253 || strings.ContainsAny(hostname, "\r\n\t") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "设备名无效"})
+			return
 		}
-		for id, m := range loadMeshKeyMeta(app.PlatformKV()) {
+		if _, ok := meshInstanceByID(app.PlatformKV(), c.Param("id")); !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
+			return
+		}
+		for id, m := range meshJoinReportCandidates(app.PlatformKV(), c.Param("id")) {
 			if m.FullEnc == "" {
 				continue
 			}
-			if plain, derr := decryptSecret(key, m.FullEnc); derr == nil && plain == strings.TrimSpace(body.AuthKey) {
-				addMeshKeyDevice(app.PlatformKV(), id, hostname)
+			if plain, derr := decryptSecret(key, m.FullEnc); derr == nil && subtle.ConstantTimeCompare([]byte(plain), []byte(strings.TrimSpace(body.AuthKey))) == 1 {
+				cli, _, ok, err := meshClientFor(app, c.Param("id"))
+				if !ok || err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{"error": "无法校验密钥状态"})
+					return
+				}
+				ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+				keys, err := cli.ListPreAuthKeys(ctx, "")
+				cancel()
+				if err != nil {
+					c.JSON(http.StatusServiceUnavailable, gin.H{"error": "无法校验密钥状态"})
+					return
+				}
+				if !meshPreAuthKeyValidForReport(keys, id, time.Now()) {
+					c.JSON(http.StatusUnauthorized, gin.H{"error": "密钥已过期或已删除"})
+					return
+				}
+				addMeshKeyDevice(app.PlatformKV(), c.Param("id"), id, hostname)
 				c.JSON(http.StatusOK, gin.H{"ok": true, "user": m.User})
 				return
 			}
@@ -1277,19 +1457,20 @@ func handleMeshInstanceTrafficGet(app *ServerApp) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": "实例不存在"})
 			return
 		}
-		cache := loadMeshTrafficCache(app.PlatformKV())
-		snaps := []MeshTrafficSnapshot{}
-		for _, col := range inst.TrafficCollectors {
-			if s, ok := cache[col.ID]; ok {
-				snaps = append(snaps, s)
-			}
+		snaps := meshSnapshotsForInstance(inst, loadMeshTrafficCache(app.PlatformKV()))
+		for i := range snaps {
+			snaps[i].Stale = meshSnapshotIsStale(snaps[i], time.Now())
 		}
 		// 历史序列：只返回本实例采集器的，供前端画趋势图
 		histAll := loadMeshTrafficHistory(app.PlatformKV())
 		hist := map[string][]MeshTrafficSnapshot{}
 		for _, col := range inst.TrafficCollectors {
-			if items, ok := histAll[col.ID]; ok && len(items) > 0 {
-				hist[col.ID] = items
+			if items, ok := histAll[meshTrafficCacheKey(inst.ID, col.ID)]; ok && len(items) > 0 {
+				for _, item := range items {
+					if meshSnapshotMatchesCollector(inst.ID, col, item) {
+						hist[col.ID] = append(hist[col.ID], item)
+					}
+				}
 			}
 		}
 		c.JSON(http.StatusOK, gin.H{"snapshots": snaps, "history": hist})
@@ -1297,46 +1478,72 @@ func handleMeshInstanceTrafficGet(app *ServerApp) gin.HandlerFunc {
 }
 
 // handleMeshSummary 跨实例汇总（Dashboard 卡片）；单实例失败不阻塞整体。
+type meshInstanceSummary struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Region      string `json:"region,omitempty"`
+	APIURL      string `json:"apiUrl,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Healthy     bool   `json:"healthy"`
+	NodesTotal  int    `json:"nodesTotal"`
+	NodesOnline int    `json:"nodesOnline"`
+	Routes      int    `json:"routesApproved"`
+	Error       string `json:"error,omitempty"`
+}
+
+func meshSummarizeInstances(ctx context.Context, instances []MeshInstance, listNodes func(context.Context, MeshInstance) ([]HSNode, error), timeout time.Duration) []meshInstanceSummary {
+	out := make([]meshInstanceSummary, len(instances))
+	jobs := make(chan int, len(instances))
+	for i, inst := range instances {
+		out[i] = meshInstanceSummary{ID: inst.ID, Name: inst.Name, Region: inst.Region, APIURL: inst.APIURL, Enabled: inst.Enabled}
+		if inst.Enabled {
+			jobs <- i
+		}
+	}
+	close(jobs)
+	var wg sync.WaitGroup
+	for worker := 0; worker < 4 && worker < len(instances); worker++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				callCtx, cancel := context.WithTimeout(ctx, timeout)
+				nodes, err := listNodes(callCtx, instances[i])
+				cancel()
+				if err != nil {
+					out[i].Error = err.Error()
+					continue
+				}
+				out[i].Healthy = true
+				out[i].NodesTotal = len(nodes)
+				for _, n := range nodes {
+					if n.Online {
+						out[i].NodesOnline++
+					}
+					out[i].Routes += len(n.ApprovedRoutes)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
 func handleMeshSummary(app *ServerApp) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		b := loadMeshSettings(app.PlatformKV())
-		type instSummary struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Region      string `json:"region,omitempty"`
-			APIURL      string `json:"apiUrl,omitempty"`
-			Enabled     bool   `json:"enabled"`
-			Healthy     bool   `json:"healthy"`
-			NodesTotal  int    `json:"nodesTotal"`
-			NodesOnline int    `json:"nodesOnline"`
-			Routes      int    `json:"routesApproved"`
-			Error       string `json:"error,omitempty"`
-		}
-		out := make([]instSummary, 0, len(b.Instances))
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
 		defer cancel()
-		for _, in := range b.Instances {
-			s := instSummary{ID: in.ID, Name: in.Name, Region: in.Region, APIURL: in.APIURL, Enabled: in.Enabled}
-			if in.Enabled {
-				if cli, _, _, err := meshClientFor(app, in.ID); err == nil {
-					if nodes, err := cli.ListNodes(ctx); err == nil {
-						s.Healthy = true
-						s.NodesTotal = len(nodes)
-						for _, n := range nodes {
-							if n.Online {
-								s.NodesOnline++
-							}
-							s.Routes += len(n.ApprovedRoutes)
-						}
-					} else {
-						s.Error = err.Error()
-					}
-				} else {
-					s.Error = err.Error()
-				}
+		out := meshSummarizeInstances(ctx, b.Instances, func(callCtx context.Context, inst MeshInstance) ([]HSNode, error) {
+			cli, _, ok, err := meshClientFor(app, inst.ID)
+			if err != nil {
+				return nil, err
 			}
-			out = append(out, s)
-		}
+			if !ok {
+				return nil, fmt.Errorf("实例不存在")
+			}
+			return cli.ListNodes(callCtx)
+		}, 6*time.Second)
 		c.JSON(http.StatusOK, gin.H{"instances": out})
 	}
 }
@@ -1363,6 +1570,31 @@ type MeshSite struct {
 	LastSeen    string   `json:"lastSeen,omitempty"`
 	TailscaleIP string   `json:"tailscaleIp,omitempty"`
 	RealIPs     []string `json:"realIps,omitempty"` // 路由器节点的真实 LAN IP
+}
+
+func meshSitesForNode(n HSNode, realIPs []string) []MeshSite {
+	approved := make(map[string]bool, len(n.ApprovedRoutes))
+	for _, route := range n.ApprovedRoutes {
+		approved[route] = true
+	}
+	routes := make([]string, 0, len(n.ApprovedRoutes)+len(n.AvailableRoutes))
+	seen := make(map[string]bool, cap(routes))
+	for _, route := range append(append([]string{}, n.ApprovedRoutes...), n.AvailableRoutes...) {
+		if route == "" || seen[route] {
+			continue
+		}
+		seen[route] = true
+		routes = append(routes, route)
+	}
+	sites := make([]MeshSite, 0, len(routes))
+	for _, route := range routes {
+		sites = append(sites, MeshSite{
+			Subnet: route, Router: nodeName(n), RouterID: n.ID,
+			Approved: approved[route], Online: n.Online,
+			LastSeen: n.LastSeen, TailscaleIP: firstTailscaleIP(n.IPAddresses), RealIPs: realIPs,
+		})
+	}
+	return sites
 }
 
 // MeshLink 站点间/节点间链路（来自路由节点侧快照）。
@@ -1401,10 +1633,10 @@ func handleMeshInstanceDiscover(app *ServerApp) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 		defer cancel()
 
-		out := gin.H{"instance": meshInstancePublic(inst)}
+		out := gin.H{"instance": meshInstancePublic(inst, app.PlatformKV())}
 
 		// 流量缓存：节点侧信息来源（OS/版本/链路）
-		cache := loadMeshTrafficCache(app.PlatformKV())
+		cache := meshFreshSnapshotsForInstance(inst, loadMeshTrafficCache(app.PlatformKV()), time.Now())
 		byIP := map[string]MeshTrafficPeer{}
 		byHost := map[string]MeshTrafficPeer{}
 		for _, s := range cache {
@@ -1515,19 +1747,9 @@ func handleMeshInstanceDiscover(app *ServerApp) gin.HandlerFunc {
 				}
 			}
 			discovered = append(discovered, dn)
-			// 站点归纳
+			// 站点归纳：保留已审批与待审批路由，并按每条路由标注状态。
+			sites = append(sites, meshSitesForNode(n, dn.RealIPs)...)
 			tsIP := firstTailscaleIP(n.IPAddresses)
-			subnets := n.ApprovedRoutes
-			if len(subnets) == 0 {
-				subnets = n.AvailableRoutes
-			}
-			for _, sn := range subnets {
-				sites = append(sites, MeshSite{
-					Subnet: sn, Router: nodeName(n), RouterID: n.ID,
-					Approved: len(n.ApprovedRoutes) > 0, Online: n.Online,
-					LastSeen: n.LastSeen, TailscaleIP: tsIP, RealIPs: dn.RealIPs,
-				})
-			}
 			// 采集器建议：有子网路由但未按 Tailscale IP 配置采集器
 			if len(n.AvailableRoutes) > 0 || len(n.ApprovedRoutes) > 0 {
 				// 候选地址：真实 LAN IP 优先，其次 Tailscale IP；
@@ -1580,7 +1802,7 @@ func handleMeshInstanceDiscover(app *ServerApp) gin.HandlerFunc {
 		// 按用户循环拉取会重复 N 次，这里单次调用 + 按 id 去重 + 附加平台元数据
 		if keys, kerr := cli.ListPreAuthKeys(ctx, ""); kerr == nil {
 			keys = dedupePreAuthKeys(keys)
-			enrichKeyMeta(app.PlatformKV(), keys)
+			enrichKeyMeta(app.PlatformKV(), inst.ID, keys)
 			sort.Slice(keys, func(i, j int) bool { return keys[i].CreatedAt > keys[j].CreatedAt })
 			out["preAuthKeys"] = keys
 		}

@@ -8,6 +8,7 @@ package internal
 //   POST /api/v1/node/{id}/tags          {"tags":[...]}
 //   POST /api/v1/node/{id}/approve_routes {"routes":[...]}    （v0.28 实测路径）
 //   GET  /api/v1/preauthkey?user=...  / POST /api/v1/preauthkey / POST /api/v1/preauthkey/expire
+//   GET|PUT /api/v1/policy
 // 认证：Authorization: Bearer <api key>。
 
 import (
@@ -219,6 +220,10 @@ func (h *headscaleClient) DeleteNode(ctx context.Context, nodeID string) error {
 	return h.do(ctx, http.MethodDelete, "/api/v1/node/"+url.PathEscape(nodeID), nil, nil, nil)
 }
 
+func (h *headscaleClient) RenameNode(ctx context.Context, nodeID, name string) error {
+	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/rename/"+url.PathEscape(name), nil, nil, nil)
+}
+
 func (h *headscaleClient) SetTags(ctx context.Context, nodeID string, tags []string) error {
 	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/tags", nil, map[string]any{"tags": tags}, nil)
 }
@@ -226,6 +231,23 @@ func (h *headscaleClient) SetTags(ctx context.Context, nodeID string, tags []str
 // SetApprovedRoutes 覆盖式审批节点子网路由（v0.28 实测路径为 approve_routes）。
 func (h *headscaleClient) SetApprovedRoutes(ctx context.Context, nodeID string, routes []string) error {
 	return h.do(ctx, http.MethodPost, "/api/v1/node/"+url.PathEscape(nodeID)+"/approve_routes", nil, map[string]any{"routes": routes}, nil)
+}
+
+type HSControlPolicy struct {
+	Policy    string `json:"policy"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
+}
+
+func (h *headscaleClient) GetPolicy(ctx context.Context) (HSControlPolicy, error) {
+	var out HSControlPolicy
+	err := h.do(ctx, http.MethodGet, "/api/v1/policy", nil, nil, &out)
+	return out, err
+}
+
+func (h *headscaleClient) SetPolicy(ctx context.Context, policy string) (HSControlPolicy, error) {
+	var out HSControlPolicy
+	err := h.do(ctx, http.MethodPut, "/api/v1/policy", nil, map[string]string{"policy": policy}, &out)
+	return out, err
 }
 
 func (h *headscaleClient) ListPreAuthKeys(ctx context.Context, user string) ([]HSPreAuthKey, error) {

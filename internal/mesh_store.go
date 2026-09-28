@@ -12,6 +12,52 @@ import (
 )
 
 const kvKeyMeshSettings = "labplane_mesh_settings_v1"
+const kvKeyMeshCollectorStatusPrefix = "labplane_mesh_collector_status_v1_"
+
+type meshCollectorStatus struct {
+	Host           string `json:"host,omitempty"`
+	Port           int    `json:"port,omitempty"`
+	User           string `json:"user,omitempty"`
+	LastSnapshotAt string `json:"lastSnapshotAt,omitempty"`
+	LastError      string `json:"lastError,omitempty"`
+}
+
+func meshCollectorEndpointMatches(c MeshTrafficCollector, host string, port int, user string) bool {
+	collectorPort := c.Port
+	if collectorPort <= 0 {
+		collectorPort = 22
+	}
+	if port <= 0 {
+		port = 22
+	}
+	return strings.EqualFold(strings.TrimSpace(c.Host), strings.TrimSpace(host)) && collectorPort == port && c.User == user
+}
+
+func saveMeshCollectorStatus(kv PlatformKV, instanceID, collectorID string, status meshCollectorStatus) error {
+	if kv == nil {
+		return nil
+	}
+	raw, err := json.Marshal(status)
+	if err != nil {
+		return err
+	}
+	return kv.Set(kvKeyMeshCollectorStatusPrefix+meshTrafficCacheKey(instanceID, collectorID), string(raw))
+}
+
+func loadMeshCollectorStatus(kv PlatformKV, instanceID, collectorID string) (meshCollectorStatus, bool) {
+	if kv == nil {
+		return meshCollectorStatus{}, false
+	}
+	raw, ok := kv.Get(kvKeyMeshCollectorStatusPrefix + meshTrafficCacheKey(instanceID, collectorID))
+	if !ok {
+		return meshCollectorStatus{}, false
+	}
+	var status meshCollectorStatus
+	if json.Unmarshal([]byte(raw), &status) != nil {
+		return meshCollectorStatus{}, false
+	}
+	return status, true
+}
 
 // MeshTrafficCollector 流量采集器：通过 SSH 到子网路由节点执行
 // `tailscale status --json`，取每个 peer 的 RxBytes/TxBytes 计数。
@@ -25,7 +71,7 @@ type MeshTrafficCollector struct {
 	// Command 远端采集命令；空为 `tailscale status --json`。容器化部署（如群晖）可写
 	// `/usr/local/bin/docker exec tailscale-router tailscale status --json`。
 	Command string `json:"command,omitempty"`
-	// HostKeyFp SSH host key SHA256 指纹（TOFU 首次采集时自动学习；更换节点后清空重学）
+	// HostKeyFp SSH host key SHA256 指纹（首次探测后由管理员确认；更换节点需重新确认）
 	HostKeyFp string `json:"hostKeyFp,omitempty"`
 	// 运行时状态（采集后回写）
 	LastSnapshotAt string `json:"lastSnapshotAt,omitempty"`
@@ -81,9 +127,13 @@ func saveMeshSettings(kv PlatformKV, b *meshSettingsBundle) error {
 }
 
 // meshInstancePublic 输出给前端的实例（密文不出站，只回 apiKeySet/passSet）。
-func meshInstancePublic(in MeshInstance) map[string]any {
+func meshInstancePublic(in MeshInstance, kv PlatformKV) map[string]any {
 	collectors := make([]map[string]any, 0, len(in.TrafficCollectors))
 	for _, c := range in.TrafficCollectors {
+		status, hasStatus := loadMeshCollectorStatus(kv, in.ID, c.ID)
+		if !hasStatus || !meshCollectorEndpointMatches(c, status.Host, status.Port, status.User) {
+			status = meshCollectorStatus{LastSnapshotAt: c.LastSnapshotAt, LastError: c.LastError}
+		}
 		collectors = append(collectors, map[string]any{
 			"id":             c.ID,
 			"name":           c.Name,
@@ -93,8 +143,8 @@ func meshInstancePublic(in MeshInstance) map[string]any {
 			"passSet":        strings.TrimSpace(c.PassEnc) != "",
 			"command":        c.Command,
 			"hostKeyFp":      c.HostKeyFp,
-			"lastSnapshotAt": c.LastSnapshotAt,
-			"lastError":      c.LastError,
+			"lastSnapshotAt": status.LastSnapshotAt,
+			"lastError":      status.LastError,
 		})
 	}
 	return map[string]any{
@@ -128,13 +178,14 @@ type meshInstancePutInput struct {
 }
 
 type meshTrafficCollectorPutInput struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"` // 留空保留；"-" 清除
-	Command  string `json:"command"`  // 可选；空=默认 tailscale status --json
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`  // 留空保留；"-" 清除
+	Command   string `json:"command"`   // 可选；空=默认 tailscale status --json
+	HostKeyFp string `json:"hostKeyFp"` // 已确认的 SSH 主机指纹
 }
 
 // upsertMeshInstance 把入参合并进 bundle，返回 (实例, 是否新实例)。
@@ -189,18 +240,22 @@ func upsertMeshInstance(b *meshSettingsBundle, in meshInstancePutInput, enc func
 		c := MeshTrafficCollector{
 			ID: cin.ID, Name: strings.TrimSpace(cin.Name),
 			Host: strings.TrimSpace(cin.Host), Port: cin.Port, User: strings.TrimSpace(cin.User),
-			Command: strings.TrimSpace(cin.Command),
+			Command: strings.TrimSpace(cin.Command), HostKeyFp: strings.TrimSpace(cin.HostKeyFp),
 		}
 		if strings.TrimSpace(c.ID) == "" {
 			c.ID = fmt.Sprintf("tc-%d", time.Now().UnixNano())
 		}
 		if old, ok := oldByID[c.ID]; ok {
-			c.LastSnapshotAt = old.LastSnapshotAt
-			c.LastError = old.LastError
-			c.PassEnc = old.PassEnc
-			c.HostKeyFp = old.HostKeyFp
-			if c.Host != old.Host {
-				c.HostKeyFp = "" // 换主机后重新 TOFU 学习指纹
+			sameEndpoint := meshCollectorEndpointMatches(old, c.Host, c.Port, c.User)
+			if sameEndpoint {
+				c.LastSnapshotAt = old.LastSnapshotAt
+				c.LastError = old.LastError
+				c.PassEnc = old.PassEnc
+			}
+			if strings.TrimSpace(cin.HostKeyFp) == "-" {
+				c.HostKeyFp = ""
+			} else if sameEndpoint && old.HostKeyFp != "" {
+				c.HostKeyFp = old.HostKeyFp
 			}
 		}
 		if strings.TrimSpace(cin.Password) == "-" {

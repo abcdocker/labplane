@@ -6,6 +6,7 @@ package internal
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,7 +33,7 @@ type meshKeyMeta struct {
 type meshDefaultKey struct {
 	KeyID     string `json:"keyId"`
 	FullEnc   string `json:"fullEnc"`
-	User      string `json:"user"`            // 绑定的 headscale 用户（Authentik 登录映射）
+	User      string `json:"user"`                // 绑定的 headscale 用户（Authentik 登录映射）
 	CreatedBy string `json:"createdBy,omitempty"` // 平台侧操作人
 	Days      int    `json:"days"`
 	CreatedAt string `json:"createdAt"`
@@ -93,33 +94,131 @@ func loadMeshKeyMeta(kv PlatformKV) map[string]meshKeyMeta {
 }
 
 func saveMeshKeyMeta(kv PlatformKV, items map[string]meshKeyMeta) {
+	_ = saveMeshKeyMetaErr(kv, items)
+}
+
+func saveMeshKeyMetaErr(kv PlatformKV, items map[string]meshKeyMeta) error {
 	if kv == nil {
-		return
+		return nil
 	}
-	if js, err := json.Marshal(struct {
+	js, err := json.Marshal(struct {
 		Items map[string]meshKeyMeta `json:"items"`
-	}{Items: items}); err == nil {
-		_ = kv.Set(kvKeyMeshKeyMeta, string(js))
+	}{Items: items})
+	if err != nil {
+		return err
 	}
+	return kv.Set(kvKeyMeshKeyMeta, string(js))
+}
+
+func meshKeyMetaID(instanceID, keyID string) string {
+	return strconv.Itoa(len(instanceID)) + ":" + instanceID + keyID
+}
+
+// 在从单实例扩容前，将无归属字段的旧记录归入唯一的原实例。
+func migrateLegacyMeshKeyMeta(kv PlatformKV, instanceID string) error {
+	items := loadMeshKeyMeta(kv)
+	changed := false
+	for id, m := range items {
+		if strings.Contains(id, ":") {
+			continue
+		}
+		scoped := meshKeyMetaID(instanceID, id)
+		if _, exists := items[scoped]; !exists {
+			items[scoped] = m
+		}
+		delete(items, id)
+		changed = true
+	}
+	if changed {
+		return saveMeshKeyMetaErr(kv, items)
+	}
+	return nil
+}
+
+// 旧版只按 key ID 保存；只有单实例部署才能安全地读取这类记录。
+func meshKeyMetaFor(kv PlatformKV, instanceID, keyID string) (meshKeyMeta, bool) {
+	items := loadMeshKeyMeta(kv)
+	if m, ok := items[meshKeyMetaID(instanceID, keyID)]; ok {
+		return m, true
+	}
+	instances := loadMeshSettings(kv).Instances
+	if len(instances) == 1 && instances[0].ID == instanceID {
+		if m, ok := items[keyID]; ok {
+			return m, true
+		}
+	}
+	if dk, ok := meshDefaultKeyOf(kv, instanceID); ok && dk.KeyID == keyID && dk.FullEnc != "" {
+		return meshKeyMeta{FullEnc: dk.FullEnc, User: dk.User}, true
+	}
+	return meshKeyMeta{}, false
+}
+
+func meshInstanceByID(kv PlatformKV, instanceID string) (MeshInstance, bool) {
+	for _, inst := range loadMeshSettings(kv).Instances {
+		if inst.ID == instanceID {
+			return inst, true
+		}
+	}
+	return MeshInstance{}, false
+}
+
+func meshJoinReportCandidates(kv PlatformKV, instanceID string) map[string]meshKeyMeta {
+	out := map[string]meshKeyMeta{}
+	items := loadMeshKeyMeta(kv)
+	prefix := meshKeyMetaID(instanceID, "")
+	for id, m := range items {
+		if strings.HasPrefix(id, prefix) && m.FullEnc != "" {
+			out[strings.TrimPrefix(id, prefix)] = m
+		}
+	}
+	if dk, ok := meshDefaultKeyOf(kv, instanceID); ok && dk.FullEnc != "" {
+		if _, exists := out[dk.KeyID]; !exists {
+			out[dk.KeyID] = meshKeyMeta{FullEnc: dk.FullEnc, User: dk.User}
+		}
+	}
+	instances := loadMeshSettings(kv).Instances
+	if len(instances) == 1 && instances[0].ID == instanceID {
+		for id, m := range items {
+			if !strings.Contains(id, ":") && m.FullEnc != "" {
+				if _, exists := out[id]; !exists {
+					out[id] = m
+				}
+			}
+		}
+	}
+	return out
+}
+
+func meshPreAuthKeyValidForReport(keys []HSPreAuthKey, id string, now time.Time) bool {
+	for _, key := range keys {
+		if key.ID != id {
+			continue
+		}
+		if key.Expiration == "" {
+			return true
+		}
+		exp, err := time.Parse(time.RFC3339, key.Expiration)
+		return err == nil && now.Before(exp)
+	}
+	return false
 }
 
 // enrichKeyMeta 附加平台元数据（备注/使用时间/可预览标记/设备）并记录 used 翻转。
-func enrichKeyMeta(kv PlatformKV, keys []HSPreAuthKey) {
-	items := loadMeshKeyMeta(kv)
+func enrichKeyMeta(kv PlatformKV, instanceID string, keys []HSPreAuthKey) {
 	for i := range keys {
-		if m, ok := items[keys[i].ID]; ok {
+		if m, ok := meshKeyMetaFor(kv, instanceID, keys[i].ID); ok {
 			keys[i].Note = m.Note
 			keys[i].UsedAt = m.UsedAt
 			keys[i].HasFull = m.FullEnc != ""
 			keys[i].Devices = m.Devices
 		}
 	}
-	reconcileKeyMeta(kv, keys)
+	reconcileKeyMeta(kv, instanceID, keys)
 }
 
 // reconcileKeyMeta 把密钥列表中的 used 翻转记录为使用时间。
 // 该时间为平台检测时间（近似），粒度取决于轮询间隔。
-func reconcileKeyMeta(kv PlatformKV, keys []HSPreAuthKey) {
+func reconcileKeyMeta(kv PlatformKV, instanceID string, keys []HSPreAuthKey) {
 	items := loadMeshKeyMeta(kv)
 	changed := false
 	now := time.Now().Format(time.RFC3339)
@@ -127,10 +226,11 @@ func reconcileKeyMeta(kv PlatformKV, keys []HSPreAuthKey) {
 		if !k.Used {
 			continue
 		}
-		m := items[k.ID]
+		id := meshKeyMetaID(instanceID, k.ID)
+		m, _ := meshKeyMetaFor(kv, instanceID, k.ID)
 		if m.UsedAt == "" {
 			m.UsedAt = now
-			items[k.ID] = m
+			items[id] = m
 			changed = true
 		}
 	}
@@ -140,9 +240,10 @@ func reconcileKeyMeta(kv PlatformKV, keys []HSPreAuthKey) {
 }
 
 // addMeshKeyDevice 记录脚本回传的设备（按主机名去重，保留最近 20 条）。
-func addMeshKeyDevice(kv PlatformKV, keyID, hostname string) bool {
+func addMeshKeyDevice(kv PlatformKV, instanceID, keyID, hostname string) bool {
 	items := loadMeshKeyMeta(kv)
-	m := items[keyID]
+	id := meshKeyMetaID(instanceID, keyID)
+	m, _ := meshKeyMetaFor(kv, instanceID, keyID)
 	for _, d := range m.Devices {
 		if d.Hostname == hostname {
 			return false
@@ -152,22 +253,30 @@ func addMeshKeyDevice(kv PlatformKV, keyID, hostname string) bool {
 	if len(m.Devices) > 20 {
 		m.Devices = m.Devices[len(m.Devices)-20:]
 	}
-	items[keyID] = m
+	items[id] = m
 	saveMeshKeyMeta(kv, items)
 	return true
 }
 
 // pruneMeshKeyMeta 删除已被移除的密钥的元数据。
-func pruneMeshKeyMeta(kv PlatformKV, deletedIDs []string) {
+func pruneMeshKeyMeta(kv PlatformKV, instanceID string, deletedIDs []string) {
 	if kv == nil || len(deletedIDs) == 0 {
 		return
 	}
 	items := loadMeshKeyMeta(kv)
 	changed := false
 	for _, id := range deletedIDs {
-		if _, ok := items[id]; ok {
-			delete(items, id)
+		key := meshKeyMetaID(instanceID, id)
+		if _, ok := items[key]; ok {
+			delete(items, key)
 			changed = true
+		}
+		instances := loadMeshSettings(kv).Instances
+		if len(instances) == 1 && instances[0].ID == instanceID {
+			if _, ok := items[id]; ok {
+				delete(items, id)
+				changed = true
+			}
 		}
 	}
 	if changed {
