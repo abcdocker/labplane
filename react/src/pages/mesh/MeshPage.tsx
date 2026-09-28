@@ -1736,14 +1736,11 @@ const MeshLinkGraph: React.FC<{
             </g>
           );
         })}
-        {/* headscale 控制面链路：注册/心跳（不承载数据面流量） */}
+        {/* headscale 控制面链路：仅到采集器枢纽（注册/心跳，不承载数据面流量） */}
         {cp ? (
-          <g opacity={0.6}>
+          <g opacity={0.45}>
             {hubs.map((h) => (
-              <line key={"cp-" + h.id} x1={W / 2} y1={34 + 18} x2={h.x} y2={h.y - 26} stroke="#8b5cf6" strokeWidth={1.2} strokeDasharray="4 7" vectorEffect="non-scaling-stroke" />
-            ))}
-            {peers.filter((p) => p.online).map((p) => (
-              <line key={"cp-" + p.id} x1={W / 2} y1={34 + 16} x2={p.x} y2={p.y - 17} stroke="#8b5cf6" strokeWidth={0.8} strokeDasharray="3 7" opacity={0.55} vectorEffect="non-scaling-stroke" />
+              <line key={"cp-" + h.id} x1={W / 2} y1={34 + 20} x2={h.x} y2={h.y - 27} stroke="#8b5cf6" strokeWidth={1} strokeDasharray="4 7" vectorEffect="non-scaling-stroke" />
             ))}
           </g>
         ) : null}
@@ -1813,12 +1810,12 @@ const MeshLinkGraph: React.FC<{
       })}
       {/* 节点标签 */}
       {labelNodes.map((n) => (
-        <div key={"l-" + n.id} className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap text-center"
+        <div key={"l-" + n.id} className="pointer-events-none absolute w-[124px] -translate-x-1/2 text-center"
           style={{ left: meshPct(n.x, W), top: `calc(${meshPct(n.y, H)} + ${n.kind === "hub" ? 27 : 20}px)` }}>
-          <p className={cn("text-[10px] font-medium leading-tight", !hoverId || hoverId === n.id || nodeActive(n.id) ? "text-slate-700" : "text-slate-400")}>{n.name}</p>
-          {n.kind === "hub" && n.host ? <p className="font-mono text-[9px] leading-tight text-indigo-400">{n.host}</p> : null}
-          {n.kind === "peer" && n.tsIp ? <p className="font-mono text-[9px] leading-tight text-slate-400">{n.tsIp}</p> : null}
-          {n.kind === "peer" && n.realIp ? <p className="font-mono text-[9px] leading-tight text-emerald-600">{n.realIp}</p> : null}
+          <p className={cn("truncate text-[10px] font-medium leading-tight", !hoverId || hoverId === n.id || nodeActive(n.id) ? "text-slate-700" : "text-slate-400")}>{n.name}</p>
+          {n.kind === "hub" && n.host ? <p className="truncate font-mono text-[9px] leading-tight text-indigo-400">{n.host}</p> : null}
+          {n.kind === "peer" && n.tsIp ? <p className="truncate font-mono text-[9px] leading-tight text-slate-400">{n.tsIp}</p> : null}
+          {n.kind === "peer" && n.realIp ? <p className="truncate font-mono text-[9px] leading-tight text-emerald-600">{n.realIp}</p> : null}
         </div>
       ))}
       {/* 悬停详情 */}
@@ -1886,8 +1883,8 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
       id: "hub-" + s.collectorId,
       name: s.selfHostName || s.collectorName || s.host,
       host: s.host,
-      x: snapshots.length === 1 ? GW / 2 : GW * 0.27 + si * GW * 0.46,
-      y: GH / 2,
+      x: (GW * (si + 1)) / (snapshots.length + 1),
+      y: 140,
     }));
     const peerMap = new Map<string, MeshGraphNode & { hubIds: string[] }>();
     const edgeMap = new Map<string, MeshGraphEdge>();
@@ -1920,35 +1917,40 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
         }
       });
     });
+    const edges = [...edgeMap.values()];
     const list = [...peerMap.values()];
-    if (hubsArr.length === 1) {
-      const hub = hubsArr[0];
-      list.sort((a, b) => a.name.localeCompare(b.name));
-      list.forEach((p, i) => {
-        const ang = ((-90 + (360 / Math.max(1, list.length)) * i) * Math.PI) / 180;
-        p.x = hub.x + Math.cos(ang) * 200;
-        p.y = hub.y + Math.sin(ang) * 185;
+    // 分层列布局：成员按「主枢纽」（流量最大的所属采集器）分列，同列内两列排布，避免连线交叉成网
+    const primary = new Map<string, string>();
+    list.forEach((p) => {
+      const outs = edges.filter((e) => e.to === p.id);
+      let best = hubsArr[0]?.id ?? "";
+      let bv = -1;
+      outs.forEach((e) => {
+        const v = e.rx + e.tx;
+        if (v > bv) { bv = v; best = e.from; }
       });
-    } else {
-      const shared = list.filter((p) => p.hubIds.length === hubsArr.length).sort((a, b) => a.name.localeCompare(b.name));
-      shared.forEach((p, i) => {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        const rows = Math.ceil(shared.length / 2);
-        p.x = GW / 2 + (col === 0 ? -52 : 52);
-        p.y = 96 + row * ((GH - 166) / Math.max(1, rows - 1));
+      if (outs.length === 0 && hubsArr.length === 1) best = hubsArr[0].id;
+      primary.set(p.id, best);
+    });
+    hubsArr.forEach((h, gi) => {
+      const cx = (GW * (gi + 1)) / (hubsArr.length + 1);
+      const members = list
+        .filter((p) => primary.get(p.id) === h.id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const twoCol = members.length > 3;
+      members.forEach((p, k) => {
+        const col = twoCol ? k % 2 : 0;
+        const row = twoCol ? Math.floor(k / 2) : k;
+        p.x = cx + (twoCol ? (col === 0 ? -110 : 110) : 0);
+        p.y = 258 + row * 76;
       });
-      const arc = (items: (MeshGraphNode & { hubIds: string[] })[], hub: { x: number; y: number }, a0: number, a1: number) => {
-        items.forEach((p, i) => {
-          const ang = ((a0 + (items.length === 1 ? (a1 - a0) / 2 : ((a1 - a0) * i) / (items.length - 1))) * Math.PI) / 180;
-          p.x = hub.x + Math.cos(ang) * 210;
-          p.y = hub.y + Math.sin(ang) * 168;
-        });
-      };
-      arc(list.filter((p) => p.hubIds.length === 1 && p.hubIds[0] === hubsArr[0].id).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)), hubsArr[0], 115, 245);
-      arc(list.filter((p) => p.hubIds.length === 1 && p.hubIds[0] === hubsArr[1].id).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)), hubsArr[1], -65, 65);
-    }
-    return { hubs: hubsArr, peers: list as MeshGraphNode[], edges: [...edgeMap.values()] };
+    });
+    const orphans = list.filter((p) => !primary.get(p.id));
+    orphans.forEach((p, i) => {
+      p.x = (GW * (i + 1)) / (orphans.length + 1);
+      p.y = 424;
+    });
+    return { hubs: hubsArr, peers: list as MeshGraphNode[], edges };
   }, [snapshots, discover]);
 
   // headscale 控制面（/metrics best-effort：9090 未暴露时静默降级）
@@ -2086,7 +2088,14 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
           ) : (
             <p className="py-12 text-center text-xs text-slate-400">暂无链路数据：先完成一次采集（或开启自动采集）。</p>
           )}
-          <p className="mt-1 text-[10px] text-slate-400">🛰️ 枢纽 = 流量采集器（子网路由器视角）；节点 = tailnet 成员；绿色流动线 = 直连在线。悬停节点/连线查看详情；真实 IP 来自自动发现合并。</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
+            <span>🛰️ 枢纽 = 流量采集器（子网路由器视角）；节点 = tailnet 成员</span>
+            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full bg-emerald-500" style={{ backgroundImage: "repeating-linear-gradient(90deg,#10b981 0 6px,transparent 6px 10px)" }} />直连在线</span>
+            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full" style={{ backgroundImage: "repeating-linear-gradient(90deg,#f59e0b 0 2px,transparent 2px 7px)" }} />DERP 中继</span>
+            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full bg-slate-300" />离线</span>
+            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full" style={{ backgroundImage: "repeating-linear-gradient(90deg,#8b5cf6 0 4px,transparent 4px 8px)" }} />控制面（注册/心跳）</span>
+            <span>悬停查看详情；真实 IP 来自自动发现合并</span>
+          </p>
         </div>
 
         <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
