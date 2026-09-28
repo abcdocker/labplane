@@ -19,6 +19,8 @@ import { useAuth } from "@/auth/auth-context";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MeshLinkGraph, type MeshGraphNode, type MeshGraphEdge } from "./MeshLinkGraph";
+import { meshTrafficText } from "@/i18n/meshTraffic";
 
 // ──────────────────────────── 类型 ────────────────────────────
 
@@ -1652,208 +1654,7 @@ const MeshKpiTile: React.FC<{
   </div>
 );
 
-// 链路拓扑图（Grafana Node Graph 风格）：采集器为枢纽，tailnet 成员为节点；
-// 连线粗细 ∝ 累计流量，绿色流动虚线 = 直连在线，橙色点线 = DERP 中继，灰色 = 离线。
-type MeshGraphNode = {
-  id: string; name: string; kind: "hub" | "peer";
-  x: number; y: number;
-  tsIp?: string; realIp?: string; os?: string; host?: string;
-  online: boolean; rx: number; tx: number;
-};
-type MeshGraphEdge = {
-  from: string; to: string; rx: number; tx: number;
-  via: "direct" | "relay" | "offline"; curAddr?: string; relay?: string;
-};
-const meshPct = (v: number, total: number) => `${((v / total) * 100).toFixed(2)}%`;
-const meshOsEmoji = (os?: string) => {
-  const s = (os || "").toLowerCase();
-  if (s.includes("mac")) return "";
-  if (s.includes("ios") || s.includes("iphone") || s.includes("ipad")) return "📱";
-  if (s.includes("win")) return "🪟";
-  if (s.includes("linux")) return "🐧";
-  if (s.includes("android")) return "🤖";
-  return "🖥";
-};
-
 const meshCompactCount = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n)));
-
-const MeshLinkGraph: React.FC<{
-  hubs: { id: string; name: string; host?: string; x: number; y: number }[];
-  peers: MeshGraphNode[];
-  edges: MeshGraphEdge[];
-  height?: number;
-  cp?: { name: string; version?: string; nodesTotal?: number; apiReq?: number };
-}> = ({ hubs, peers, edges, height = 460, cp }) => {
-  const [hover, setHover] = React.useState<{ kind: "node" | "edge"; id: string } | null>(null);
-  const [cpHover, setCpHover] = React.useState(false);
-  const [tip, setTip] = React.useState<{ x: number; y: number } | null>(null);
-  const boxRef = React.useRef<HTMLDivElement | null>(null);
-  const W = 1000;
-  const H = 460;
-  const nodeById = React.useMemo(() => {
-    const m = new Map<string, MeshGraphNode>();
-    hubs.forEach((h) => m.set(h.id, { ...h, kind: "hub", online: true, rx: 0, tx: 0 }));
-    peers.forEach((p) => m.set(p.id, p));
-    return m;
-  }, [hubs, peers]);
-  const maxBytes = Math.max(1, ...edges.map((e) => e.rx + e.tx));
-  const edgeW = (e: MeshGraphEdge) => 1.3 + 4.5 * (Math.log10(1 + e.rx + e.tx) / Math.log10(1 + maxBytes));
-  const viaColor = (v: MeshGraphEdge["via"]) => (v === "direct" ? "#10b981" : v === "relay" ? "#f59e0b" : "#cbd5e1");
-  const edgeKey = (e: MeshGraphEdge) => `${e.from}|${e.to}`;
-  const hoverId = hover?.id ?? null;
-  const nodeActive = (nid: string) =>
-    !hoverId || hoverId === nid || edges.some((e) => (e.from === nid || e.to === nid) && (hoverId === edgeKey(e) || hoverId === e.from || hoverId === e.to));
-  const edgeActive = (e: MeshGraphEdge) =>
-    !hoverId || hoverId === edgeKey(e) || hoverId === e.from || hoverId === e.to;
-  const labelNodes = [...hubs.map((h) => ({ ...h, kind: "hub" as const, tsIp: undefined as string | undefined, realIp: undefined as string | undefined, os: undefined as string | undefined, online: true, rx: 0, tx: 0 })), ...peers];
-  const hoverNode = hover?.kind === "node" ? nodeById.get(hover.id) : undefined;
-  const hoverEdge = hover?.kind === "edge" ? edges.find((e) => edgeKey(e) === hover.id) : undefined;
-  const topEdges = [...edges].filter((e) => e.rx + e.tx > 0).sort((a, b) => b.rx + b.tx - (a.rx + a.tx)).slice(0, 6).map(edgeKey);
-  const track = (e: React.MouseEvent) => {
-    const r = boxRef.current?.getBoundingClientRect();
-    if (r) setTip({ x: e.clientX - r.left, y: e.clientY - r.top });
-  };
-  return (
-    <div ref={boxRef} className="relative select-none" style={{ height }} onMouseMove={track}>
-      <style>{`@keyframes meshFlow{to{stroke-dashoffset:-32}}`}</style>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full">
-        {/* 连线 */}
-        {edges.map((e) => {
-          const a = nodeById.get(e.from);
-          const b = nodeById.get(e.to);
-          if (!a || !b) return null;
-          const mx = (a.x + b.x) / 2 + (b.y - a.y) * 0.06;
-          const my = (a.y + b.y) / 2 - (b.x - a.x) * 0.06;
-          const d = `M${a.x},${a.y} Q${mx.toFixed(1)},${my.toFixed(1)} ${b.x},${b.y}`;
-          const color = viaColor(e.via);
-          return (
-            <g key={edgeKey(e)} opacity={edgeActive(e) ? 1 : 0.12}>
-              <path d={d} fill="none" stroke={color} strokeWidth={edgeW(e)} strokeLinecap="round"
-                strokeDasharray={e.via === "direct" ? "7 9" : e.via === "relay" ? "2 7" : undefined}
-                style={e.via === "direct" ? { animation: "meshFlow 1.1s linear infinite" } : undefined} />
-              <path d={d} fill="none" stroke="#000" strokeOpacity={0} strokeWidth={16} pointerEvents="stroke"
-                onMouseEnter={() => setHover({ kind: "edge", id: edgeKey(e) })} onMouseLeave={() => setHover(null)} />
-            </g>
-          );
-        })}
-        {/* headscale 控制面链路：仅到采集器枢纽（注册/心跳，不承载数据面流量） */}
-        {cp ? (
-          <g opacity={0.45}>
-            {hubs.map((h) => (
-              <line key={"cp-" + h.id} x1={W / 2} y1={34 + 20} x2={h.x} y2={h.y - 27} stroke="#8b5cf6" strokeWidth={1} strokeDasharray="4 7" vectorEffect="non-scaling-stroke" />
-            ))}
-          </g>
-        ) : null}
-        {/* 节点 */}
-        {peers.map((p) => (
-          <g key={p.id} opacity={nodeActive(p.id) ? 1 : 0.18} style={{ cursor: "pointer" }}
-            onMouseEnter={() => setHover({ kind: "node", id: p.id })} onMouseLeave={() => setHover(null)}>
-            <circle cx={p.x} cy={p.y} r={17} fill="#fff" stroke={p.online ? "#10b981" : "#cbd5e1"} strokeWidth={2}
-              style={{ filter: p.online ? "drop-shadow(0 0 5px rgba(16,185,129,.4))" : undefined }} />
-          </g>
-        ))}
-        {hubs.map((h) => (
-          <g key={h.id} opacity={nodeActive(h.id) ? 1 : 0.18} style={{ cursor: "pointer" }}
-            onMouseEnter={() => setHover({ kind: "node", id: h.id })} onMouseLeave={() => setHover(null)}>
-            <circle cx={h.x} cy={h.y} r={24} fill="#eef2ff" stroke="#6366f1" strokeWidth={2.5}
-              style={{ filter: "drop-shadow(0 0 8px rgba(99,102,241,.45))" }} />
-          </g>
-        ))}
-        {cp ? (
-          <g style={{ cursor: "pointer" }} onMouseEnter={() => setCpHover(true)} onMouseLeave={() => setCpHover(false)}>
-            <circle cx={W / 2} cy={34} r={19} fill="#f5f3ff" stroke="#8b5cf6" strokeWidth={2.5}
-              style={{ filter: "drop-shadow(0 0 8px rgba(139,92,246,.45))" }} />
-          </g>
-        ) : null}
-      </svg>
-      {/* 控制面节点 emoji + 标签 */}
-      {cp ? (
-        <>
-          <span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-[15px] leading-none" style={{ left: meshPct(W / 2, W), top: meshPct(34, H) }}>🌐</span>
-          <div className="pointer-events-none absolute -translate-y-1/2 whitespace-nowrap font-mono text-[10px] text-violet-600"
-            style={{ left: `calc(${meshPct(W / 2, W)} + 27px)`, top: meshPct(34, H) }}>
-            🛰 {cp.name}{cp.version ? ` · v${cp.version}` : ""}{cp.nodesTotal != null ? ` · 节点 ${meshCompactCount(cp.nodesTotal)}` : ""}{cp.apiReq != null ? ` · API ${meshCompactCount(cp.apiReq)}` : ""}
-          </div>
-        </>
-      ) : null}
-      {cp && cpHover ? (
-        <div className="pointer-events-none absolute z-20 w-64 rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] shadow-lg backdrop-blur"
-          style={{ left: `calc(${meshPct(W / 2, W)} - 128px)`, top: meshPct(34 + 30, H) }}>
-          <p className="font-semibold text-slate-800">🌐 headscale 控制面</p>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-500">{cp.name}</p>
-          {cp.version ? <p className="mt-1 text-slate-600">版本 <span className="font-mono">v{cp.version}</span></p> : null}
-          {cp.nodesTotal != null ? <p className="text-slate-600">节点总数 <span className="font-mono">{Math.round(cp.nodesTotal)}</span></p> : null}
-          {cp.apiReq != null ? <p className="text-slate-600">API 请求累计 <span className="font-mono">{meshCompactCount(cp.apiReq)}</span></p> : null}
-          <p className="mt-1 text-[10px] text-slate-400">仅承载注册/心跳等控制面流量；headscale 不经过节点间数据面，节点间流量见采集器连线。</p>
-        </div>
-      ) : null}
-      {/* 节点 emoji（HTML 层，避免 SVG 缩放变形） */}
-      {labelNodes.map((n) => (
-        <span key={"e-" + n.id} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 leading-none"
-          style={{ left: meshPct(n.x, W), top: meshPct(n.y, H), fontSize: n.kind === "hub" ? 18 : 13 }}>
-          {n.kind === "hub" ? "🛰️" : meshOsEmoji(n.os)}
-        </span>
-      ))}
-      {/* 连线流量标签：Top6 + 悬停 */}
-      {edges.map((e) => {
-        if (!(topEdges.includes(edgeKey(e)) || hoverId === edgeKey(e))) return null;
-        const a = nodeById.get(e.from);
-        const b = nodeById.get(e.to);
-        if (!a || !b) return null;
-        return (
-          <span key={"t-" + edgeKey(e)} className={cn("pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border px-1.5 font-mono text-[9px] tabular-nums shadow-sm",
-            hoverId === edgeKey(e) ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white/90 text-slate-600")}
-            style={{ left: meshPct((a.x + b.x) / 2, W), top: meshPct((a.y + b.y) / 2 - 14, H) }}>
-            {fmtBytes(e.rx + e.tx)}
-          </span>
-        );
-      })}
-      {/* 节点标签 */}
-      {labelNodes.map((n) => (
-        <div key={"l-" + n.id} className="pointer-events-none absolute w-[124px] -translate-x-1/2 text-center"
-          style={{ left: meshPct(n.x, W), top: `calc(${meshPct(n.y, H)} + ${n.kind === "hub" ? 27 : 20}px)` }}>
-          <p className={cn("truncate text-[10px] font-medium leading-tight", !hoverId || hoverId === n.id || nodeActive(n.id) ? "text-slate-700" : "text-slate-400")}>{n.name}</p>
-          {n.kind === "hub" && n.host ? <p className="truncate font-mono text-[9px] leading-tight text-indigo-400">{n.host}</p> : null}
-          {n.kind === "peer" && n.tsIp ? <p className="truncate font-mono text-[9px] leading-tight text-slate-400">{n.tsIp}</p> : null}
-          {n.kind === "peer" && n.realIp ? <p className="truncate font-mono text-[9px] leading-tight text-emerald-600">{n.realIp}</p> : null}
-        </div>
-      ))}
-      {/* 悬停详情 */}
-      {hover && tip ? (
-        <div className="pointer-events-none absolute z-20 max-w-[260px] rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-[11px] shadow-lg backdrop-blur"
-          style={{ left: Math.min(tip.x + 14, (boxRef.current?.clientWidth ?? 800) - 270), top: Math.max(4, tip.y - 10) }}>
-          {hoverNode ? (
-            hoverNode.kind === "hub" ? (
-              <>
-                <p className="flex items-center gap-1 font-semibold text-slate-800">🛰️ {hoverNode.name}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-slate-500">{hoverNode.host}</p>
-                <p className="mt-1 text-slate-500">流量采集枢纽（子网路由器视角）</p>
-              </>
-            ) : (
-              <>
-                <p className="flex items-center gap-1 font-semibold text-slate-800">{meshOsEmoji(hoverNode.os)} {hoverNode.name}</p>
-                <p className="mt-0.5 font-mono text-[10px] text-slate-500">{hoverNode.tsIp}{hoverNode.os ? ` · ${hoverNode.os}` : ""}</p>
-                {hoverNode.realIp ? <p className="font-mono text-[10px] text-emerald-600">真实 {hoverNode.realIp}</p> : null}
-                <p className={cn("mt-1", hoverNode.online ? "text-emerald-600" : "text-slate-400")}>{hoverNode.online ? "● 在线" : "○ 离线"}</p>
-                <p className="mt-0.5 font-mono tabular-nums text-slate-600">收 {fmtBytes(hoverNode.rx)} / 发 {fmtBytes(hoverNode.tx)}<span className="text-slate-300">（多视角合计）</span></p>
-              </>
-            )
-          ) : hoverEdge ? (
-            <>
-              <p className="font-semibold text-slate-800">{nodeById.get(hoverEdge.from)?.name} → {nodeById.get(hoverEdge.to)?.name}</p>
-              <p className="mt-0.5">
-                {hoverEdge.via === "direct" ? <span className="text-emerald-600">● 直连{hoverEdge.curAddr ? <span className="ml-1 font-mono text-[10px] text-slate-500">{hoverEdge.curAddr}</span> : null}</span>
-                  : hoverEdge.via === "relay" ? <span className="text-amber-600">● DERP 中继{hoverEdge.relay ? ` ${hoverEdge.relay}` : ""}</span>
-                    : <span className="text-slate-400">● 离线</span>}
-              </p>
-              <p className="mt-0.5 font-mono tabular-nums text-slate-600">收 {fmtBytes(hoverEdge.rx)} / 发 {fmtBytes(hoverEdge.tx)}</p>
-            </>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-};
 
 const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discover?: Discover; autoSec: number; onAutoSecChange: (v: number) => void }> = ({ instance, isAdmin, discover, autoSec, onAutoSecChange }) => {
   const qc = useQueryClient();
@@ -1872,21 +1673,24 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
 
   // 链路图数据：最新快照的枢纽→对端连线 + 自动发现的 realIp/os 合并
   const graph = React.useMemo(() => {
-    const GW = 1000;
-    const GH = 460;
     const realByIp = new Map<string, { realIp?: string; os?: string }>();
     (discover?.nodes ?? []).forEach((n) => {
       const ip = (n.ipAddresses ?? []).find((x) => x.startsWith("100."));
       if (ip) realByIp.set(ip, { realIp: n.realIps?.[0], os: n.os });
     });
-    const hubsArr = snapshots.map((s, si) => ({
-      id: "hub-" + s.collectorId,
-      name: s.selfHostName || s.collectorName || s.host,
-      host: s.host,
-      x: (GW * (si + 1)) / (snapshots.length + 1),
-      y: 140,
-    }));
-    const peerMap = new Map<string, MeshGraphNode & { hubIds: string[] }>();
+    const hubsArr = snapshots.map((s) => {
+      const tsIp = (s.selfIps ?? []).find((ip) => ip.startsWith("100."));
+      const meta = tsIp ? realByIp.get(tsIp) : undefined;
+      return {
+        id: "hub-" + s.collectorId,
+        name: s.selfHostName || s.collectorName || s.host,
+        host: s.host,
+        tsIp,
+        realIp: meta?.realIp,
+        os: meta?.os,
+      };
+    });
+    const peerMap = new Map<string, MeshGraphNode>();
     const edgeMap = new Map<string, MeshGraphEdge>();
     snapshots.forEach((s) => {
       const hubId = "hub-" + s.collectorId;
@@ -1902,9 +1706,8 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
           pk.online = pk.online || p.online;
           if (meta?.realIp && !pk.realIp) pk.realIp = meta.realIp;
           if (meta?.os && !pk.os) pk.os = meta.os;
-          if (!pk.hubIds.includes(hubId)) pk.hubIds.push(hubId);
         } else {
-          peerMap.set(id, { id, kind: "peer", name: p.hostName || tsIp, x: 0, y: 0, tsIp, realIp: meta?.realIp, os: p.os || meta?.os, online: p.online, rx: p.rxBytes || 0, tx: p.txBytes || 0, hubIds: [hubId] });
+          peerMap.set(id, { id, name: p.hostName || tsIp, tsIp, realIp: meta?.realIp, os: p.os || meta?.os, online: p.online, rx: p.rxBytes || 0, tx: p.txBytes || 0 });
         }
         const ek = hubId + "|" + id;
         const ex = edgeMap.get(ek);
@@ -1917,40 +1720,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
         }
       });
     });
-    const edges = [...edgeMap.values()];
-    const list = [...peerMap.values()];
-    // 分层列布局：成员按「主枢纽」（流量最大的所属采集器）分列，同列内两列排布，避免连线交叉成网
-    const primary = new Map<string, string>();
-    list.forEach((p) => {
-      const outs = edges.filter((e) => e.to === p.id);
-      let best = hubsArr[0]?.id ?? "";
-      let bv = -1;
-      outs.forEach((e) => {
-        const v = e.rx + e.tx;
-        if (v > bv) { bv = v; best = e.from; }
-      });
-      if (outs.length === 0 && hubsArr.length === 1) best = hubsArr[0].id;
-      primary.set(p.id, best);
-    });
-    hubsArr.forEach((h, gi) => {
-      const cx = (GW * (gi + 1)) / (hubsArr.length + 1);
-      const members = list
-        .filter((p) => primary.get(p.id) === h.id)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      const twoCol = members.length > 3;
-      members.forEach((p, k) => {
-        const col = twoCol ? k % 2 : 0;
-        const row = twoCol ? Math.floor(k / 2) : k;
-        p.x = cx + (twoCol ? (col === 0 ? -110 : 110) : 0);
-        p.y = 258 + row * 76;
-      });
-    });
-    const orphans = list.filter((p) => !primary.get(p.id));
-    orphans.forEach((p, i) => {
-      p.x = (GW * (i + 1)) / (orphans.length + 1);
-      p.y = 424;
-    });
-    return { hubs: hubsArr, peers: list as MeshGraphNode[], edges };
+    return { hubs: hubsArr, peers: [...peerMap.values()], edges: [...edgeMap.values()] };
   }, [snapshots, discover]);
 
   // headscale 控制面（/metrics best-effort：9090 未暴露时静默降级）
@@ -2071,31 +1841,14 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
           <MeshKpiTile label="历史数据点" value={kpi.points} color="#6366f1" gradId="mesh-sp-pt" sub="跨采集器" format={(n) => String(Math.round(n))} />
         </div>
 
-        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-800">链路拓扑 · 流向图</p>
-            <div className="flex flex-wrap items-center gap-2.5 text-[10px] text-slate-400">
-              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#10b981 0 4px,transparent 4px 8px)" }} />直连 · 在线</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#f59e0b 0 2px,transparent 2px 6px)" }} />DERP 中继</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded bg-slate-300" />离线</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg,#8b5cf6 0 3px,transparent 3px 7px)" }} />headscale 控制面</span>
-              <span>线宽 ∝ 累计流量</span>
-            </div>
-          </div>
+        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <p className="mb-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{meshTrafficText.topology}</p>
           {graph.peers.length > 0 ? (
-            <MeshLinkGraph hubs={graph.hubs} peers={graph.peers} edges={graph.edges} height={470}
-              cp={{ name: cpInfo.host, version: cpInfo.version, nodesTotal: cpInfo.nodesTotal, apiReq: cpInfo.apiReq }} />
+            <MeshLinkGraph hubs={graph.hubs} peers={graph.peers} edges={graph.edges}
+              cp={{ name: cpInfo.host, version: cpInfo.version, nodesTotal: cpInfo.nodesTotal }} />
           ) : (
             <p className="py-12 text-center text-xs text-slate-400">暂无链路数据：先完成一次采集（或开启自动采集）。</p>
           )}
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
-            <span>🛰️ 枢纽 = 流量采集器（子网路由器视角）；节点 = tailnet 成员</span>
-            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full bg-emerald-500" style={{ backgroundImage: "repeating-linear-gradient(90deg,#10b981 0 6px,transparent 6px 10px)" }} />直连在线</span>
-            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full" style={{ backgroundImage: "repeating-linear-gradient(90deg,#f59e0b 0 2px,transparent 2px 7px)" }} />DERP 中继</span>
-            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full bg-slate-300" />离线</span>
-            <span className="flex items-center gap-1"><span className="h-0.5 w-4 rounded-full" style={{ backgroundImage: "repeating-linear-gradient(90deg,#8b5cf6 0 4px,transparent 4px 8px)" }} />控制面（注册/心跳）</span>
-            <span>悬停查看详情；真实 IP 来自自动发现合并</span>
-          </p>
         </div>
 
         <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
