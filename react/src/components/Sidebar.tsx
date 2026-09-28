@@ -1129,6 +1129,13 @@ const Sidebar: React.FC = () => {
               <span>流量监控</span>
             </Link>
             <Link
+              to="/cluster/mesh/policy"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/policy"), "slate")}
+            >
+              <ShieldCheck size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/policy"), "slate")} />
+              <span>访问策略</span>
+            </Link>
+            <Link
               to="/cluster/mesh/service"
               className={navLinkTint(location.pathname.startsWith("/cluster/mesh/service"), "slate")}
             >

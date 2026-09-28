@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MeshLinkGraph, type MeshGraphNode, type MeshGraphEdge } from "./MeshLinkGraph";
 import { meshTrafficText } from "@/i18n/meshTraffic";
+import { meshControlText } from "@/i18n/meshControl";
+import { meshRouteState } from "./meshRoutes";
+import { MeshPolicyPanel } from "./MeshPolicyPanel";
 
 // ──────────────────────────── 类型 ────────────────────────────
 
@@ -118,6 +121,7 @@ type KeyCleanupItem = {
 
 type TrafficSnapshot = {
   collectorId: string; collectorName: string; host: string; collectedAt: string;
+  stale?: boolean;
   hostKeyFp?: string; version?: string; backendState?: string;
   selfHostName?: string; selfIps?: string[];
   peers: TrafficPeer[]; error?: string;
@@ -221,13 +225,17 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
   // 采集器自动扫描：SSH 登录节点探测 tailscale 安装方式并自动填入采集命令
   const updCollectorRef = React.useRef<((idx: number, patch: Partial<TrafficCollector>) => void) | null>(null);
   const probeMut = useMutation({
-    mutationFn: (p: { cid: string; idx: number; host: string; port: number; user: string }) =>
-      apiPostJson<{ mode: string; command: string; version?: string; raw?: string }>(`/api/ops/mesh/instances/${draft.id}/collector-probe`, {
-        collectorId: p.cid, host: p.host, port: p.port, user: p.user, password: collectorPassInput[p.cid] ?? "",
+    mutationFn: (p: { cid: string; idx: number; host: string; port: number; user: string; hostKeyFp?: string }) =>
+      apiPostJson<{ mode: string; command: string; version?: string; raw?: string; hostKeyFp?: string; requiresTrust?: boolean }>(`/api/ops/mesh/instances/${draft.id}/collector-probe`, {
+        collectorId: p.cid, host: p.host, port: p.port, user: p.user, password: collectorPassInput[p.cid] ?? "", hostKeyFp: p.hostKeyFp ?? "",
       }),
     onSuccess: (res, p) => {
-      if (res.command) {
-        updCollectorRef.current?.(p.idx, { command: res.command });
+      if (res.requiresTrust) {
+        toast.info(meshControlText.trustFingerprintPrompt);
+      } else if (res.raw?.includes("指纹不匹配")) {
+        toast.error(res.raw);
+      } else if (res.command) {
+        updCollectorRef.current?.(p.idx, { command: res.command, ...(p.hostKeyFp ? { hostKeyFp: p.hostKeyFp } : {}) });
         toast.success(`探测成功（${res.mode}）：已自动填入采集命令${res.version ? ` · ${res.version}` : ""}`);
       } else {
         toast.error("未探测到 tailscale（已检查原生常见路径与 docker/podman/nerdctl/crictl 容器，支持 Linux/macOS/Windows/群晖/QNAP/unRAID 等），请手动填写采集命令；探测原始输出可在表单下方查看");
@@ -286,6 +294,7 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
           user: c.user,
           password: collectorPassInput[c.id] ?? undefined,
           command: c.command ?? "",
+          hostKeyFp: c.hostKeyFp ?? "",
         })),
       }),
     onSuccess: () => {
@@ -346,12 +355,22 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
   // 注意：必须是「渲染函数」而不是内联组件——若写成 <InstanceEditor />，每次按键
   // 触发页面重渲染时函数身份变化会导致整个弹窗子树卸载重建（闪屏/丢焦点）。
   function renderInstanceEditor() {
-    const updCollector = (idx: number, patch: Partial<TrafficCollector>) =>
+    const updCollector = (idx: number, patch: Partial<TrafficCollector>) => {
+      const current = draft.trafficCollectors?.[idx];
+      if (current && ((patch.host !== undefined && patch.host !== current.host)
+        || (patch.port !== undefined && patch.port !== current.port)
+        || (patch.user !== undefined && patch.user !== current.user))) {
+        setCollectorPassInput((values) => ({ ...values, [current.id]: "" }));
+      }
       setDraft((d) => {
         const cs = [...(d.trafficCollectors ?? [])];
-        cs[idx] = { ...cs[idx], ...patch };
+        const endpointChanged = (patch.host !== undefined && patch.host !== cs[idx].host)
+          || (patch.port !== undefined && patch.port !== cs[idx].port)
+          || (patch.user !== undefined && patch.user !== cs[idx].user);
+        cs[idx] = { ...cs[idx], ...patch, ...(endpointChanged ? { hostKeyFp: "", passSet: false } : {}) };
         return { ...d, trafficCollectors: cs };
       });
+    };
     updCollectorRef.current = updCollector;
     return (
       <Dialog open onOpenChange={(o) => { if (!o) setEditorOpen(false); }}>
@@ -472,16 +491,34 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
                     <Label className="text-xs">采集命令（自动扫描可免填）</Label>
                     {draft.id ? (
                       <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]"
-                        disabled={probeMut.isPending && probeMut.variables?.cid === c.id}
+                        disabled={c.hostKeyFp === "-" || (probeMut.isPending && probeMut.variables?.cid === c.id)}
                         onClick={() => probeMut.mutate({ cid: c.id, idx, host: c.host, port: c.port || 22, user: c.user })}>
                         {(probeMut.isPending && probeMut.variables?.cid === c.id) ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />}
                         自动扫描
                       </Button>
                     ) : null}
                   </div>
+                  {c.hostKeyFp && c.hostKeyFp !== "-" ? (
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                      <span className="break-all font-mono">{c.hostKeyFp}</span>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => updCollector(idx, { hostKeyFp: "-" })}>{meshControlText.resetFingerprint}</Button>
+                    </div>
+                  ) : c.hostKeyFp === "-" ? <p className="text-[10px] text-amber-700 dark:text-amber-300">{meshControlText.resetFingerprintHint}</p> : null}
                   <Input className="h-8 font-mono text-[11px]" value={c.command ?? ""} placeholder="留空，点「自动扫描」探测 tailscale 安装方式（原生/容器/群晖）" onChange={(e) => updCollector(idx, { command: e.target.value })} />
-                  {probeMut.data && probeMut.variables?.cid === c.id ? (
-                    <p className="text-[10px] text-slate-400">探测结果：{probeMut.data.raw}</p>
+                  {probeMut.data && probeMut.variables?.cid === c.id && probeMut.variables.host === c.host && probeMut.variables.user === c.user && probeMut.variables.port === (c.port || 22) ? (
+                    probeMut.data.requiresTrust && probeMut.data.hostKeyFp ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] dark:border-amber-800 dark:bg-amber-950/30">
+                        <p className="text-amber-800 dark:text-amber-200">{meshControlText.trustFingerprintNotice}</p>
+                        <p className="my-1 break-all font-mono text-amber-900 dark:text-amber-100">{probeMut.data.hostKeyFp}</p>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-[11px] dark:border-amber-700" disabled={probeMut.isPending}
+                          onClick={() => {
+                            const hostKeyFp = probeMut.data?.hostKeyFp;
+                            if (!hostKeyFp) return;
+                            updCollector(idx, { hostKeyFp });
+                            probeMut.mutate({ cid: c.id, idx, host: c.host, port: c.port || 22, user: c.user, hostKeyFp });
+                          }}>{meshControlText.trustFingerprintAction}</Button>
+                      </div>
+                    ) : <p className="text-[10px] text-slate-400">探测结果：{probeMut.data.raw}</p>
                   ) : null}
                 </div>
                 <div className="flex items-center justify-end">
@@ -495,7 +532,7 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
             <p className="text-[11px] text-slate-500">
               采集器在路由节点上执行采集命令解析 <code className="rounded bg-slate-100 px-1">tailscale status --json</code>；
               普通执行失败时自动用已存 SSH 密码走 <code className="rounded bg-slate-100 px-1">sudo -S</code> 重试（群晖等容器化部署适用）。
-              首次连接自动记录 host key 指纹，之后指纹变化将拒绝连接。
+              {meshControlText.collectorFingerprintHint}
             </p>
           </div>
 
@@ -539,7 +576,7 @@ const InstanceDetail: React.FC<{
   const qc = useQueryClient();
   const navigate = useNavigate();
   // tab 由路由（initialTab）唯一驱动：同路由组切换时组件实例被复用，state 初值不会重算
-  const tab = initialTab && ["topology", "nodes", "keys", "traffic", "service"].includes(initialTab) ? initialTab : "topology";
+  const tab = initialTab && ["topology", "nodes", "keys", "traffic", "policy", "service"].includes(initialTab) ? initialTab : "topology";
   const discoverQ = useQuery({
     queryKey: ["mesh-discover", inst.id],
     queryFn: () => apiGetJson<Discover>(`/api/ops/mesh/instances/${inst.id}/discover`),
@@ -674,9 +711,14 @@ const InstanceDetail: React.FC<{
             <TrafficPanel instance={inst} isAdmin={isAdmin} discover={ov} autoSec={autoSec} onAutoSecChange={setAutoSec} />
           </TabsContent>
 
+          {/* 访问策略 */}
+          <TabsContent value="policy" className="mt-3">
+            <MeshPolicyPanel instanceId={inst.id} isAdmin={isAdmin} />
+          </TabsContent>
+
           {/* 服务信息 */}
           <TabsContent value="service" className="mt-3">
-            <ServicePanel discover={ov} />
+            <ServicePanel discover={ov} instanceId={inst.id} isAdmin={isAdmin} onChanged={() => discoverQ.refetch()} />
           </TabsContent>
         </Tabs>
       </div>
@@ -853,6 +895,8 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
   const qc = useQueryClient();
   const [routeEditId, setRouteEditId] = useState("");
   const [routesDraft, setRoutesDraft] = useState("");
+  const [renameNodeId, setRenameNodeId] = useState("");
+  const [renameDraft, setRenameDraft] = useState("");
   const [confirmNodeId, setConfirmNodeId] = useState("");
   const [cleanOpen, setCleanOpen] = useState(false);
   const [cleanDays, setCleanDays] = useState(30);
@@ -868,6 +912,11 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
   const routesMut = useMutation({
     mutationFn: (p: { nid: string; routes: string[] }) => apiPostJson(`/api/ops/mesh/instances/${instanceId}/nodes/${p.nid}/routes`, { routes: p.routes }),
     onSuccess: () => { toast.success("路由已更新"); setRouteEditId(""); invalidate(); },
+    onError: (e) => toast.error(apiErr(e)),
+  });
+  const renameMut = useMutation({
+    mutationFn: () => apiPostJson(`/api/ops/mesh/instances/${instanceId}/nodes/${renameNodeId}/rename`, { name: renameDraft }),
+    onSuccess: () => { toast.success(meshControlText.renameNodeSaved); setRenameNodeId(""); invalidate(); },
     onError: (e) => toast.error(apiErr(e)),
   });
   const nodeMut = useMutation({
@@ -936,15 +985,15 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
                 <div className="min-w-0">
                   <dt className="mb-1 text-slate-400">子网路由（router）</dt>
                   <dd className="flex min-w-0 flex-wrap gap-1">
-                    {(n.approvedRoutes ?? []).length > 0 ? (
-                      (n.approvedRoutes ?? []).map((r) => (
+                    {meshRouteState(n.approvedRoutes, n.availableRoutes).approved.map((r) => (
                         <span key={r} className="flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-800"><RouteIcon className="h-3 w-3" /> {r}</span>
-                      ))
-                    ) : (n.availableRoutes ?? []).length > 0 ? (
-                      <span className="text-[10px] text-amber-700">已宣告待审批：{(n.availableRoutes ?? []).join(", ")}</span>
-                    ) : (
+                    ))}
+                    {meshRouteState(n.approvedRoutes, n.availableRoutes).pending.map((r) => (
+                      <span key={r} className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] text-amber-700">{meshControlText.pendingRoute}：{r}</span>
+                    ))}
+                    {(n.approvedRoutes ?? []).length === 0 && (n.availableRoutes ?? []).length === 0 ? (
                       <span className="text-[10px] text-slate-300">—</span>
-                    )}
+                    ) : null}
                   </dd>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -978,9 +1027,13 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
 
               {isAdmin ? (
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
-                  {(n.availableRoutes ?? []).length > 0 ? (
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px] dark:border-slate-700 dark:text-slate-200"
+                    onClick={() => { setRenameNodeId(n.id); setRenameDraft(n.givenName || n.name); }}>
+                    <Pencil className="mr-1 h-3 w-3" /> {meshControlText.renameNode}
+                  </Button>
+                  {(n.availableRoutes ?? []).length > 0 || (n.approvedRoutes ?? []).length > 0 ? (
                     <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
-                      onClick={() => { setRouteEditId(n.id); setRoutesDraft((n.availableRoutes ?? []).join("\n")); }}>
+                      onClick={() => { setRouteEditId(n.id); setRoutesDraft(meshRouteState(n.approvedRoutes, n.availableRoutes).approvalDraft); }}>
                       <Router className="mr-1 h-3 w-3" /> 路由
                     </Button>
                   ) : null}
@@ -1049,14 +1102,15 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
                 )}
               </td>
               <td className="px-3 py-2">
-                {(n.approvedRoutes ?? []).length > 0 ? (
+                {(n.approvedRoutes ?? []).length > 0 || (n.availableRoutes ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {(n.approvedRoutes ?? []).map((r) => (
+                    {meshRouteState(n.approvedRoutes, n.availableRoutes).approved.map((r) => (
                       <span key={r} className="flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-800"><RouteIcon className="h-3 w-3" /> {r}</span>
                     ))}
+                    {meshRouteState(n.approvedRoutes, n.availableRoutes).pending.map((r) => (
+                      <span key={r} className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] text-amber-700">{meshControlText.pendingRoute}：{r}</span>
+                    ))}
                   </div>
-                ) : (n.availableRoutes ?? []).length > 0 ? (
-                  <span className="text-[10px] text-amber-700">已宣告待审批：{(n.availableRoutes ?? []).join(", ")}</span>
                 ) : (
                   <span className="text-[10px] text-slate-300">—</span>
                 )}
@@ -1066,9 +1120,13 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
               {isAdmin ? (
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1.5">
-                    {(n.availableRoutes ?? []).length > 0 ? (
+                    <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px] dark:border-slate-700 dark:text-slate-200"
+                      onClick={() => { setRenameNodeId(n.id); setRenameDraft(n.givenName || n.name); }}>
+                      <Pencil className="mr-1 h-3 w-3" /> {meshControlText.renameNode}
+                    </Button>
+                    {(n.availableRoutes ?? []).length > 0 || (n.approvedRoutes ?? []).length > 0 ? (
                       <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
-                        onClick={() => { setRouteEditId(n.id); setRoutesDraft((n.availableRoutes ?? []).join("\n")); }}>
+                        onClick={() => { setRouteEditId(n.id); setRoutesDraft(meshRouteState(n.approvedRoutes, n.availableRoutes).approvalDraft); }}>
                         <Router className="mr-1 h-3 w-3" /> 路由
                       </Button>
                     ) : null}
@@ -1092,6 +1150,22 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
         </tbody>
       </table>
       </div>
+
+      <Dialog open={renameNodeId !== ""} onOpenChange={(open) => { if (!open) setRenameNodeId(""); }}>
+        <DialogContent className="max-w-md dark:border-slate-700 dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="dark:text-slate-100">{meshControlText.renameNodeTitle}</DialogTitle>
+            <DialogDescription>{meshControlText.renameNodeHint}</DialogDescription>
+          </DialogHeader>
+          <Input aria-label={meshControlText.renameNodeTitle} maxLength={63} className="dark:bg-slate-950 dark:text-slate-100" value={renameDraft} onChange={(event) => setRenameDraft(event.target.value)} />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRenameNodeId("")}>取消</Button>
+            <Button type="button" disabled={!renameDraft.trim() || renameMut.isPending} onClick={() => renameMut.mutate()}>
+              {renameMut.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{meshControlText.renameNode}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={routeEditId !== ""} onOpenChange={(o) => { if (!o) setRouteEditId(""); }}>
         <DialogContent className="max-w-md">
@@ -1120,7 +1194,7 @@ const NodesTable: React.FC<{ nodes: DiscoveredNode[]; instanceId: string; isAdmi
           <DialogHeader>
             <DialogTitle>清理陈旧节点</DialogTitle>
             <DialogDescription>
-              headscale 不会自动清理离线节点。删除连续 N 天未上线的离线节点；设备下次连接会自动重新注册，安全可逆。
+              {meshControlText.deleteNodeWarning}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2">
@@ -1661,6 +1735,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
   const cacheQ = useQuery({
     queryKey: ["mesh-traffic", instance.id],
     queryFn: () => apiGetJson<{ snapshots: TrafficSnapshot[]; history?: TrafficHistory }>(`/api/ops/mesh/instances/${instance.id}/traffic`),
+    refetchInterval: 60_000,
   });
   const collectMut = useMutation({
     mutationFn: () => apiPostJson<{ snapshots: TrafficSnapshot[] }>(`/api/ops/mesh/instances/${instance.id}/traffic`, {}),
@@ -1669,6 +1744,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
   });
 
   const snapshots = cacheQ.data?.snapshots ?? [];
+  const liveSnapshots = React.useMemo(() => snapshots.filter((s) => !s.stale), [snapshots]);
   const collectors = instance.trafficCollectors ?? [];
 
   // 链路图数据：最新快照的枢纽→对端连线 + 自动发现的 realIp/os 合并
@@ -1678,7 +1754,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
       const ip = (n.ipAddresses ?? []).find((x) => x.startsWith("100."));
       if (ip) realByIp.set(ip, { realIp: n.realIps?.[0], os: n.os });
     });
-    const hubsArr = snapshots.map((s) => {
+    const hubsArr = liveSnapshots.map((s) => {
       const tsIp = (s.selfIps ?? []).find((ip) => ip.startsWith("100."));
       const meta = tsIp ? realByIp.get(tsIp) : undefined;
       return {
@@ -1692,7 +1768,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
     });
     const peerMap = new Map<string, MeshGraphNode>();
     const edgeMap = new Map<string, MeshGraphEdge>();
-    snapshots.forEach((s) => {
+    liveSnapshots.forEach((s) => {
       const hubId = "hub-" + s.collectorId;
       (s.peers ?? []).forEach((p) => {
         const tsIp = (p.tailscaleIps ?? []).find((x) => x.startsWith("100.")) ?? "";
@@ -1721,7 +1797,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
       });
     });
     return { hubs: hubsArr, peers: [...peerMap.values()], edges: [...edgeMap.values()] };
-  }, [snapshots, discover]);
+  }, [liveSnapshots, discover]);
 
   // headscale 控制面（/metrics best-effort：9090 未暴露时静默降级）
   const metricsQ = useQuery({
@@ -1751,7 +1827,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
   // TopN：最新快照的多视角合并（同一对端在多个采集器视角的计数相加）
   const topPeers = React.useMemo(() => {
     const agg = new Map<string, { name: string; rx: number; tx: number }>();
-    snapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
+    liveSnapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
       const key = p.hostName || p.tailscaleIps?.[0] || "unknown";
       const cur = agg.get(key) ?? { name: key, rx: 0, tx: 0 };
       cur.rx += p.rxBytes || 0;
@@ -1759,7 +1835,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
       agg.set(key, cur);
     }));
     return [...agg.values()].sort((a, b) => b.rx + b.tx - (a.rx + a.tx)).slice(0, 8);
-  }, [snapshots]);
+  }, [liveSnapshots]);
 
   // KPI：按时间点合并所有采集器的收发合计（含环比上一点的差值）
   const kpi = React.useMemo(() => {
@@ -1778,7 +1854,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
     const seen = new Set<string>();
     let online = 0;
     let peerTotal = 0;
-    snapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
+    liveSnapshots.forEach((s) => (s.peers ?? []).forEach((p) => {
       const id = p.tailscaleIps?.[0] ?? p.hostName;
       if (seen.has(id)) return;
       seen.add(id);
@@ -1794,7 +1870,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
       txSpark: tail.map((r) => r.tx),
       online, peerTotal, points: arr.length,
     };
-  }, [cacheQ.data, snapshots]);
+  }, [cacheQ.data, liveSnapshots]);
 
   return (
     <div className="space-y-4">
@@ -1827,12 +1903,14 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 </span>
-                LIVE · 每 {autoSec}s
+                {meshControlText.autoCollectLabel} · 每 {autoSec}s
               </span>
             ) : null}
           </p>
           <p className="text-[10px] text-slate-400">数据点 {kpi.points} · 更新 {snapshots.length > 0 ? fmtTime(snapshots[0]?.collectedAt) : "—"}</p>
         </div>
+
+        {snapshots.length > 0 && liveSnapshots.length === 0 ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">{meshControlText.noCurrentSnapshot}</p> : null}
 
         <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <MeshKpiTile label="累计接收" value={kpi.rx} delta={kpi.rxDelta} spark={kpi.rxSpark} color="#0ea5e9" gradId="mesh-sp-rx" />
@@ -1893,8 +1971,9 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
               <Activity className="h-3.5 w-3.5 text-indigo-600" /> {s.collectorName || s.host}
               {s.selfHostName ? <span className="font-mono text-[10px] font-normal text-slate-400">{s.selfHostName}{s.version ? ` · ${s.version.split("-")[0]}` : ""}</span> : null}
             </p>
-            <p className="text-[10px] text-slate-400">采集于 {fmtTime(s.collectedAt)}</p>
+            <p className="text-[10px] text-slate-400">{s.stale ? <span className="mr-2 font-medium text-amber-700 dark:text-amber-300" title={meshControlText.staleSnapshotHint}>{meshControlText.staleSnapshot}</span> : null}采集于 {fmtTime(s.collectedAt)}</p>
           </div>
+          {s.stale ? <p className="bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">{meshControlText.staleSnapshotHint}</p> : null}
           {s.error ? (
             <p className="px-3 py-3 text-xs text-red-600">{s.error}</p>
           ) : (
@@ -1908,7 +1987,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
                       {p.hostName}
                       <span className="ml-1 font-mono text-[10px] font-normal text-slate-400">{(p.tailscaleIps ?? []).find((ip) => ip.startsWith("100.")) ?? ""}</span>
                     </p>
-                    {p.online ? <span className="shrink-0 text-xs text-emerald-700">在线</span> : <span className="shrink-0 text-xs text-slate-400">{fmtTime(p.lastSeen)}</span>}
+                      {p.online ? <span className="shrink-0 text-xs text-emerald-700">{s.stale ? meshControlText.staleSnapshotShort : "在线"}</span> : <span className="shrink-0 text-xs text-slate-400">{fmtTime(p.lastSeen)}</span>}
                   </div>
                   <dl className="mt-2 grid min-w-0 grid-cols-3 gap-2 text-xs">
                     <div className="min-w-0">
@@ -1955,7 +2034,7 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
                         <span className="ml-1 font-mono text-[10px] text-slate-400">{(p.tailscaleIps ?? []).find((ip) => ip.startsWith("100.")) ?? ""}</span>
                       </td>
                       <td className="px-3 py-1.5">
-                        {p.online ? <span className="text-emerald-700">在线</span> : <span className="text-slate-400">{fmtTime(p.lastSeen)}</span>}
+                        {p.online ? <span className="text-emerald-700">{s.stale ? meshControlText.staleSnapshotShort : "在线"}</span> : <span className="text-slate-400">{fmtTime(p.lastSeen)}</span>}
                       </td>
                       <td className="px-3 py-1.5 font-mono text-slate-700">{fmtBytes(p.rxBytes)}</td>
                       <td className="px-3 py-1.5 font-mono text-slate-700">{fmtBytes(p.txBytes)}</td>
@@ -1985,7 +2064,19 @@ const TrafficPanel: React.FC<{ instance: MeshInstance; isAdmin: boolean; discove
 
 // ── 服务信息 ──
 
-const ServicePanel: React.FC<{ discover?: Discover }> = ({ discover: ov }) => {
+const ServicePanel: React.FC<{ discover?: Discover; instanceId: string; isAdmin: boolean; onChanged: () => void }> = ({ discover: ov, instanceId, isAdmin, onChanged }) => {
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUser, setNewUser] = useState({ name: "", displayName: "", email: "" });
+  const createUser = useMutation({
+    mutationFn: () => apiPostJson(`/api/ops/mesh/instances/${instanceId}/users`, newUser),
+    onSuccess: () => {
+      toast.success(meshControlText.localUserCreated);
+      setNewUser({ name: "", displayName: "", email: "" });
+      setShowCreateUser(false);
+      onChanged();
+    },
+    onError: (err) => toast.error(apiErr(err)),
+  });
   const metricsQ = useQuery({
     queryKey: ["mesh-metrics", ov?.instance?.id],
     queryFn: () => apiGetJson<{ metricsUrl?: string; samples: MetricSample[]; stale?: boolean; fetchedAt?: string }>(`/api/ops/mesh/instances/${ov!.instance.id}/metrics`),
@@ -2032,7 +2123,18 @@ const ServicePanel: React.FC<{ discover?: Discover }> = ({ discover: ov }) => {
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-100 p-3">
-          <p className="mb-2 text-xs font-semibold text-slate-800">用户（Authentik OIDC 同步）</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{meshControlText.usersHeading}</p>
+            {isAdmin ? <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowCreateUser((open) => !open)}><Plus className="mr-1 h-3 w-3" />{meshControlText.addLocalUser}</Button> : null}
+          </div>
+          {showCreateUser && isAdmin ? (
+            <form className="mb-3 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40" onSubmit={(e) => { e.preventDefault(); if (newUser.name.trim()) createUser.mutate(); }}>
+              <Input className="h-8 text-xs dark:bg-slate-900" value={newUser.name} maxLength={63} required placeholder={meshControlText.localUserName} onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))} />
+              <Input className="h-8 text-xs dark:bg-slate-900" value={newUser.displayName} placeholder={meshControlText.localUserDisplayName} onChange={(e) => setNewUser((u) => ({ ...u, displayName: e.target.value }))} />
+              <Input className="h-8 text-xs dark:bg-slate-900" type="email" value={newUser.email} placeholder={meshControlText.localUserEmail} onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))} />
+              <Button type="submit" size="sm" className="h-8 text-xs" disabled={createUser.isPending}>{createUser.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}{meshControlText.createLocalUser}</Button>
+            </form>
+          ) : null}
           <ul className="space-y-1 text-xs text-slate-600">
             {(ov?.users ?? []).map((u) => (
               <li key={u.id} className="flex items-center justify-between gap-2">

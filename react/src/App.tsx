@@ -673,6 +673,14 @@ const App = () => {
                     }
                   />
                   <Route
+                    path="mesh/policy"
+                    element={
+                      <RouteSuspense>
+                        <MeshPage initialTab="policy" />
+                      </RouteSuspense>
+                    }
+                  />
+                  <Route
                     path="mesh/service"
                     element={
                       <RouteSuspense>

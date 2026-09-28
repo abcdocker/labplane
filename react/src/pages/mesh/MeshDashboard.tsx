@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, CheckCircle2, Globe, KeyRound, Loader2,
-  LogIn, Network, Plus, RefreshCw, Router, Server, Wifi, WifiOff,
+  LogIn, Network, Plus, RefreshCw, Router, Server, ShieldCheck, Wifi, WifiOff,
 } from "lucide-react";
 import { apiGetJson, ApiHttpError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -136,6 +136,7 @@ const MeshDashboard: React.FC = () => {
   // 各实例明细（并行 discover，60s 随汇总一起刷新）
   const [details, setDetails] = React.useState<DetailEntry[]>([]);
   const [detailsLoading, setDetailsLoading] = React.useState(false);
+  const [detailsRefresh, setDetailsRefresh] = React.useState(0);
   React.useEffect(() => {
     if (enabledKey === "") {
       setDetails([]);
@@ -167,7 +168,7 @@ const MeshDashboard: React.FC = () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [enabledKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabledKey, detailsRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 合并明细
   const allNodes = details.flatMap((d) =>
@@ -207,7 +208,7 @@ const MeshDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { q.refetch(); }}
+          <button type="button" onClick={() => { void q.refetch(); setDetailsRefresh((value) => value + 1); }}
             disabled={q.isFetching || detailsLoading}
             className="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 hover:border-slate-300 disabled:opacity-50">
             <RefreshCw className={cn("mr-1 h-3.5 w-3.5", (q.isFetching || detailsLoading) && "animate-spin")} /> 刷新
@@ -357,6 +358,10 @@ const MeshDashboard: React.FC = () => {
                   <Link to={{ pathname: "/cluster/mesh/keys", search: `inst=${inst.id}` }}
                     className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
                     <KeyRound className="h-3 w-3" /> 密钥
+                  </Link>
+                  <Link to={{ pathname: "/cluster/mesh/policy", search: `inst=${inst.id}` }}
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300">
+                    <ShieldCheck className="h-3 w-3" /> 策略
                   </Link>
                   <Link to={{ pathname: "/cluster/mesh/service", search: `inst=${inst.id}` }}
                     className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
