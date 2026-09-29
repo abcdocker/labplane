@@ -118,9 +118,26 @@ type BastionPolicy = {
   manualVmGroups?: { name: string; morefs: string[] }[];
   hiddenVmMorefs?: string[];
   vmRdpWebEmbeds?: { moref: string; url: string }[];
+  rustdeskHosts?: { id: string; name: string; rustdeskId: string; note?: string }[];
   nativeSshEnabled?: boolean;
   nativeSshPort?: number;
 };
+
+type RustDeskDraftRow = {
+  clientId: string;
+  name: string;
+  rustdeskId: string;
+  note: string;
+};
+
+function newRustDeskDraftRow(): RustDeskDraftRow {
+  return {
+    clientId: globalThis.crypto?.randomUUID?.() ?? `rd-${Date.now()}`,
+    name: "",
+    rustdeskId: "",
+    note: "",
+  };
+}
 
 type ManualVmGroupDraftRow = {
   clientId: string;
@@ -263,6 +280,7 @@ const VCenterBastionAdmin: React.FC = () => {
   const [manualVmGroupsDraft, setManualVmGroupsDraft] = useState<ManualVmGroupDraftRow[]>([]);
   const [hiddenVmMorefsDraft, setHiddenVmMorefsDraft] = useState<string[]>([]);
   const [vmRdpWebDraft, setVmRdpWebDraft] = useState<VmRdpWebDraftRow[]>([]);
+  const [rustdeskDraft, setRustdeskDraft] = useState<RustDeskDraftRow[]>([]);
   const [nativeSshEnabled, setNativeSshEnabled] = useState(false);
   const [nativeSshPort, setNativeSshPort] = useState("2222");
 
@@ -311,6 +329,15 @@ const VCenterBastionAdmin: React.FC = () => {
     setNativeSshEnabled(!!p.nativeSshEnabled);
     const nsp = p.nativeSshPort;
     setNativeSshPort(nsp && nsp > 0 && nsp <= 65535 ? String(nsp) : "2222");
+    const rd = p.rustdeskHosts ?? [];
+    setRustdeskDraft(
+      rd.map((x) => ({
+        clientId: globalThis.crypto?.randomUUID?.() ?? `rd-${x.id}-${Math.random()}`,
+        name: x.name ?? "",
+        rustdeskId: x.rustdeskId ?? "",
+        note: x.note ?? "",
+      }))
+    );
     const vr = p.vmRdpWebEmbeds ?? [];
     setVmRdpWebDraft(
       vr.length > 0
@@ -399,6 +426,9 @@ const VCenterBastionAdmin: React.FC = () => {
         manualVmGroups,
         hiddenVmMorefs: hiddenVmMorefsDraft,
         vmRdpWebEmbeds,
+        rustdeskHosts: rustdeskDraft
+          .filter((r) => r.name.trim() && r.rustdeskId.trim())
+          .map((r) => ({ id: `rd:${r.rustdeskId.trim().toLowerCase()}`, name: r.name.trim(), rustdeskId: r.rustdeskId.trim(), note: r.note.trim() })),
         nativeSshEnabled,
         nativeSshPort: pNum,
       });
@@ -1022,6 +1052,86 @@ const VCenterBastionAdmin: React.FC = () => {
                         </>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t border-slate-800 pt-4">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <Label className="text-sm text-slate-300">RustDesk 主机（自建服务器 wh.frps.cn:21114）</Label>
+                <p className="mt-0.5 text-[11px] text-slate-600">
+                  目标机器需安装 RustDesk 客户端并注册到自建服务器；连接密码不存平台，用户连接时手工输入。
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 border-slate-600 bg-slate-900 text-xs"
+                onClick={() => setRustdeskDraft((prev) => [...prev, newRustDeskDraftRow()])}
+              >
+                <Plus className="mr-1 size-3.5" />
+                添加
+              </Button>
+            </div>
+            {rustdeskDraft.length === 0 ? (
+              <p className="rounded border border-dashed border-slate-700 px-3 py-4 text-center text-xs text-slate-500">
+                暂无条目
+              </p>
+            ) : (
+              <div className="max-h-[min(50vh,420px)] space-y-3 overflow-y-auto pr-1">
+                {rustdeskDraft.map((row) => (
+                  <div key={row.clientId} className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-700 bg-[#0a0d12] p-3">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <Label className="text-[10px] text-slate-500">名称</Label>
+                      <Input
+                        value={row.name}
+                        onChange={(e) =>
+                          setRustdeskDraft((prev) =>
+                            prev.map((x) => (x.clientId === row.clientId ? { ...x, name: e.target.value } : x))
+                          )
+                        }
+                        placeholder="如：ops-jumpserver"
+                        className="h-8 border-slate-700 bg-[#080a0e] text-xs"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <Label className="text-[10px] text-slate-500">RustDesk ID *</Label>
+                      <Input
+                        value={row.rustdeskId}
+                        onChange={(e) =>
+                          setRustdeskDraft((prev) =>
+                            prev.map((x) => (x.clientId === row.clientId ? { ...x, rustdeskId: e.target.value } : x))
+                          )
+                        }
+                        placeholder="如：123 456 789"
+                        className="h-8 border-slate-700 bg-[#080a0e] font-mono text-xs"
+                      />
+                    </div>
+                    <div className="w-40 space-y-1">
+                      <Label className="text-[10px] text-slate-500">备注</Label>
+                      <Input
+                        value={row.note}
+                        onChange={(e) =>
+                          setRustdeskDraft((prev) =>
+                            prev.map((x) => (x.clientId === row.clientId ? { ...x, note: e.target.value } : x))
+                          )
+                        }
+                        className="h-8 border-slate-700 bg-[#080a0e] text-xs"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-red-400"
+                      onClick={() => setRustdeskDraft((prev) => prev.filter((x) => x.clientId !== row.clientId))}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
                   </div>
                 ))}
               </div>
