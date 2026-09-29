@@ -12,6 +12,7 @@ import {
   Activity as NodeActivityIcon,
   Globe,
   Monitor,
+  Laptop,
   Cpu,
   Cloud,
   AppWindow,
@@ -1143,11 +1144,11 @@ const Sidebar: React.FC = () => {
               <span>服务信息</span>
             </Link>
             <Link
-              to="/cluster/mesh/join"
-              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/join"), "slate")}
+              to="/cluster/mesh/clients"
+              className={navLinkTint(location.pathname.startsWith("/cluster/mesh/clients"), "slate")}
             >
-              <LogIn size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/join"), "slate")} />
-              <span>加入节点</span>
+              <Laptop size={20} className={iconTint(location.pathname.startsWith("/cluster/mesh/clients"), "slate")} />
+              <span>客户端管控</span>
             </Link>
             <div className="mx-3 mt-1 border-t border-slate-200/70 pt-2">
               <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">

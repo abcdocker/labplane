@@ -34,16 +34,25 @@ ARG HTTPS_PROXY
 ARG NO_PROXY
 ENV HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} NO_PROXY=${NO_PROXY}
 # 仅用于把时区数据拷入最终镜像（Asia/Shanghai 等）
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache tzdata curl
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /app/dist ./react/dist
 ARG BUILD_VERSION=dev
+ARG BUILD_MESH_CLIENT_BUNDLES=1
 RUN GOARCH=${TARGETARCH} GOOS=${TARGETOS} go build -trimpath \
     -ldflags="-s -w -X github.com/abcdocker/labplane/internal.BuildVersion=${BUILD_VERSION}" \
     -o labplane . && mkdir -p /build/runtime-data
+RUN if [ "${BUILD_MESH_CLIENT_BUNDLES}" = "1" ]; then \
+      go run ./cmd/mesh-client-bundle -out /build/mesh-client-dist && \
+      go run ./cmd/mesh-desktop-bundle -out /build/mesh-client-dist -platform windows && \
+      for arch in amd64 arm64; do \
+        src="client/desktop/release/macos-${arch}/LabPlaneMesh.dmg"; \
+        if [ -f "$src" ]; then cp "$src" "/build/mesh-client-dist/macos-${arch}/LabPlaneMesh.dmg"; fi; \
+      done; \
+    else mkdir -p /build/mesh-client-dist; fi
 
 # ------------------------------------------------------------------------------
 # 阶段 3：最小运行时镜像（无 shell、无包管理器，攻击面小）
@@ -51,10 +60,12 @@ RUN GOARCH=${TARGETARCH} GOOS=${TARGETOS} go build -trimpath \
 FROM ${BASE_RUNTIME}
 WORKDIR /app
 ENV TZ=Asia/Shanghai
+ENV LABPLANE_MESH_CLIENT_DIST_DIR=/app/mesh-client-dist
 # 供 Go time.LoadLocation 使用（日志/展示本地时区）
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /build/labplane /app/labplane
 COPY --from=builder /build/react/dist /app/react/dist
+COPY --from=builder --chown=nonroot:nonroot /build/mesh-client-dist /app/mesh-client-dist
 COPY --from=builder --chown=nonroot:nonroot /build/runtime-data /app/data
 COPY templates /app/templates/
 EXPOSE 8080

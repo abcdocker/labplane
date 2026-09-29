@@ -68,9 +68,13 @@ func registerMeshRoutes(api gin.IRouter, app *ServerApp) {
 	idg.POST("/keys/reveal", AdminOnlyMiddleware(app), handleMeshKeyReveal(app))
 	idg.GET("/keys/default", AdminOnlyMiddleware(app), handleMeshDefaultKeyGet(app))
 	idg.POST("/keys/default/reset", AdminOnlyMiddleware(app), handleMeshDefaultKeyReset(app))
-	idg.GET("/keys/join-script", AdminOnlyMiddleware(app), handleMeshJoinScript(app))
-	idg.GET("/join-tool", AdminOnlyMiddleware(app), handleMeshJoinTool(app))
-	idg.POST("/join-report", handleMeshJoinReport(app))
+	// Legacy script package routes are no longer exposed. Native client packages
+	// below use one-use Headscale keys and independent reporting credentials.
+	idg.GET("/clients", handleMeshClientsList(app))
+	idg.GET("/clients/download", AdminOnlyMiddleware(app), handleMeshClientDownload(app))
+	idg.POST("/clients/package", AdminOnlyMiddleware(app), handleMeshClientPackage(app))
+	idg.DELETE("/clients/:cid", AdminOnlyMiddleware(app), handleMeshClientRevoke(app))
+	idg.POST("/clients/:cid/actions", AdminOnlyMiddleware(app), handleMeshClientAction(app))
 	idg.GET("/policy", handleMeshPolicyGet(app))
 	idg.PUT("/policy", AdminOnlyMiddleware(app), handleMeshPolicyPut(app))
 }

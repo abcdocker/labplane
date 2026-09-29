@@ -6,6 +6,7 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -82,8 +83,9 @@ type MeshTrafficCollector struct {
 type MeshInstance struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
-	Region       string `json:"region,omitempty"` // 例：公网控制面 / 威海 ops / 北京 ukx-nas
-	APIURL       string `json:"apiUrl"`           // headscale API 根地址；可配置绕过 WAF 的直连地址
+	Region       string `json:"region,omitempty"`    // 例：公网控制面 / 威海 ops / 北京 ukx-nas
+	APIURL       string `json:"apiUrl"`              // headscale API 根地址；可配置绕过 WAF 的直连地址
+	ClientURL    string `json:"clientUrl,omitempty"` // 设备使用的公网控制面地址；空则沿用 APIURL
 	APIKeyEnc    string `json:"apiKeyEnc"`
 	MetricsURL   string `json:"metricsUrl,omitempty"` // Prometheus /metrics；空则按 APIURL 推导
 	HeadplaneURL string `json:"headplaneUrl,omitempty"`
@@ -152,6 +154,7 @@ func meshInstancePublic(in MeshInstance, kv PlatformKV) map[string]any {
 		"name":              in.Name,
 		"region":            in.Region,
 		"apiUrl":            in.APIURL,
+		"clientUrl":         in.ClientURL,
 		"apiKeySet":         strings.TrimSpace(in.APIKeyEnc) != "",
 		"metricsUrl":        in.MetricsURL,
 		"headplaneUrl":      in.HeadplaneURL,
@@ -169,6 +172,7 @@ type meshInstancePutInput struct {
 	Name              string                         `json:"name"`
 	Region            string                         `json:"region"`
 	APIURL            string                         `json:"apiUrl"`
+	ClientURL         string                         `json:"clientUrl"`
 	APIKey            string                         `json:"apiKey"`
 	MetricsURL        string                         `json:"metricsUrl"`
 	HeadplaneURL      string                         `json:"headplaneUrl"`
@@ -212,6 +216,13 @@ func upsertMeshInstance(b *meshSettingsBundle, in meshInstancePutInput, enc func
 	inst.Name = strings.TrimSpace(in.Name)
 	inst.Region = strings.TrimSpace(in.Region)
 	inst.APIURL = strings.TrimSpace(in.APIURL)
+	inst.ClientURL = strings.TrimSpace(in.ClientURL)
+	if inst.ClientURL != "" {
+		u, err := url.Parse(inst.ClientURL)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return inst, created, fmt.Errorf("客户端控制面地址必须是 HTTPS URL")
+		}
+	}
 	inst.MetricsURL = strings.TrimSpace(in.MetricsURL)
 	inst.HeadplaneURL = strings.TrimSpace(in.HeadplaneURL)
 	inst.Notes = strings.TrimSpace(in.Notes)

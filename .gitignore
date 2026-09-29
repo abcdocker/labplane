@@ -2,6 +2,7 @@
 /labplane
 /kube-bt-sync
 *.exe
+*.dmg
 *.dll
 *.so
 *.dylib

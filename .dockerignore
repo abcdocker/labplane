@@ -27,8 +27,7 @@ dist
 charts
 deploy
 
-# 独立命令行工具（主程序不依赖）
-cmd
+# 客户端构建工具位于 cmd/，镜像构建阶段需要它们。
 
 # 其他
 helm/**/*.tgz

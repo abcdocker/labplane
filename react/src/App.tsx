@@ -111,7 +111,7 @@ const AiInspectLogCollectionPage = lazy(() => import("./pages/ai-inspect/AiInspe
 const AiInspectReportsPage = lazy(() => import("./pages/ai-inspect/AiInspectReports"));
 const MeshPage = lazy(() => import("./pages/mesh/MeshPage"));
 const MeshDashboardPage = lazy(() => import("./pages/mesh/MeshDashboard"));
-const MeshJoinPage = lazy(() => import("./pages/mesh/MeshJoin"));
+const MeshClientsPage = lazy(() => import("./pages/mesh/MeshClients"));
 const AuthentikPage = lazy(() => import("./pages/authentik/AuthentikPage"));
 const ClusterPodDetailPage = lazy(() => import("./pages/cluster/ClusterPodDetail"));
 const ClusterPodTerminalPageLazy = lazy(() => import("./pages/cluster/ClusterPodTerminalPage"));
@@ -634,9 +634,13 @@ const App = () => {
                   />
                   <Route
                     path="mesh/join"
+                    element={<Navigate to="/cluster/mesh/clients" replace />}
+                  />
+                  <Route
+                    path="mesh/clients"
                     element={
                       <RouteSuspense>
-                        <MeshJoinPage />
+                        <MeshClientsPage />
                       </RouteSuspense>
                     }
                   />

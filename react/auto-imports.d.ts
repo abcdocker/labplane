@@ -109,6 +109,7 @@ declare global {
   const Key: typeof import('lucide-react').Key
   const KeyRound: typeof import('lucide-react').KeyRound
   const Keyboard: typeof import('lucide-react').Keyboard
+  const Laptop: typeof import('lucide-react').Laptop
   const Layers: typeof import('lucide-react').Layers
   const Layers3: typeof import('lucide-react').Layers3
   const Layout: typeof import('lucide-react').Layout

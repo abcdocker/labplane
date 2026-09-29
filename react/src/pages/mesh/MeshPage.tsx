@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { MeshLinkGraph, type MeshGraphNode, type MeshGraphEdge } from "./MeshLinkGraph";
 import { meshTrafficText } from "@/i18n/meshTraffic";
 import { meshControlText } from "@/i18n/meshControl";
+import { meshClientsText } from "@/i18n/meshClients";
 import { meshRouteState } from "./meshRoutes";
 import { MeshPolicyPanel } from "./MeshPolicyPanel";
 
@@ -45,6 +46,7 @@ type MeshInstance = {
   name: string;
   region?: string;
   apiUrl: string;
+  clientUrl?: string;
   apiKeySet: boolean;
   metricsUrl?: string;
   headplaneUrl?: string;
@@ -138,6 +140,7 @@ const emptyInstance = (): MeshInstance => ({
   name: "",
   region: "",
   apiUrl: "",
+  clientUrl: "",
   apiKeySet: false,
   metricsUrl: "",
   headplaneUrl: "",
@@ -281,6 +284,7 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
         name: draft.name,
         region: draft.region,
         apiUrl: draft.apiUrl,
+        clientUrl: draft.clientUrl,
         apiKey: apiKeyInput || undefined,
         metricsUrl: draft.metricsUrl,
         headplaneUrl: draft.headplaneUrl,
@@ -393,6 +397,11 @@ const MeshPage: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
             <div className="space-y-1 sm:col-span-2">
               <Label>API 地址 *（Headscale server_url）</Label>
               <Input value={draft.apiUrl} placeholder="https://headscale.example.com" onChange={(e) => setDraft((d) => ({ ...d, apiUrl: e.target.value }))} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>{meshClientsText.publicControlUrl}</Label>
+              <Input value={draft.clientUrl ?? ""} placeholder="https://headscale.example.com" onChange={(e) => setDraft((d) => ({ ...d, clientUrl: e.target.value }))} />
+              <p className="text-xs text-slate-500 dark:text-slate-400">{meshClientsText.publicControlUrlHint}</p>
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label>API Key {draft.apiKeySet ? "（已保存，留空保留；填 - 清除）" : ""}</Label>

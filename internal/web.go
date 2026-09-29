@@ -78,6 +78,7 @@ func StartWebServer(ctx context.Context, app *ServerApp) {
 	// Alertmanager → 平台告警中心（凭 query token，无需登录）
 	r.POST("/api/hooks/alertmanager", handleAlertmanagerWebhook(app))
 
+	r.POST("/api/ops/mesh/instances/:id/clients/:cid/report", handleMeshClientReport(app))
 	api := r.Group("/api")
 	api.Use(DashboardAuthMiddleware(app))
 	api.Use(ViewerRestrictionsMiddleware(app))
