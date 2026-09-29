@@ -36,6 +36,15 @@ type BastionManualVmGroup struct {
 	Morefs []string `json:"morefs"`
 }
 
+// BastionRustDeskHost RustDesk 目标主机：ID 在自建 RustDesk 服务（如 wh.frps.cn:21114 容器化部署）注册，
+// 平台仅保存 ID/名称用于一键唤起（rustdesk://connection/new/<id>）与复制，不存储连接密码。
+type BastionRustDeskHost struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	RustDeskID string `json:"rustdeskId"`
+	Note       string `json:"note,omitempty"`
+}
+
 // VCenterBastionPolicy 堡垒机 ACL：关闭 enableAcl 时与历史行为一致（凡能访问 vCenter 模块者均可连 SSH/控制台）。
 type VCenterBastionPolicy struct {
 	EnableACL      bool                   `json:"enableAcl"`
@@ -46,6 +55,8 @@ type VCenterBastionPolicy struct {
 	HiddenVmMorefs []string `json:"hiddenVmMorefs"`
 	// VmRdpWebEmbeds：按 moRef 为 Windows 虚拟机指定 JumpServer RDP Web Client 等 HTTPS 内嵌地址。
 	VmRdpWebEmbeds []BastionVmRdpWebEmbed `json:"vmRdpWebEmbeds"`
+	// RustDeskHosts：RustDesk 目标主机清单（自建服务器容器化部署）。
+	RustDeskHosts []BastionRustDeskHost `json:"rustdeskHosts"`
 	// NativeSsh*：在平台进程上监听独立 TCP 端口，提供与堡垒机 Web SSH 等效的 OpenSSH 入站（如 ssh -p 2222 user@平台域名），认证使用平台同一套账号/密码/可选 TOTP。
 	NativeSshEnabled bool `json:"nativeSshEnabled"`
 	// NativeSshPort 1～65535；为 0 时若启用则默认 2222。

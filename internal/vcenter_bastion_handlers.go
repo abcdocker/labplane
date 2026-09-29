@@ -38,6 +38,7 @@ type bastionPolicyPutJSON struct {
 	ManualVmGroups   []BastionManualVmGroup    `json:"manualVmGroups"`
 	HiddenVmMorefs   []string                  `json:"hiddenVmMorefs"`
 	VmRdpWebEmbeds   []bastionVmRdpWebPutJSON  `json:"vmRdpWebEmbeds"`
+	RustDeskHosts    []BastionRustDeskHost     `json:"rustdeskHosts"`
 	NativeSshEnabled *bool                     `json:"nativeSshEnabled"`
 	NativeSshPort    *int                      `json:"nativeSshPort"`
 }
@@ -224,6 +225,7 @@ func handlePutVCenterBastionPolicy(c *gin.Context, app *ServerApp) {
 		ManualVmGroups:   manualOut,
 		HiddenVmMorefs:   hiddenOut,
 		VmRdpWebEmbeds:   vmRdpOut,
+		RustDeskHosts:    body.RustDeskHosts,
 		NativeSshEnabled: nsEn,
 		NativeSshPort:    nsPort,
 	}

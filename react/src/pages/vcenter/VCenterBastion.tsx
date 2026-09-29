@@ -248,6 +248,33 @@ const VCenterBastion: React.FC = () => {
   const extraHosts = vmsQ.data?.extraHosts ?? EMPTY_EXTRAS;
   const folderPathPending = vmsQ.data?.folderPathPending === true;
 
+  // RustDesk 主机清单（策略 rustdeskHosts）+ 额外主机在线状态（30s 缓存探测）
+  const rustdeskQ = useQuery({
+    queryKey: ["vcenter-bastion-rustdesk"],
+    queryFn: ({ signal }) =>
+      apiGetJson<{ hosts: { id: string; name: string; rustdeskId: string; note?: string }[] }>(
+        "/api/vcenter/bastion/rustdesk",
+        { signal }
+      ),
+    staleTime: 1000 * 60 * 5,
+  });
+  const rustdeskHosts = rustdeskQ.data?.hosts ?? [];
+  const extraStatusQ = useQuery({
+    queryKey: ["vcenter-bastion-extra-status"],
+    queryFn: ({ signal }) =>
+      apiGetJson<{ statuses: Record<string, { reachable: boolean }> }>(
+        "/api/vcenter/bastion/extra-status",
+        { signal }
+      ),
+    refetchInterval: 1000 * 60,
+  });
+  const extraReachable = (id: string): boolean | null => {
+    const s = extraStatusQ.data?.statuses?.[id];
+    if (!s) return null;
+    return s.reachable;
+  };
+  const [onlyOnline, setOnlyOnline] = React.useState(false);
+
   /** 选中 VM 的 QuickStats 轮询（每 20s，仅在选中 VM 时启用） */
   const selectedVmMoref = selectedKey?.startsWith("vm:") ? selectedKey.slice(3) : null;
   type QuickStatsRes = {
@@ -299,29 +326,42 @@ const VCenterBastion: React.FC = () => {
     [filteredVms]
   );
 
+  // 「只看开机」：过滤掉 poweredOff（suspended 保留，仍可唤醒操作）
+  const visibleVms = useMemo(
+    () => (onlyOnline ? sidebarVms.filter((v) => v.powerState !== "poweredOff") : sidebarVms),
+    [sidebarVms, onlyOnline]
+  );
+
   const filteredExtras = useMemo(() => {
     const s = search.trim().toLowerCase();
-    if (!s) return extraHosts;
-    return extraHosts.filter(
-      (h) =>
-        h.name.toLowerCase().includes(s) ||
-        h.id.toLowerCase().includes(s) ||
-        h.address.toLowerCase().includes(s)
-    );
-  }, [extraHosts, search]);
+    let list = extraHosts;
+    if (s)
+      list = list.filter(
+        (h) =>
+          h.name.toLowerCase().includes(s) ||
+          h.id.toLowerCase().includes(s) ||
+          h.address.toLowerCase().includes(s)
+      );
+    if (onlyOnline)
+      list = list.filter((h) => {
+        const r = extraReachable(h.id);
+        return r !== false; // 未知（未探测）保留
+      });
+    return list;
+  }, [extraHosts, search, onlyOnline, extraStatusQ.data]);
 
   type VmSidebarGroup = { key: string; label: string; manual: boolean; list: VMRow[] };
 
   const vmGroups = useMemo((): VmSidebarGroup[] => {
     const m = new Map<string, VmSidebarGroup>();
-    for (const v of sidebarVms) {
+    for (const v of visibleVms) {
       const mg = v.manualGroup?.trim();
       if (mg) {
         const key = `manual:${mg}`;
         if (!m.has(key)) m.set(key, { key, label: mg, manual: true, list: [] });
         m.get(key)!.list.push(v);
       } else {
-        const fp = v.folderPath?.trim() ? v.folderPath : "（未分组）";
+        const fp = v.folderPath?.trim() ? v.folderPath : "自动发现（未分组）";
         const key = `folder:${fp}`;
         if (!m.has(key)) m.set(key, { key, label: fp, manual: false, list: [] });
         m.get(key)!.list.push(v);
@@ -331,7 +371,10 @@ const VCenterBastion: React.FC = () => {
       if (a.manual !== b.manual) return a.manual ? -1 : 1;
       return a.label.localeCompare(b.label, "zh-CN");
     });
-  }, [sidebarVms]);
+  }, [visibleVms]);
+
+  // 自动发现：无手动分组的节点归入「自动发现（未分组）」组（folderPath 为空时）
+  const autoDiscovered = visibleVms.filter((v) => !v.manualGroup?.trim());
 
   useEffect(() => {
     setOpenDirs((prev) => {
@@ -542,18 +585,30 @@ const VCenterBastion: React.FC = () => {
                 className="h-8 border-[#3c3c3c] bg-[#1e1e1e] pl-8 text-[13px] text-[#e6edf3] placeholder:text-[#6e7681] focus-visible:ring-[#1890ff]/40"
               />
             </div>
+            <label className="mt-1.5 flex cursor-pointer select-none items-center gap-1.5 px-0.5 text-[11px] text-[#8c8c8c]">
+              <input
+                type="checkbox"
+                checked={onlyOnline}
+                onChange={(e) => setOnlyOnline(e.target.checked)}
+                className="size-3 accent-[#1890ff]"
+              />
+              只看开机
+            </label>
           </div>
 
           <div className="bastion-asset-sidebar-scroll min-h-0 flex-1">
             {filteredExtras.length > 0 ? (
-              <div className="border-b border-[#3c3c3c]/80">
-                <p className="px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-[#6e7681]">
-                  额外主机
-                </p>
+              <Collapsible defaultOpen className="border-b border-[#3c3c3c]/80">
+                <CollapsibleTrigger className="flex w-full cursor-pointer select-none items-center gap-1 px-2.5 pb-1 pt-2 text-left text-[11px] font-medium uppercase tracking-wide text-[#6e7681] hover:text-[#8c8c8c]">
+                  <ChevronRight className="size-3 shrink-0 transition-transform [[data-state=open]>&]:rotate-90" aria-hidden />
+                  额外主机（{filteredExtras.length}）
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                 <ul className="space-y-px px-1 pb-2">
                   {filteredExtras.map((h) => {
                     const k = `extra:${h.id}`;
                     const active = selectedKey === k;
+                    const reach = extraReachable(h.id);
                     return (
                       <li key={h.id}>
                         <button
@@ -572,8 +627,18 @@ const VCenterBastion: React.FC = () => {
                           />
                           <span className="min-w-0 flex-1">
                             <span className="flex items-start justify-between gap-2">
-                              <span className="truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
-                                {h.name || h.id}
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <span
+                                  className={cn(
+                                    "inline-block size-1.5 shrink-0 rounded-full",
+                                    reach === null ? "bg-[#6e7681]" : reach ? "bg-[#3fb950]" : "bg-[#6e7681]/50"
+                                  )}
+                                  title={reach === null ? "未探测" : reach ? "在线" : "不可达/关机"}
+                                  aria-hidden
+                                />
+                                <span className="truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
+                                  {h.name || h.id}
+                                </span>
                               </span>
                               <BastionOsBadge extraKind={h.kind} />
                             </span>
@@ -586,7 +651,8 @@ const VCenterBastion: React.FC = () => {
                     );
                   })}
                 </ul>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             ) : null}
 
             {showAppShortcuts &&
@@ -655,6 +721,63 @@ const VCenterBastion: React.FC = () => {
               </div>
             ) : null}
 
+            {/* RustDesk 主机（自建服务器 wh.frps.cn:21114） */}
+            {rustdeskHosts.length > 0 ? (
+              <Collapsible defaultOpen className="border-b border-[#3c3c3c]/80">
+                <CollapsibleTrigger className="flex w-full cursor-pointer select-none items-center gap-1 px-2.5 pb-1 pt-2 text-left text-[11px] font-medium uppercase tracking-wide text-[#6e7681] hover:text-[#8c8c8c]">
+                  <ChevronRight className="size-3 shrink-0 transition-transform [[data-state=open]>&]:rotate-90" aria-hidden />
+                  RustDesk（{rustdeskHosts.length}）
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ul className="space-y-px px-1 pb-2">
+                    {rustdeskHosts.map((h) => (
+                      <li key={h.id}>
+                        <div
+                          className={cn(
+                            "group flex w-full items-center gap-2 border-l-2 border-l-sky-400/35 py-1.5 pl-2 pr-1.5",
+                            "hover:bg-sky-500/[0.07]"
+                          )}
+                        >
+                          <Monitor className="mt-0 size-3.5 shrink-0 text-[#58a6ff]" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
+                              {h.name || h.rustdeskId}
+                            </span>
+                            <span className="block truncate font-mono text-[11px] leading-tight text-[#8c8c8c]">
+                              ID {h.rustdeskId}
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              title={`复制 ID ${h.rustdeskId}`}
+                              onClick={() => {
+                                void navigator.clipboard.writeText(h.rustdeskId);
+                                toast.success(`已复制 RustDesk ID：${h.rustdeskId}`);
+                              }}
+                              className="rounded border border-[#3c3c3c] px-1.5 py-0.5 text-[10px] text-[#8c8c8c] hover:border-[#58a6ff] hover:text-[#58a6ff]"
+                            >
+                              复制
+                            </button>
+                            <a
+                              href={`rustdesk://connection/new/${h.rustdeskId}`}
+                              title="唤起本机 RustDesk 客户端连接（需已安装并配置自建服务器）"
+                              className="rounded bg-[#1f6feb] px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-[#388bfd]"
+                            >
+                              连接
+                            </a>
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="px-2 pb-1.5 text-[10px] leading-relaxed text-[#6e7681]">
+                    自建服务器 wh.frps.cn:21114 · 连接需输入目标主机的 RustDesk 密码
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : null}
+
             {vmsQ.isLoading && (
               <p className="px-3 py-2.5 text-[13px] text-[#8c8c8c]">加载中（列表可缓存较久）…</p>
             )}
@@ -694,7 +817,17 @@ const VCenterBastion: React.FC = () => {
                         openDirs[grp.key] !== false && "rotate-90",
                       )}
                     />
-                    <span className="min-w-0 flex-1 truncate">{grp.label}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {grp.label}
+                      {(() => {
+                        const on = grp.list.filter((v) => v.powerState !== "poweredOff").length;
+                        return (
+                          <span className="ml-1.5 text-[10px] tabular-nums opacity-70">
+                            开机 {on}/{grp.list.length}
+                          </span>
+                        );
+                      })()}
+                    </span>
                     {grp.manual ? (
                       <span className="shrink-0 rounded bg-[#1890ff]/22 px-1 py-px text-[9px] font-semibold text-[#7dd3fc]">
                         手动
@@ -730,8 +863,29 @@ const VCenterBastion: React.FC = () => {
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="flex items-start justify-between gap-2">
-                                  <span className="truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
-                                    {vm.name}
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <span
+                                      className={cn(
+                                        "inline-block size-1.5 shrink-0 rounded-full",
+                                        vm.powerState === "poweredOn" && "bg-[#3fb950]",
+                                        vm.powerState === "poweredOff" && "bg-[#6e7681]",
+                                        vm.powerState === "suspended" && "bg-[#d29922]",
+                                        !vm.powerState && "bg-[#3fb950]",
+                                      )}
+                                      title={
+                                        vm.powerState === "poweredOn"
+                                          ? "开机"
+                                          : vm.powerState === "poweredOff"
+                                            ? "已关机"
+                                            : vm.powerState === "suspended"
+                                              ? "已挂起"
+                                              : "运行中"
+                                      }
+                                      aria-hidden
+                                    />
+                                    <span className="truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
+                                      {vm.name}
+                                    </span>
                                   </span>
                                   <BastionOsBadge guestId={vm.guestId} />
                                 </span>

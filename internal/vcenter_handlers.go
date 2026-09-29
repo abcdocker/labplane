@@ -984,6 +984,8 @@ func registerVCenterRoutes(api *gin.RouterGroup, app *ServerApp) {
 	api.GET("/vcenter/bastion/ssh-coverage", AdminOnlyMiddleware(app), func(c *gin.Context) { handleGetVCenterBastionSSHCoverage(c, app) })
 	api.PUT("/vcenter/bastion/policy", AdminOnlyMiddleware(app), func(c *gin.Context) { handlePutVCenterBastionPolicy(c, app) })
 	api.GET("/vcenter/bastion/native-ssh", func(c *gin.Context) { handleGetBastionNativeSshInfo(c, app) })
+	api.GET("/vcenter/bastion/extra-status", func(c *gin.Context) { handleBastionExtraStatus(c, app) })
+	api.GET("/vcenter/bastion/rustdesk", AdminOnlyMiddleware(app), func(c *gin.Context) { handleGetBastionRustDeskHosts(c, app) })
 	// 所有 /vcenter/vms/:moref/<子路径> 必须注册在 GET /vcenter/vms/:moref 之前，否则 httprouter 会匹配错误并返回 404。
 	api.GET("/vcenter/vms/:moref/quickstats", func(c *gin.Context) { handleVCenterVMQuickStats(c, app) })
 	api.GET("/vcenter/vms/:moref/netperf", func(c *gin.Context) { handleVCenterVMNetPerf(c, app) })
