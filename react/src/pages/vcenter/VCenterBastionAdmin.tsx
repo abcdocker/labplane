@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/auth-context";
 import { apiGetJson, apiPutJson, ApiHttpError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -273,6 +274,23 @@ const VCenterBastionAdmin: React.FC = () => {
     staleTime: 60_000,
   });
 
+  // SSH 免密配置覆盖：全部可管主机 × 凭据/用户配置状态（未配置排前）
+  const coverageQ = useQuery({
+    queryKey: ["vcenter-bastion-ssh-coverage"],
+    queryFn: ({ signal }) =>
+      apiGetJson<{
+        hosts: {
+          id: string; kind: string; name: string; address?: string;
+          user?: string; hasStoredCfg: boolean; hasAuth: boolean;
+          ready: boolean; configured: boolean;
+        }[];
+        summary: { total: number; configured: number; missing: number };
+      }>("/api/vcenter/bastion/ssh-coverage", { signal }),
+    enabled: isAdmin,
+    staleTime: 60_000,
+  });
+  const coverageMissing = coverageQ.data?.hosts?.filter((h) => !h.configured) ?? [];
+
   const policyQ = useQuery({
     queryKey: ["vcenter-bastion-policy"],
     queryFn: ({ signal }) => apiGetJson<BastionPolicy>("/api/vcenter/bastion/policy", { signal }),
@@ -453,6 +471,45 @@ const VCenterBastionAdmin: React.FC = () => {
             用表单配置访问控制、额外主机与分组；无需手写 JSON。启用 ACL
             后，仅列表中的平台登录名可连对应虚拟机或额外主机。
           </p>
+          </div>
+
+          {/* SSH 免密配置覆盖：一眼看出哪些主机尚未配置 */}
+          <div className="space-y-3 rounded-xl border border-amber-900/40 bg-[#0f1419] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-1.5 text-sm font-medium text-amber-300/90">
+                <ShieldAlert className="h-4 w-4" /> SSH 免密配置覆盖
+              </h2>
+              <span className="text-[10px] text-slate-500">
+                共 {coverageQ.data?.summary.total ?? 0} 台 · 已配置 {coverageQ.data?.summary.configured ?? 0} ·
+                <span className={cn((coverageQ.data?.summary.missing ?? 0) > 0 && "text-amber-400")}>
+                  未配置 {coverageQ.data?.summary.missing ?? 0}
+                </span>
+              </span>
+            </div>
+            {coverageQ.isLoading ? (
+              <p className="text-xs text-slate-500">检查中…</p>
+            ) : coverageMissing.length === 0 ? (
+              <p className="text-xs text-emerald-400/90">✓ 全部主机均已配置免密凭据与用户</p>
+            ) : (
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-slate-500">以下主机尚未配置（缺少凭据或用户名），点击可在堡垒机页对应主机上设置：</p>
+                {coverageMissing.map((h) => (
+                  <div key={h.id}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-800 bg-[#141a22] px-2.5 py-1.5 text-xs">
+                    <span className="text-slate-300">{h.name}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{h.address || h.id}</span>
+                    <span className="text-[10px] text-amber-400/90">
+                      {!h.hasAuth ? "未配置凭据" : "未配置用户"}
+                      {!h.hasStoredCfg && "（无已存配置）"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] leading-relaxed text-slate-600">
+              判定口径与免密连接一致：vCenter 虚拟机 = 已存凭据（密码/私钥）或
+              VCENTER_VM_SSH_* 兜底，且用户名非空；额外主机 = 已存凭据（含全局兜底）。
+            </p>
           </div>
 
           <div className="space-y-3 rounded-xl border border-emerald-900/40 bg-[#0f1419] p-4">
