@@ -428,7 +428,7 @@ export const PodListBlock: React.FC<PodListBlockProps> = ({
 
       {podsQ.data && podsQ.data.length > 0 && showCards && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {podsQ.data.map((p) => {
+          {(podsQ.data ?? []).map((p) => {
             const { cpu, mem } = cpuMemForPod(p);
             const { reqLine, alignLine } = reqAlignForPod(p);
             return (
@@ -491,7 +491,7 @@ export const PodListBlock: React.FC<PodListBlockProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {podsQ.data.map((p, idx) => {
+                {(podsQ.data ?? []).map((p, idx) => {
                   const { cpu, mem } = cpuMemForPod(p);
                   const { reqLine, alignLine } = reqAlignForPod(p);
                   return (

@@ -267,7 +267,7 @@ const ClusterServices: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {svcQ.data.map((s, idx) => {
+                {(svcQ.data ?? []).map((s, idx) => {
                   const portEnt = normalizePortEntries(s.portEntries);
                   const preview = servicePortsPreview(portEnt, s.ports ?? []);
                   return (

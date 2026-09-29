@@ -152,7 +152,7 @@ const ClusterIngresses: React.FC = () => {
             <span className="text-xs text-slate-500">共 {ingQ.data.length} 条</span>
           </div>
           <div className="grid gap-3 p-3 md:hidden">
-            {ingQ.data.map((row) => (
+            {(ingQ.data ?? []).map((row) => (
               <article key={`${row.namespace}/${row.name}`} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <Link
@@ -229,7 +229,7 @@ const ClusterIngresses: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ingQ.data.map((row, idx) => (
+                {(ingQ.data ?? []).map((row, idx) => (
                   <TableRow
                     key={`${row.namespace}/${row.name}`}
                     className={cn(

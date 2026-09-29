@@ -170,7 +170,7 @@ const HarborReposPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                reposQ.data.map((r, idx) => {
+                (reposQ.data ?? []).map((r, idx) => {
                   const pathTail = harborRepoUrlSegmentsForProject(project, r.name);
                   return (
                     <TableRow key={r.name} className={cn(idx % 2 === 1 && "bg-slate-50/40")}>

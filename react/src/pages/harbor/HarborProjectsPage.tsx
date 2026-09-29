@@ -462,7 +462,7 @@ const HarborProjectsPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                projectsQ.data.map((p, idx) => {
+                (projectsQ.data ?? []).map((p, idx) => {
                   const pub = p.metadata?.public === "true";
                   return (
                     <TableRow key={p.name} className={cn(idx % 2 === 1 && "bg-slate-50/40")}>

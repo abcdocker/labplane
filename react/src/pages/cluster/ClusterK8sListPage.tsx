@@ -533,7 +533,7 @@ export const ClusterK8sListPage: React.FC<ClusterK8sListPageProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dataQ.data.map((row, idx) => {
+                {(dataQ.data ?? []).map((row, idx) => {
                   const name = String(row.name ?? "");
                   const ls = typeof row.labelSelector === "string" ? row.labelSelector : "";
                   const podsHref =
