@@ -503,6 +503,46 @@ export class ApiHttpError extends Error {
   }
 }
 
+/** 前置 WAF（如 SafeLine）的频率限制挑战页：468/465 状态码。浏览器可过挑战，XHR 拿到的是 HTML。 */
+export class ApiWafError extends Error {
+  constructor(public readonly status: number) {
+    super("请求被安全防护拦截（频率限制），请稍后重试");
+    this.name = "ApiWafError";
+  }
+}
+
+/** 全局并发闸门：集群等页面会一次性发起 10+ 请求，突发流量会触发前置 WAF 的频率限制；
+ *  超过上限的请求排队（FIFO），从源头削峰。Abort 的请求会立即释放名额。 */
+const API_MAX_CONCURRENT = 6;
+let apiInFlight = 0;
+const apiWaiters: (() => void)[] = [];
+async function apiAcquire(): Promise<void> {
+  if (apiInFlight < API_MAX_CONCURRENT) {
+    apiInFlight += 1;
+    return;
+  }
+  await new Promise<void>((resolve) => apiWaiters.push(resolve));
+  apiInFlight += 1;
+}
+function apiRelease(): void {
+  apiInFlight = Math.max(0, apiInFlight - 1);
+  const next = apiWaiters.shift();
+  if (next) next();
+}
+async function gatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  await apiAcquire();
+  try {
+    const res = await fetch(input, init);
+    // 前置 WAF 的频率限制挑战页：对 XHR 而言是 HTML 而非 JSON，统一转为友好错误
+    if (res.status === 465 || res.status === 468) {
+      throw new ApiWafError(res.status);
+    }
+    return res;
+  } finally {
+    apiRelease();
+  }
+}
+
 async function readErrorBody(
   res: Response
 ): Promise<{ msg: string; code?: string; hint?: string; checks?: ApiHttpErrorCheck[] }> {
@@ -537,7 +577,7 @@ async function readErrorBody(
 }
 
 export async function apiGetJson<T>(path: string, opt?: ApiFetchOptions): Promise<T> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal({ credentials: apiFetchCredentials() }, opt)
   );
@@ -550,7 +590,7 @@ export async function apiGetJson<T>(path: string, opt?: ApiFetchOptions): Promis
 }
 
 export async function apiGetText(path: string, opt?: ApiFetchOptions): Promise<string> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal({ credentials: apiFetchCredentials() }, opt)
   );
@@ -570,7 +610,7 @@ export async function apiGetText(path: string, opt?: ApiFetchOptions): Promise<s
 }
 
 export async function apiDelete(path: string, opt?: ApiFetchOptions): Promise<void> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -592,7 +632,7 @@ export async function apiDeleteJson<T = Record<string, unknown>>(
   path: string,
   opt?: ApiFetchOptions
 ): Promise<T> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -622,7 +662,7 @@ export async function apiPostJson<TRes = unknown>(
   body: object,
   opt?: ApiFetchOptions
 ): Promise<TRes> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -678,7 +718,7 @@ export async function apiPutJson<TRes = unknown>(
   body: object,
   opt?: ApiFetchOptions
 ): Promise<TRes> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -703,7 +743,7 @@ export async function apiPatchJson<TRes = unknown>(
   body: object,
   opt?: ApiFetchOptions
 ): Promise<TRes> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -734,7 +774,7 @@ export async function apiPutRaw(
     body instanceof Blob
       ? body
       : new Blob([body as BlobPart]);
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -764,7 +804,7 @@ export async function apiPostRaw(
     body instanceof Blob
       ? body
       : new Blob([body as BlobPart]);
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
@@ -785,7 +825,7 @@ export async function apiPostRaw(
 
 /** POST 无 body（如 PVC 删除） */
 export async function apiPostNoBody(path: string, opt?: ApiFetchOptions): Promise<void> {
-  const res = await fetch(
+  const res = await gatedFetch(
     `${API_BASE}${path}`,
     withSignal(
       {
