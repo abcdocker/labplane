@@ -248,7 +248,7 @@ const VCenterBastion: React.FC = () => {
   const extraHosts = vmsQ.data?.extraHosts ?? EMPTY_EXTRAS;
   const folderPathPending = vmsQ.data?.folderPathPending === true;
 
-  // RustDesk 主机清单（策略 rustdeskHosts）+ 额外主机在线状态（30s 缓存探测）
+  // RustDesk：静态清单（策略）+ 自动发现（Pro API peers）+ 服务器信息
   const rustdeskQ = useQuery({
     queryKey: ["vcenter-bastion-rustdesk"],
     queryFn: ({ signal }) =>
@@ -259,6 +259,20 @@ const VCenterBastion: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
   const rustdeskHosts = rustdeskQ.data?.hosts ?? [];
+  const rustdeskPeersQ = useQuery({
+    queryKey: ["vcenter-bastion-rustdesk-peers"],
+    queryFn: ({ signal }) =>
+      apiGetJson<{
+        peers: { id: string; name: string; rustdeskId: string; online?: boolean; hostname?: string; ip?: string }[];
+        notConfigured?: boolean;
+      }>("/api/vcenter/bastion/rustdesk/peers", { signal }),
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+  const rustdeskAutoPeers = (rustdeskPeersQ.data?.peers ?? []).filter(
+    // 自动发现结果去重：跳过静态清单里已有的 rustdeskId
+    (p) => !rustdeskHosts.some((h) => h.rustdeskId === p.rustdeskId)
+  );
   const extraStatusQ = useQuery({
     queryKey: ["vcenter-bastion-extra-status"],
     queryFn: ({ signal }) =>
@@ -721,12 +735,12 @@ const VCenterBastion: React.FC = () => {
               </div>
             ) : null}
 
-            {/* RustDesk 主机（自建服务器 wh.frps.cn:21114） */}
-            {rustdeskHosts.length > 0 ? (
+            {/* RustDesk 主机：自动发现（Pro API）+ 手工清单 */}
+            {(rustdeskHosts.length > 0 || rustdeskAutoPeers.length > 0 || rustdeskPeersQ.data?.notConfigured) ? (
               <Collapsible defaultOpen className="border-b border-[#3c3c3c]/80">
                 <CollapsibleTrigger className="flex w-full cursor-pointer select-none items-center gap-1 px-2.5 pb-1 pt-2 text-left text-[11px] font-medium uppercase tracking-wide text-[#6e7681] hover:text-[#8c8c8c]">
                   <ChevronRight className="size-3 shrink-0 transition-transform [[data-state=open]>&]:rotate-90" aria-hidden />
-                  RustDesk（{rustdeskHosts.length}）
+                  RustDesk（{rustdeskHosts.length + rustdeskAutoPeers.length}）
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <ul className="space-y-px px-1 pb-2">
@@ -770,9 +784,63 @@ const VCenterBastion: React.FC = () => {
                         </div>
                       </li>
                     ))}
+                    {rustdeskAutoPeers.map((p) => (
+                      <li key={p.id}>
+                        <div
+                          className={cn(
+                            "group flex w-full items-center gap-2 border-l-2 border-l-sky-400/25 py-1.5 pl-2 pr-1.5",
+                            "hover:bg-sky-500/[0.07]"
+                          )}
+                        >
+                          <Monitor className="mt-0 size-3.5 shrink-0 text-[#58a6ff]/80" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  "inline-block size-1.5 shrink-0 rounded-full",
+                                  p.online ? "bg-[#3fb950]" : "bg-[#6e7681]/50",
+                                )}
+                                title={p.online ? "在线（Pro 服务器已注册）" : "离线/未运行"}
+                                aria-hidden
+                              />
+                              <span className="truncate text-[13px] font-medium leading-snug text-[#e6edf3]">
+                                {p.name || p.hostname || p.rustdeskId}
+                              </span>
+                            </span>
+                            <span className="block truncate font-mono text-[11px] leading-tight text-[#8c8c8c]">
+                              ID {p.rustdeskId}
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              title={`复制 ID ${p.rustdeskId}`}
+                              onClick={() => {
+                                void navigator.clipboard.writeText(p.rustdeskId);
+                                toast.success(`已复制 RustDesk ID：${p.rustdeskId}`);
+                              }}
+                              className="rounded border border-[#3c3c3c] px-1.5 py-0.5 text-[10px] text-[#8c8c8c] hover:border-[#58a6ff] hover:text-[#58a6ff]"
+                            >
+                              复制
+                            </button>
+                            <a
+                              href={`rustdesk://connection/new/${p.rustdeskId}`}
+                              title="唤起本机 RustDesk 客户端连接"
+                              className="rounded bg-[#1f6feb] px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-[#388bfd]"
+                            >
+                              连接
+                            </a>
+                          </span>
+                        </div>
+                      </li>
+                    ))}
                   </ul>
                   <p className="px-2 pb-1.5 text-[10px] leading-relaxed text-[#6e7681]">
-                    自建服务器 wh.frps.cn:21114 · 连接需输入目标主机的 RustDesk 密码
+                    自建服务器 wh.frps.cn:21114 · 客户端按钮唤起本机 RustDesk ·
+                    <a href="http://wh.frps.cn:21114/_admin/" target="_blank" rel="noreferrer" className="ml-0.5 text-[#58a6ff] hover:underline">
+                      网页控制台 ↗
+                    </a>
+                    （在线连接）· 连接需输入目标主机的 RustDesk 密码
                   </p>
                 </CollapsibleContent>
               </Collapsible>

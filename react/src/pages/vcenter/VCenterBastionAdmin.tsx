@@ -292,6 +292,42 @@ const VCenterBastionAdmin: React.FC = () => {
     staleTime: 60_000,
   });
 
+  // RustDesk 服务器账号配置（自建 Pro；凭据仅写入，不回显）
+  const rustdeskServerQ = useQuery({
+    queryKey: ["vcenter-bastion-rustdesk-server"],
+    queryFn: ({ signal }) =>
+      apiGetJson<{ baseUrl: string; username: string; configured: boolean; webAdminPath: string }>(
+        "/api/vcenter/bastion/rustdesk/server",
+        { signal }
+      ),
+    enabled: isAdmin,
+  });
+  const [rustdeskServerDraft, setRustdeskServerDraft] = useState({
+    baseUrl: "",
+    username: "",
+    password: "",
+  });
+  const [rustdeskServerSaving, setRustdeskServerSaving] = useState(false);
+  useEffect(() => {
+    const s = rustdeskServerQ.data;
+    if (!s) return;
+    setRustdeskServerDraft((prev) => ({ ...prev, baseUrl: s.baseUrl, username: s.username }));
+  }, [rustdeskServerQ.data]);
+  const saveRustdeskServer = useMutation({
+    mutationFn: () =>
+      apiPutJson<{ ok: boolean; peers?: number; probeError?: string }>("/api/vcenter/bastion/rustdesk/server", rustdeskServerDraft),
+    onSuccess: (r) => {
+      if (r.probeError) {
+        toast.warning(`已保存，但 Pro API 连通失败：${r.probeError}`);
+      } else {
+        toast.success(`RustDesk 服务器已保存${typeof r.peers === "number" ? `，发现主机 ${r.peers} 台` : ""}`);
+      }
+      void qc.invalidateQueries({ queryKey: ["vcenter-bastion-rustdesk-server"] });
+      void qc.invalidateQueries({ queryKey: ["vcenter-bastion-rustdesk-peers"] });
+    },
+    onError: (e: unknown) => toast.error(e instanceof ApiHttpError ? e.message : String(e)),
+  });
+
   // SSH 免密配置覆盖：全部可管主机 × 凭据/用户配置状态（未配置排前）
   const coverageQ = useQuery({
     queryKey: ["vcenter-bastion-ssh-coverage"],
@@ -1056,6 +1092,73 @@ const VCenterBastionAdmin: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="space-y-2 border-t border-slate-800 pt-4">
+            <div>
+              <Label className="text-sm text-slate-300">RustDesk 服务器（自动发现）</Label>
+              <p className="mt-0.5 text-[11px] text-slate-600">
+                配置自建 RustDesk Pro 的 API 地址与管理员账号后，平台自动拉取已注册主机（5 分钟缓存），
+                侧栏免手工维护。凭据加密存储、不回显。
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-500">API 地址</Label>
+                <Input
+                  value={rustdeskServerDraft.baseUrl}
+                  onChange={(e) => setRustdeskServerDraft((p) => ({ ...p, baseUrl: e.target.value }))}
+                  placeholder="http://wh.frps.cn:21114"
+                  className="h-8 border-slate-700 bg-[#080a0e] font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-500">管理员账号</Label>
+                <Input
+                  value={rustdeskServerDraft.username}
+                  onChange={(e) => setRustdeskServerDraft((p) => ({ ...p, username: e.target.value }))}
+                  placeholder="Pro 控制台管理员"
+                  className="h-8 border-slate-700 bg-[#080a0e] text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-slate-500">
+                  密码{rustdeskServerQ.data?.configured ? "（留空保留原值）" : " *"}
+                </Label>
+                <Input
+                  type="password"
+                  value={rustdeskServerDraft.password}
+                  onChange={(e) => setRustdeskServerDraft((p) => ({ ...p, password: e.target.value }))}
+                  placeholder={rustdeskServerQ.data?.configured ? "已配置" : "Pro 控制台密码"}
+                  className="h-8 border-slate-700 bg-[#080a0e] text-xs"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 border-slate-600 bg-slate-900 text-xs"
+                disabled={rustdeskServerSaving}
+                onClick={() => saveRustdeskServer.mutate()}
+              >
+                {rustdeskServerSaving ? "保存中…" : "保存并验证连通"}
+              </Button>
+              {rustdeskServerQ.data?.configured ? (
+                <a
+                  href={`${(rustdeskServerQ.data.baseUrl || "").replace(/\/+$/, "")}${rustdeskServerQ.data.webAdminPath || "/_admin/"}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-sky-400 hover:underline"
+                >
+                  打开 Pro Web 控制台 ↗
+                </a>
+              ) : null}
+              <span className="text-[10px] text-slate-500">
+                状态：{rustdeskServerQ.data?.configured ? "已配置" : "未配置"}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2 border-t border-slate-800 pt-4">
