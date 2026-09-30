@@ -44,6 +44,11 @@ func loadRustDeskServer(kv PlatformKV) RustDeskServerConfig {
 	if strings.TrimSpace(c.WebAdminPath) == "" {
 		c.WebAdminPath = "/_admin/"
 	}
+	// Pro 2.4+ 内置 Web 客户端（/webclient/）；用户未显式配置时自动采用，
+	// 连接 URL 形态：<base>/webclient/#?id=<rustdeskId>（客户端 JS 从 hash 读取 remote-id）。
+	if strings.TrimSpace(c.WebClientURL) == "" && c.BaseURL != "" {
+		c.WebClientURL = c.BaseURL + "/webclient/"
+	}
 	return c
 }
 

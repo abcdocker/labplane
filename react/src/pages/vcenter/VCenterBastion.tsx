@@ -271,6 +271,8 @@ const VCenterBastion: React.FC = () => {
     retry: false,
   });
   const rustdeskWebClientUrl = (rustdeskPeersQ.data?.webClientUrl ?? "").replace(/\/+$/, "");
+  /** RustDesk 网页连接：平台内嵌 iframe 直连（不跳出平台） */
+  const [rustdeskWebConn, setRustdeskWebConn] = useState<{ name: string; rustdeskId: string } | null>(null);
   const rustdeskAutoPeers = (rustdeskPeersQ.data?.peers ?? []).filter(
     // 自动发现结果去重：跳过静态清单里已有的 rustdeskId
     (p) => !rustdeskHosts.some((h) => h.rustdeskId === p.rustdeskId)
@@ -833,15 +835,14 @@ const VCenterBastion: React.FC = () => {
                               客户端
                             </a>
                             {rustdeskWebClientUrl ? (
-                              <a
-                                href={`${rustdeskWebClientUrl}?id=${encodeURIComponent(p.rustdeskId)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="在浏览器中打开 RustDesk Web 客户端连接该主机"
+                              <button
+                                type="button"
+                                title="平台内嵌网页直连（Web 客户端）"
+                                onClick={() => setRustdeskWebConn({ name: p.name || p.hostname || p.rustdeskId, rustdeskId: p.rustdeskId })}
                                 className="rounded border border-[#1f6feb] px-1.5 py-0.5 text-[10px] font-medium text-[#58a6ff] hover:bg-[#1f6feb]/20"
                               >
                                 网页
-                              </a>
+                              </button>
                             ) : null}
                           </span>
                         </div>
@@ -1333,6 +1334,41 @@ const VCenterBastion: React.FC = () => {
           }}
         />
       ) : null}
+
+      {/* RustDesk 网页连接：平台内嵌 Web 客户端，直接连接不跳转 */}
+      <Dialog open={!!rustdeskWebConn} onOpenChange={(o) => !o && setRustdeskWebConn(null)}>
+        <DialogContent className="h-[86vh] max-w-[min(96vw,1280px)] border-[#3c3c3c] bg-[#1e1e1e] p-0">
+          <DialogHeader className="border-b border-[#3c3c3c] px-4 py-2.5">
+            <DialogTitle className="flex items-center justify-between gap-3 text-sm font-medium text-[#e6edf3]">
+              <span className="truncate">
+                RustDesk 网页连接 · {rustdeskWebConn?.name}
+                <span className="ml-2 font-mono text-xs text-[#8c8c8c]">ID {rustdeskWebConn?.rustdeskId}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (rustdeskWebConn) {
+                    void navigator.clipboard.writeText(rustdeskWebConn.rustdeskId);
+                    toast.success(`已复制 RustDesk ID：${rustdeskWebConn.rustdeskId}`);
+                  }
+                }}
+                className="rounded border border-[#3c3c3c] px-2 py-0.5 text-[10px] text-[#8c8c8c] hover:border-[#58a6ff] hover:text-[#58a6ff]"
+              >
+                复制 ID
+              </button>
+            </DialogTitle>
+          </DialogHeader>
+          {rustdeskWebConn && rustdeskWebClientUrl ? (
+            <iframe
+              key={rustdeskWebConn.rustdeskId}
+              title={`RustDesk ${rustdeskWebConn.name}`}
+              src={`${rustdeskWebClientUrl}/#?id=${encodeURIComponent(rustdeskWebConn.rustdeskId)}`}
+              className="h-[calc(86vh-52px)] w-full border-0 bg-black"
+              allow="clipboard-read; clipboard-write; fullscreen"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
