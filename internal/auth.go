@@ -436,9 +436,18 @@ func finalizePasswordLoginSession(c *gin.Context, app *ServerApp, cfg Config, us
 	exp := time.Now().Add(cfg.sessionMaxAge()).Unix()
 	token := mintSessionToken(username, role, exp, nonce, key)
 	maxAgeSec := int(cfg.sessionMaxAge().Seconds())
+	requestIsHTTPS := func(c *gin.Context) bool {
+		if c.Request != nil && c.Request.TLS != nil {
+			return true
+		}
+		if proto := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")); proto != "" {
+			return strings.EqualFold(proto, "https")
+		}
+		return false
+	}
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name: sessionCookieName, Value: token, Path: "/", MaxAge: maxAgeSec,
-		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: cfg.DashboardCookieSecure,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: requestIsHTTPS(c) && cfg.DashboardCookieSecure,
 	})
 	log.Printf("audit login ok user=%s role=%s ip=%s src=%s", username, role, ip, auditDetail)
 	AppendAuditRecord(app, AuditRecord{
@@ -685,7 +694,7 @@ func handleAuthLogout(c *gin.Context, app *ServerApp) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   cfg.DashboardCookieSecure,
+		Secure:   false,
 	})
 	c.JSON(http.StatusOK, gin.H{"message": "已退出"})
 }
