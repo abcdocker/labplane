@@ -296,7 +296,7 @@ const VCenterBastionAdmin: React.FC = () => {
   const rustdeskServerQ = useQuery({
     queryKey: ["vcenter-bastion-rustdesk-server"],
     queryFn: ({ signal }) =>
-      apiGetJson<{ baseUrl: string; username: string; configured: boolean; webAdminPath: string }>(
+      apiGetJson<{ baseUrl: string; username: string; configured: boolean; webAdminPath: string; webClientUrl?: string }>(
         "/api/vcenter/bastion/rustdesk/server",
         { signal }
       ),
@@ -306,12 +306,18 @@ const VCenterBastionAdmin: React.FC = () => {
     baseUrl: "",
     username: "",
     password: "",
+    webClientUrl: "",
   });
   const [rustdeskServerSaving, setRustdeskServerSaving] = useState(false);
   useEffect(() => {
     const s = rustdeskServerQ.data;
     if (!s) return;
-    setRustdeskServerDraft((prev) => ({ ...prev, baseUrl: s.baseUrl, username: s.username }));
+    setRustdeskServerDraft((prev) => ({
+      ...prev,
+      baseUrl: s.baseUrl,
+      username: s.username,
+      webClientUrl: s.webClientUrl ?? "",
+    }));
   }, [rustdeskServerQ.data]);
   const saveRustdeskServer = useMutation({
     mutationFn: () =>
@@ -1131,6 +1137,17 @@ const VCenterBastionAdmin: React.FC = () => {
                   onChange={(e) => setRustdeskServerDraft((p) => ({ ...p, password: e.target.value }))}
                   placeholder={rustdeskServerQ.data?.configured ? "已配置" : "Pro 控制台密码"}
                   className="h-8 border-slate-700 bg-[#080a0e] text-xs"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-3">
+                <Label className="text-[10px] text-slate-500">
+                  Web 客户端地址（可选 · 启用后侧栏每台主机显示「网页」连接按钮）
+                </Label>
+                <Input
+                  value={rustdeskServerDraft.webClientUrl}
+                  onChange={(e) => setRustdeskServerDraft((p) => ({ ...p, webClientUrl: e.target.value }))}
+                  placeholder="例如 http://wh.frps.cn:21114/webclient 或独立部署的 webclient 根地址"
+                  className="h-8 border-slate-700 bg-[#080a0e] font-mono text-xs"
                 />
               </div>
             </div>

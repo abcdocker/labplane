@@ -264,11 +264,13 @@ const VCenterBastion: React.FC = () => {
     queryFn: ({ signal }) =>
       apiGetJson<{
         peers: { id: string; name: string; rustdeskId: string; online?: boolean; hostname?: string; ip?: string }[];
+        webClientUrl?: string;
         notConfigured?: boolean;
       }>("/api/vcenter/bastion/rustdesk/peers", { signal }),
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
+  const rustdeskWebClientUrl = (rustdeskPeersQ.data?.webClientUrl ?? "").replace(/\/+$/, "");
   const rustdeskAutoPeers = (rustdeskPeersQ.data?.peers ?? []).filter(
     // 自动发现结果去重：跳过静态清单里已有的 rustdeskId
     (p) => !rustdeskHosts.some((h) => h.rustdeskId === p.rustdeskId)
@@ -828,19 +830,30 @@ const VCenterBastion: React.FC = () => {
                               title="唤起本机 RustDesk 客户端连接"
                               className="rounded bg-[#1f6feb] px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-[#388bfd]"
                             >
-                              连接
+                              客户端
                             </a>
+                            {rustdeskWebClientUrl ? (
+                              <a
+                                href={`${rustdeskWebClientUrl}?id=${encodeURIComponent(p.rustdeskId)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="在浏览器中打开 RustDesk Web 客户端连接该主机"
+                                className="rounded border border-[#1f6feb] px-1.5 py-0.5 text-[10px] font-medium text-[#58a6ff] hover:bg-[#1f6feb]/20"
+                              >
+                                网页
+                              </a>
+                            ) : null}
                           </span>
                         </div>
                       </li>
                     ))}
                   </ul>
                   <p className="px-2 pb-1.5 text-[10px] leading-relaxed text-[#6e7681]">
-                    自建服务器 wh.frps.cn:21114 · 客户端按钮唤起本机 RustDesk ·
+                    自建服务器 wh.frps.cn:21114 · 「客户端」唤起本机 RustDesk ·
                     <a href="http://wh.frps.cn:21114/_admin/" target="_blank" rel="noreferrer" className="ml-0.5 text-[#58a6ff] hover:underline">
                       网页控制台 ↗
                     </a>
-                    （在线连接）· 连接需输入目标主机的 RustDesk 密码
+                    · 连接需输入目标主机的 RustDesk 密码
                   </p>
                 </CollapsibleContent>
               </Collapsible>

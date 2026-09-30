@@ -23,10 +23,11 @@ const platformKVKeyRustDeskServer = "labplane_rustdesk_server_v1"
 
 // RustDeskServerConfig 自建 RustDesk Pro 服务器与 API 管理员账号。
 type RustDeskServerConfig struct {
-	BaseURL  string `json:"baseUrl"`            // 如 http://wh.frps.cn:21114（无尾斜杠）
-	Username string `json:"username"`           // Pro Web 控制台管理员账号
-	PasswordEnc string `json:"passwordEnc"`    // AES 加密后的密码
-	WebAdminPath string `json:"webAdminPath"` // 默认 /_admin/
+	BaseURL      string `json:"baseUrl"`              // 如 http://wh.frps.cn:21114（无尾斜杠）
+	Username     string `json:"username"`             // Pro Web 控制台管理员账号
+	PasswordEnc  string `json:"passwordEnc"`          // AES 加密后的密码
+	WebAdminPath string `json:"webAdminPath"`         // 默认 /_admin/
+	WebClientURL string `json:"webClientUrl"`         // RustDesk Web 客户端地址（如 http://wh.frps.cn:21114/_admin/#/webclient 或独立部署的 webclient 根）；空则不展示网页连接
 }
 
 func loadRustDeskServer(kv PlatformKV) RustDeskServerConfig {
@@ -92,12 +93,71 @@ func rustDeskAPIToken(cfg RustDeskServerConfig, encKey []byte) (string, error) {
 }
 
 type rustDeskPeer struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Online   bool   `json:"online"`
-	User     string `json:"user"`
-	Hostname string `json:"hostname"`
-	IP       string `json:"ip"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Online       bool   `json:"online"`
+	User         string `json:"user"`
+	Hostname     string `json:"hostname"`
+	IP           string `json:"ip"`
+	RustDeskID   string `json:"rustdeskId,omitempty"` // Pro info 里的 rustdesk_id（用户可见的连接 ID）
+	Os           string `json:"os,omitempty"`
+	Version      string `json:"version,omitempty"`
+}
+
+// rustDeskNormalizePeer 兼容 Pro 多版本字段名：id/info.id/rustdesk_id/hash、
+// name/alias/hostname/机器名、online/status 等。RustDesk ID（连接用）优先取
+// rustdesk_id，缺省回退 id/hash（自建同网段下 id 即连接 ID 的场景）。
+func rustDeskNormalizePeer(raw map[string]interface{}) (rustDeskPeer, bool) {
+	get := func(keys ...string) string {
+		for _, k := range keys {
+			if v, ok := raw[k]; ok {
+				switch t := v.(type) {
+				case string:
+					if strings.TrimSpace(t) != "" {
+						return strings.TrimSpace(t)
+					}
+				case float64:
+					return fmt.Sprintf("%.0f", t)
+				}
+			}
+		}
+		return ""
+	}
+	id := get("rustdesk_id", "rustdeskId", "rdid", "id", "hash", "uid")
+	if id == "" {
+		return rustDeskPeer{}, false
+	}
+	name := get("name", "alias", "hostname", "machine_name", "machine_hostname")
+	p := rustDeskPeer{
+		ID:         get("id", "uid", "hash", "rustdesk_id"),
+		Name:       name,
+		RustDeskID: id,
+		Hostname:   get("hostname", "machine_hostname", "name"),
+		User:       get("user", "username"),
+		IP:         get("ip", "last_ip", "ip_address"),
+		Os:         get("os", "platform"),
+		Version:    get("version", "client_version"),
+	}
+	// online：布尔或状态字符串
+	for _, k := range []string{"online", "is_online", "status"} {
+		if v, ok := raw[k]; ok {
+			switch t := v.(type) {
+			case bool:
+				p.Online = t
+			case string:
+				l := strings.ToLower(t)
+				p.Online = l == "online" || l == "true" || l == "connected"
+			}
+			break
+		}
+	}
+	if p.Name == "" {
+		p.Name = p.Hostname
+	}
+	if p.Name == "" {
+		p.Name = p.RustDeskID
+	}
+	return p, true
 }
 
 // rustDeskListPeers 拉取全部已注册设备（GET /api/peers?page=1&pageSize=N）。
@@ -144,11 +204,19 @@ func rustDeskExtractPeers(node interface{}) []rustDeskPeer {
 	if err != nil {
 		return nil
 	}
-	// 数组直接解析
-	var arr []rustDeskPeer
+	// 对象（单台 peer，字段名多变）→ 归一化
+	var obj map[string]interface{}
+	if err := json.Unmarshal(raw, &obj); err == nil {
+		if p, ok := rustDeskNormalizePeer(obj); ok {
+			out = append(out, p)
+			return out
+		}
+	}
+	// 数组逐个归一化
+	var arr []map[string]interface{}
 	if err := json.Unmarshal(raw, &arr); err == nil {
-		for _, p := range arr {
-			if strings.TrimSpace(p.ID) != "" {
+		for _, item := range arr {
+			if p, ok := rustDeskNormalizePeer(item); ok {
 				out = append(out, p)
 			}
 		}
@@ -192,20 +260,22 @@ func handleGetBastionRustDeskHosts(c *gin.Context, app *ServerApp) {
 func handleRustDeskServerGet(c *gin.Context, app *ServerApp) {
 	cfg := loadRustDeskServer(app.PlatformKV())
 	c.JSON(http.StatusOK, gin.H{
-		"baseUrl":   cfg.BaseURL,
-		"username":  cfg.Username,
-		"configured": cfg.BaseURL != "" && cfg.Username != "" && cfg.PasswordEnc != "",
-		"webAdminPath": cfg.WebAdminPath,
+		"baseUrl":       cfg.BaseURL,
+		"username":      cfg.Username,
+		"configured":    cfg.BaseURL != "" && cfg.Username != "" && cfg.PasswordEnc != "",
+		"webAdminPath":  cfg.WebAdminPath,
+		"webClientUrl":  cfg.WebClientURL,
 	})
 }
 
 // handleRustDeskServerPut PUT /api/vcenter/bastion/rustdesk/server（AdminOnly）
-// body: {baseUrl, username, password?}（password 空表示保留原值）
+// body: {baseUrl, username, password?, webClientUrl?}（password 空表示保留原值）
 func handleRustDeskServerPut(c *gin.Context, app *ServerApp) {
 	var body struct {
-		BaseURL  string `json:"baseUrl"`
-		Username string `json:"username"`
-		Password string `json:"password"`
+		BaseURL      string `json:"baseUrl"`
+		Username     string `json:"username"`
+		Password     string `json:"password"`
+		WebClientURL string `json:"webClientUrl"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
@@ -232,6 +302,7 @@ func handleRustDeskServerPut(c *gin.Context, app *ServerApp) {
 	cfg := loadRustDeskServer(app.PlatformKV())
 	cfg.BaseURL = base
 	cfg.Username = strings.TrimSpace(body.Username)
+	cfg.WebClientURL = strings.TrimRight(strings.TrimSpace(body.WebClientURL), "/")
 	if strings.TrimSpace(body.Password) != "" {
 		enc, eerr := encryptSecret(key, body.Password)
 		if eerr != nil {
@@ -301,5 +372,5 @@ func handleRustDeskPeers(c *gin.Context, app *ServerApp) {
 	rustdeskPeersCached = peers
 	rustdeskPeersAt = time.Now()
 	rustdeskPeersMu.Unlock()
-	c.JSON(http.StatusOK, gin.H{"peers": peers})
+	c.JSON(http.StatusOK, gin.H{"peers": peers, "webClientUrl": cfg.WebClientURL})
 }
